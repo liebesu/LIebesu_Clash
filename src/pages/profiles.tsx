@@ -55,6 +55,7 @@ import { useListen } from "@/hooks/use-listen";
 import { listen } from "@tauri-apps/api/event";
 import { TauriEvent } from "@tauri-apps/api/event";
 import { showNotice } from "@/services/noticeService";
+import QuotaExceededDialog from "@/components/profile/quota-exceeded-dialog";
 
 // 记录profile切换状态
 const debugProfileSwitch = (action: string, profile: string, extra?: any) => {
@@ -102,6 +103,10 @@ const ProfilePage = () => {
   const [disabled, setDisabled] = useState(false);
   const [activatings, setActivatings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // 配额超限对话框状态
+  const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
+  const [quotaFailedProfiles, setQuotaFailedProfiles] = useState<string[]>([]);
 
   // 防止重复切换
   const switchingProfileRef = useRef<string | null>(null);
@@ -590,18 +595,42 @@ const ProfilePage = () => {
     }
   });
 
+  // 检测是否为配额相关错误
+  const isQuotaError = (error: any) => {
+    const errorMsg = error?.message || error?.toString() || "";
+    const quotaKeywords = [
+      "quota", "limit", "exceeded", "over", "traffic", "bandwidth",
+      "配额", "限制", "超出", "流量", "额度", "用完", "耗尽",
+      "expired", "expiry", "expire", "到期", "过期"
+    ];
+    return quotaKeywords.some(keyword => 
+      errorMsg.toLowerCase().includes(keyword.toLowerCase())
+    );
+  };
+
   // 更新所有订阅
   const setLoadingCache = useSetLoadingCache();
   const onUpdateAll = useLockFn(async () => {
     const throttleMutate = throttle(mutateProfiles, 2000, {
       trailing: true,
     });
+    
+    const quotaFailedUIDs: string[] = [];
+    const normalFailedUIDs: string[] = [];
+    
     const updateOne = async (uid: string) => {
       try {
         await updateProfile(uid);
         throttleMutate();
       } catch (err: any) {
         console.error(`更新订阅 ${uid} 失败:`, err);
+        
+        // 检查是否为配额相关错误
+        if (isQuotaError(err)) {
+          quotaFailedUIDs.push(uid);
+        } else {
+          normalFailedUIDs.push(uid);
+        }
       } finally {
         setLoadingCache((cache) => ({ ...cache, [uid]: false }));
       }
@@ -615,7 +644,21 @@ const ProfilePage = () => {
         );
         const change = Object.fromEntries(items.map((e) => [e.uid, true]));
 
-        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(resolve);
+        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(() => {
+          // 处理配额超限的情况
+          if (quotaFailedUIDs.length > 0) {
+            setQuotaFailedProfiles(quotaFailedUIDs);
+            setQuotaDialogOpen(true);
+            showNotice("info", t("Quota exceeded detected"), 3000);
+          }
+          
+          // 显示正常的错误信息
+          if (normalFailedUIDs.length > 0) {
+            showNotice("error", `${normalFailedUIDs.length} subscriptions failed to update`, 3000);
+          }
+          
+          resolve(undefined);
+        });
         return { ...cache, ...change };
       });
     });
@@ -624,6 +667,33 @@ const ProfilePage = () => {
   const onCopyLink = async () => {
     const text = await readText();
     if (text) setUrl(text);
+  };
+
+  // 处理配额超限对话框
+  const handleQuotaDialogClose = () => {
+    setQuotaDialogOpen(false);
+    setQuotaFailedProfiles([]);
+  };
+
+  const handleQuotaDialogConfirm = async (selectedProfiles: string[]) => {
+    setQuotaDialogOpen(false);
+    
+    if (selectedProfiles.length === 0) {
+      setQuotaFailedProfiles([]);
+      return;
+    }
+
+    try {
+      // 逐个删除选中的订阅
+      for (const uid of selectedProfiles) {
+        await onDelete(uid);
+      }
+      
+      showNotice("success", t("Selected subscriptions deleted", { count: selectedProfiles.length }), 3000);
+      setQuotaFailedProfiles([]);
+    } catch (error: any) {
+      showNotice("error", error?.message || "Failed to delete subscriptions", 3000);
+    }
   };
 
   const mode = useThemeMode();
@@ -890,6 +960,13 @@ const ProfilePage = () => {
         }}
       />
       <ConfigViewer ref={configRef} />
+      
+      <QuotaExceededDialog
+        open={quotaDialogOpen}
+        profiles={profileItems}
+        onClose={handleQuotaDialogClose}
+        onConfirm={handleQuotaDialogConfirm}
+      />
     </BasePage>
   );
 };
