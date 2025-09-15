@@ -2,21 +2,52 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- 禁用沙盒以获得完整系统访问权限 -->
     <key>com.apple.security.app-sandbox</key>
     <false/>
+    
+    <!-- 应用组，用于数据共享 -->
     <key>com.apple.security.application-groups</key>
     <array>
         <string>io.github.clash-verge-rev.clash-verge-rev</string>
     </array>
+    
+    <!-- 继承父进程权限 -->
     <key>com.apple.security.inherit</key>
     <true/>
+    
+    <!-- 允许JIT编译 - 对于代理应用很重要 -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
+    
+    <!-- 允许执行未签名的内存 - 防止崩溃 -->
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
     <true/>
+    
+    <!-- 允许动态链接器环境变量 -->
     <key>com.apple.security.cs.allow-dyld-environment-variables</key>
     <true/>
+    
+    <!-- 禁用库验证 - 允许加载第三方库 -->
     <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
+    
+    <!-- 网络访问权限 - 代理应用必需 -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    
+    <!-- 文件访问权限 -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    
+    <!-- 允许任意文件读写（代理配置文件） -->
+    <key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
+    <array>
+        <string>/</string>
+    </array>
 </dict>
 </plist>

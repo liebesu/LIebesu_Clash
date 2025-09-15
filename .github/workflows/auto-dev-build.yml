@@ -84,30 +84,64 @@ jobs:
 
       - name: 修复macOS应用签名问题
         run: |
-          echo "=== 修复 macOS 应用签名和权限 ==="
+          echo "=== 优化 macOS 应用以匹配官方版本体验 ==="
           
           # 查找生成的.app文件
           APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.app" | head -1)
+          DMG_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.dmg" | head -1)
           
           if [ -n "$APP_PATH" ]; then
             echo "找到应用: $APP_PATH"
             
-            # 移除所有扩展属性（隔离标记）
-            echo "移除隔离属性..."
+            # 1. 移除所有扩展属性（隔离标记）
+            echo "🔧 移除隔离属性..."
             xattr -cr "$APP_PATH" || true
             
-            # 重新签名应用（ad-hoc签名，添加更多允许权限）
-            echo "重新进行ad-hoc签名..."
-            codesign --force --deep --sign - --entitlements src-tauri/packages/macos/entitlements.plist "$APP_PATH" || true
+            # 2. 重新签名应用（深度签名，使用完整entitlements）
+            echo "🔧 重新进行增强ad-hoc签名..."
+            codesign --force --deep --sign - \
+              --entitlements src-tauri/packages/macos/entitlements.plist \
+              --options runtime \
+              "$APP_PATH" || true
             
-            # 验证签名
-            echo "验证签名状态:"
+            # 3. 验证签名
+            echo "🔍 验证签名状态:"
             codesign --verify --verbose "$APP_PATH" || true
             codesign -dv "$APP_PATH" || true
             
-            echo "✅ macOS应用签名修复完成"
+            # 4. 设置正确的权限
+            echo "🔧 设置应用权限..."
+            chmod -R 755 "$APP_PATH" || true
+            
+            echo "✅ macOS应用签名优化完成"
           else
             echo "❌ 未找到.app文件"
+          fi
+          
+          # 5. 处理DMG文件
+          if [ -n "$DMG_PATH" ]; then
+            echo "🔧 处理DMG文件: $DMG_PATH"
+            
+            # 移除DMG的隔离属性
+            xattr -cr "$DMG_PATH" || true
+            
+            echo "✅ DMG文件优化完成"
+          fi
+
+      - name: 生成用户修复脚本
+        run: |
+          echo "=== 生成用户端修复脚本 ==="
+          
+          # 将修复脚本复制到构建产物中
+          if [ -f "fix-macos-app.sh" ]; then
+            chmod +x fix-macos-app.sh
+            
+            # 查找bundle目录
+            BUNDLE_DIR=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -type d | head -1)
+            if [ -n "$BUNDLE_DIR" ]; then
+              cp fix-macos-app.sh "$BUNDLE_DIR/"
+              echo "✅ 修复脚本已添加到构建产物"
+            fi
           fi
 
       - name: 检查构建产物
@@ -132,7 +166,9 @@ jobs:
           path: |
             src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/aarch64-apple-darwin/release/bundle/fix-macos-app.sh
             src-tauri/target/*/release/bundle/**/*.dmg
+            fix-macos-app.sh
           if-no-files-found: warn
           retention-days: 7
 
