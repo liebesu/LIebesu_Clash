@@ -182,9 +182,9 @@ pub fn ensure_default_tray_icons() -> Result<()> {
 
     // Target file names
     let targets = [
-        ("common-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
-        ("sysproxy-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
-        ("tun-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
+        ("common-lc.png", include_bytes!("../../icons/icon.png").as_slice()),
+        ("sysproxy-lc.png", include_bytes!("../../icons/icon.png").as_slice()),
+        ("tun-lc.png", include_bytes!("../../icons/icon.png").as_slice()),
     ];
 
     for (name, bytes) in targets {
