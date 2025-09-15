@@ -1,4 +1,4 @@
-import { IProfileItem } from "@/types/profile";
+// IProfileItem is declared globally in src/services/types.d.ts
 
 /**
  * 标准化订阅URL，用于去重比较

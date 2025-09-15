@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { Warning } from "@mui/icons-material";
-import { IProfileItem } from "@/types/profile";
+// IProfileItem is declared globally in src/services/types.d.ts
 
 interface DuplicateSubscriptionDialogProps {
   open: boolean;
