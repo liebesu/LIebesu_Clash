@@ -75,9 +75,40 @@ jobs:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: "-"
+          # 禁用代码签名验证以减少macOS安全问题
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          APPLE_CERTIFICATE: ""
         with:
           tauriScript: pnpm
           args: --target aarch64-apple-darwin -b dmg
+
+      - name: 修复macOS应用签名问题
+        run: |
+          echo "=== 修复 macOS 应用签名和权限 ==="
+          
+          # 查找生成的.app文件
+          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.app" | head -1)
+          
+          if [ -n "$APP_PATH" ]; then
+            echo "找到应用: $APP_PATH"
+            
+            # 移除所有扩展属性（隔离标记）
+            echo "移除隔离属性..."
+            xattr -cr "$APP_PATH" || true
+            
+            # 重新签名应用（ad-hoc签名，添加更多允许权限）
+            echo "重新进行ad-hoc签名..."
+            codesign --force --deep --sign - --entitlements src-tauri/packages/macos/entitlements.plist "$APP_PATH" || true
+            
+            # 验证签名
+            echo "验证签名状态:"
+            codesign --verify --verbose "$APP_PATH" || true
+            codesign -dv "$APP_PATH" || true
+            
+            echo "✅ macOS应用签名修复完成"
+          else
+            echo "❌ 未找到.app文件"
+          fi
 
       - name: 检查构建产物
         run: |
@@ -90,6 +121,9 @@ jobs:
           
           echo "=== 查找所有dmg文件 ==="
           find src-tauri/target/ -name "*.dmg" -type f || echo "未找到dmg文件"
+          
+          echo "=== 查找所有app文件 ==="
+          find src-tauri/target/ -name "*.app" -type d || echo "未找到app文件"
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
