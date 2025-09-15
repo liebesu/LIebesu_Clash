@@ -549,7 +549,7 @@ const StyledBox = styled(Box)(() => ({
         onCancel={handleDuplicateDialogCancel}
       />
     </>
-    );
+  );
   },
 );
 
