@@ -1,0 +1,24 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "identifier": "io.github.liebesu.clash",
+  "productName": "Liebesu_Clash",
+  "plugins": {
+    "updater": {
+      "dialog": false,
+      "endpoints": []
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["liebesu-clash"]
+      }
+    }
+  },
+  "bundle": {
+    "macOS": {
+      "signingIdentity": "-",
+      "entitlements": "packages/macos/entitlements.plist"
+    }
+  }
+}
+
+

@@ -26,11 +26,11 @@
     "devUrl": "http://localhost:3000/"
   },
   "productName": "Liebesu_Clash",
-  "identifier": "io.github.clash-verge-rev.clash-verge-rev",
+  "identifier": "io.github.liebesu.clash",
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["clash", "clash-verge"]
+        "schemes": ["liebesu-clash"]
       }
     }
   },
