@@ -100,7 +100,7 @@ jobs:
           APPLE_CERTIFICATE: ""
         with:
           tauriScript: pnpm
-          args: --target aarch64-apple-darwin -b dmg --config src-tauri/tauri.personal.conf.json --icon src-tauri/icons/logo.svg
+          args: --target aarch64-apple-darwin -b dmg --config src-tauri/tauri.personal.conf.json
 
       - name: Post-process .app (quarantine, ad-hoc sign)
         run: |
