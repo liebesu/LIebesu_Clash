@@ -63,6 +63,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Download mihomo binaries
+        run: pnpm prebuild
+
       - name: Build the app
         run: pnpm tauri build --ci
         env:
