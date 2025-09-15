@@ -1,0 +1,85 @@
+name: 自动开发构建
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.mts'
+      - 'tsconfig.json'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+concurrency:
+  group: "auto-dev-build-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  auto-dev-build:
+    name: 自动开发构建 - macOS
+    runs-on: macos-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust 缓存
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: 安装依赖 (macOS)
+        run: |
+          brew install openssl@3 pkg-config
+          OPENSSL_DIR=$(brew --prefix openssl@3)
+          echo "OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=$OPENSSL_DIR/lib" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$OPENSSL_DIR/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$OPENSSL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "X86_64_APPLE_DARWIN_OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+          echo "AARCH64_APPLE_DARWIN_OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 下载 mihomo 二进制文件
+        run: pnpm prebuild
+
+      - name: 构建应用
+        run: pnpm tauri build --ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: --max-old-space-size=4096
+          APPLE_SIGNING_IDENTITY: "-"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-verge-dev-auto-${{ github.sha }}-${{ github.run_number }}
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 7
