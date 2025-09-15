@@ -1,0 +1,147 @@
+name: macOS M3 Personal Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.mts'
+      - 'tsconfig.json'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+concurrency:
+  group: "macos-m3-personal-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build-macos-m3:
+    name: Build macOS (Apple Silicon)
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies (Homebrew)
+        run: |
+          brew install openssl@3 pkg-config
+          OPENSSL_DIR=$(brew --prefix openssl@3)
+          echo "OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=$OPENSSL_DIR/lib" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$OPENSSL_DIR/include" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$OPENSSL_DIR/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          echo "X86_64_APPLE_DARWIN_OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+          echo "AARCH64_APPLE_DARWIN_OPENSSL_DIR=$OPENSSL_DIR" >> $GITHUB_ENV
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Download sidecar binaries (arm64)
+        run: pnpm run prebuild aarch64-apple-darwin
+
+      - name: Create Tauri config override (disable updater)
+        run: |
+          cat > src-tauri/tauri.personal.conf.json <<'JSON'
+          {
+            "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+            "plugins": {
+              "updater": {
+                "dialog": false,
+                "endpoints": []
+              }
+            },
+            "bundle": {
+              "macOS": {
+                "signingIdentity": "-",
+                "entitlements": "packages/macos/entitlements.plist"
+              }
+            }
+          }
+          JSON
+
+      - name: Build app (arm64 DMG)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: "-"
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          APPLE_CERTIFICATE: ""
+        with:
+          tauriScript: pnpm
+          args: --target aarch64-apple-darwin -b dmg --config src-tauri/tauri.personal.conf.json
+
+      - name: Post-process .app (quarantine, ad-hoc sign)
+        run: |
+          echo "=== Post-processing macOS app ==="
+          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.app" | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "App: $APP_PATH"
+            xattr -cr "$APP_PATH" || true
+            codesign --force --deep --sign - \
+              --entitlements src-tauri/packages/macos/entitlements.plist \
+              --options runtime \
+              "$APP_PATH" || true
+            codesign --verify --verbose "$APP_PATH" || true
+            chmod -R 755 "$APP_PATH" || true
+          else
+            echo "No .app found"
+          fi
+
+      - name: Include user fix script
+        run: |
+          if [ -f "fix-macos-app.sh" ]; then
+            chmod +x fix-macos-app.sh
+            BUNDLE_DIR=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -type d | head -1)
+            if [ -n "$BUNDLE_DIR" ]; then
+              cp fix-macos-app.sh "$BUNDLE_DIR/"
+            fi
+          fi
+
+      - name: List artifacts
+        run: |
+          find src-tauri/target/ -name "*.dmg" -o -name "*.app" | cat
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clash-verge-macos-arm64-${{ github.sha }}-${{ github.run_number }}
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/aarch64-apple-darwin/release/bundle/fix-macos-app.sh
+            fix-macos-app.sh
+          if-no-files-found: warn
+          retention-days: 7
+
