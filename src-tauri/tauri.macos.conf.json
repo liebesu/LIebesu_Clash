@@ -9,7 +9,6 @@
       "minimumSystemVersion": "10.15",
       "exceptionDomain": "",
       "signingIdentity": "-",
-      "hardened": false,
       "entitlements": "packages/macos/entitlements.plist",
       "dmg": {
         "background": "images/background.png",
