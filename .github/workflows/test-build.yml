@@ -71,6 +71,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=4096
+          # 使用ad-hoc签名，减少macOS安全阻拦
+          APPLE_SIGNING_IDENTITY: "-"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
