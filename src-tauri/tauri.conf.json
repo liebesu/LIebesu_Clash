@@ -25,7 +25,7 @@
     "beforeDevCommand": "pnpm run web:dev",
     "devUrl": "http://localhost:3000/"
   },
-  "productName": "Clash Verge",
+  "productName": "Liebesu_Clash",
   "identifier": "io.github.clash-verge-rev.clash-verge-rev",
   "plugins": {
     "deep-link": {

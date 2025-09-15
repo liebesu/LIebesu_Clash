@@ -685,5 +685,11 @@
   "Unnamed Profile": "未命名配置",
   "New URL": "新URL",
   "Adding duplicate subscriptions may cause conflicts or unnecessary resource usage. Are you sure you want to continue?": "添加重复订阅可能导致冲突或不必要的资源使用。您确定要继续吗？",
-  "Add Anyway": "仍然添加"
+  "Add Anyway": "仍然添加",
+  "Duplicate subscriptions found": "发现重复订阅",
+  "Duplicate subscriptions message": "检测到 {{groups}} 组重复订阅。您可以选择一键清理：每组保留最新的一条，删除其他重复项。",
+  "Duplicate cleanup hint": "清理将删除每组较旧的重复订阅（根据更新时间判断）。",
+  "Skip for now": "暂时跳过",
+  "Proceed cleanup (keep newest)": "一键清理（保留最新）",
+  "Duplicate subscriptions cleaned": "重复订阅已清理"
 }

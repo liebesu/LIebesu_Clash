@@ -56,6 +56,8 @@ import { listen } from "@tauri-apps/api/event";
 import { TauriEvent } from "@tauri-apps/api/event";
 import { showNotice } from "@/services/noticeService";
 import QuotaExceededDialog from "@/components/profile/quota-exceeded-dialog";
+import DuplicateCleanupDialog from "@/components/profile/duplicate-cleanup-dialog";
+import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
 const debugProfileSwitch = (action: string, profile: string, extra?: any) => {
@@ -107,6 +109,10 @@ const ProfilePage = () => {
   // 配额超限对话框状态
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
   const [quotaFailedProfiles, setQuotaFailedProfiles] = useState<string[]>([]);
+
+  // 重复订阅清理对话框
+  const [dupDialogOpen, setDupDialogOpen] = useState(false);
+  const [dupGroups, setDupGroups] = useState<{ url: string; items: IProfileItem[] }[]>([]);
 
   // 防止重复切换
   const switchingProfileRef = useRef<string | null>(null);
@@ -644,8 +650,26 @@ const ProfilePage = () => {
         );
         const change = Object.fromEntries(items.map((e) => [e.uid, true]));
 
-        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(() => {
-          // 处理配额超限的情况
+        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(async () => {
+          // 先检测重复订阅（仅远程）
+          const remotes = (await getProfiles())?.items?.filter((p: IProfileItem) => p.type === "remote") || [];
+          const map: Record<string, IProfileItem[]> = {};
+          for (const p of remotes) {
+            const key = p.url ? standardizeUrl(p.url) : "";
+            if (!key) continue;
+            map[key] = map[key] || [];
+            map[key].push(p);
+          }
+          const groups = Object.entries(map)
+            .map(([url, list]) => ({ url, items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)) }))
+            .filter((g) => g.items.length > 1);
+
+          if (groups.length > 0) {
+            setDupGroups(groups);
+            setDupDialogOpen(true);
+          }
+
+          // 再处理配额超限的情况
           if (quotaFailedUIDs.length > 0) {
             setQuotaFailedProfiles(quotaFailedUIDs);
             setQuotaDialogOpen(true);
@@ -693,6 +717,32 @@ const ProfilePage = () => {
       setQuotaFailedProfiles([]);
     } catch (error: any) {
       showNotice("error", error?.message || "Failed to delete subscriptions", 3000);
+    }
+  };
+
+  // 处理重复清理
+  const handleDupDialogClose = () => {
+    setDupDialogOpen(false);
+    setDupGroups([]);
+  };
+
+  const handleDupDialogConfirm = async () => {
+    setDupDialogOpen(false);
+    try {
+      // 对每组保留最新(updated 最大)的一个，删除其余
+      for (const g of dupGroups) {
+        const keep = g.items[0];
+        const toDelete = g.items.slice(1);
+        for (const p of toDelete) {
+          await onDelete(p.uid);
+        }
+      }
+      await mutateProfiles();
+      showNotice("success", t("Duplicate subscriptions cleaned"), 3000);
+    } catch (e: any) {
+      showNotice("error", e?.message || "Failed to cleanup duplicates", 4000);
+    } finally {
+      setDupGroups([]);
     }
   };
 
@@ -966,6 +1016,13 @@ const ProfilePage = () => {
         profiles={profileItems}
         onClose={handleQuotaDialogClose}
         onConfirm={handleQuotaDialogConfirm}
+      />
+
+      <DuplicateCleanupDialog
+        open={dupDialogOpen}
+        groups={dupGroups}
+        onClose={handleDupDialogClose}
+        onConfirm={handleDupDialogConfirm}
       />
     </BasePage>
   );
