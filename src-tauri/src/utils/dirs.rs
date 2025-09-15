@@ -172,6 +172,32 @@ pub fn find_target_icons(target: &str) -> Result<Option<String>> {
     }
 }
 
+/// Ensure default tray icons exist in app icons dir.
+/// This seeds three PNGs derived from the bundled app icon for common/sysproxy/tun states.
+pub fn ensure_default_tray_icons() -> Result<()> {
+    let icons_dir = app_icons_dir()?;
+    if !icons_dir.exists() {
+        fs::create_dir_all(&icons_dir)?;
+    }
+
+    // Target file names
+    let targets = [
+        ("common-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
+        ("sysproxy-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
+        ("tun-lc.png", include_bytes!("../../../icons/icon.png").as_slice()),
+    ];
+
+    for (name, bytes) in targets {
+        let path = icons_dir.join(name);
+        if !path.exists() {
+            if let Err(e) = fs::write(&path, bytes) {
+                log::warn!(target: "app", "Failed to seed tray icon {:?}: {}", path, e);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// logs dir
 pub fn app_logs_dir() -> Result<PathBuf> {
     Ok(app_home_dir()?.join("logs"))

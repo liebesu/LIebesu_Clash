@@ -57,6 +57,10 @@ pub fn resolve_setup_async() {
         });
 
         let tray_and_refresh = async {
+            // Seed default tray icons so users see LC icons without manual setup
+            if let Err(e) = crate::utils::dirs::ensure_default_tray_icons() {
+                logging!(warn, Type::Tray, true, "Failed to ensure default tray icons: {}", e);
+            }
             init_tray().await;
             refresh_tray_menu().await;
         };
