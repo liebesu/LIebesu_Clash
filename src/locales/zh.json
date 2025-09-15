@@ -691,5 +691,9 @@
   "Duplicate cleanup hint": "清理将删除每组较旧的重复订阅（根据更新时间判断）。",
   "Skip for now": "暂时跳过",
   "Proceed cleanup (keep newest)": "一键清理（保留最新）",
-  "Duplicate subscriptions cleaned": "重复订阅已清理"
+  "Duplicate subscriptions cleaned": "重复订阅已清理",
+  "Clean Duplicates": "清理重复订阅",
+  "Clean Over-Quota Subscriptions": "清理超额订阅",
+  "No duplicates found": "未发现重复订阅",
+  "No over-quota subscriptions": "未发现已超额的订阅"
 }

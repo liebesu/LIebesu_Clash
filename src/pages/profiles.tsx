@@ -22,6 +22,8 @@ import {
   LocalFireDepartmentRounded,
   RefreshRounded,
   TextSnippetOutlined,
+  DeleteSweepRounded,
+  ContentCutRounded,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -113,6 +115,57 @@ const ProfilePage = () => {
   // 重复订阅清理对话框
   const [dupDialogOpen, setDupDialogOpen] = useState(false);
   const [dupGroups, setDupGroups] = useState<{ url: string; items: IProfileItem[] }[]>([]);
+
+  // 检测重复分组
+  const detectDuplicateGroups = async () => {
+    const all = (await getProfiles())?.items || [];
+    const remotes = all.filter((p: IProfileItem) => p.type === "remote");
+    const map: Record<string, IProfileItem[]> = {};
+    for (const p of remotes) {
+      const key = p.url ? standardizeUrl(p.url) : "";
+      if (!key) continue;
+      map[key] = map[key] || [];
+      map[key].push(p);
+    }
+    return Object.entries(map)
+      .map(([url, list]) => ({ url, items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)) }))
+      .filter((g) => g.items.length > 1);
+  };
+
+  // 主动清理重复订阅（弹窗确认）
+  const onCleanDuplicates = useLockFn(async () => {
+    const groups = await detectDuplicateGroups();
+    if (groups.length === 0) {
+      showNotice("success", t("No duplicates found"), 2000);
+      return;
+    }
+    setDupGroups(groups);
+    setDupDialogOpen(true);
+  });
+
+  // 主动清理超额（弹窗选择）
+  const onCleanOverQuota = useLockFn(async () => {
+    const all = (await getProfiles())?.items || [];
+    const remotes = all.filter((p: IProfileItem) => p.type === "remote");
+    const over: string[] = [];
+    for (const p of remotes) {
+      // 判断 used >= total
+      const extra: any = (p as any).extra || {};
+      const upload = Number(extra.upload || 0);
+      const download = Number(extra.download || 0);
+      const total = Number(extra.total || 0);
+      const used = upload + download;
+      if (total > 0 && used >= total) {
+        over.push(p.uid);
+      }
+    }
+    if (over.length === 0) {
+      showNotice("success", t("No over-quota subscriptions"), 2000);
+      return;
+    }
+    setQuotaFailedProfiles(over);
+    setQuotaDialogOpen(true);
+  });
 
   // 防止重复切换
   const switchingProfileRef = useRef<string | null>(null);
@@ -819,6 +872,26 @@ const ProfilePage = () => {
             onClick={onUpdateAll}
           >
             <RefreshRounded />
+          </IconButton>
+
+          {/* 清理重复订阅 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title={t("Clean Duplicates")}
+            onClick={onCleanDuplicates}
+          >
+            <ContentCutRounded />
+          </IconButton>
+
+          {/* 清理超额订阅 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title={t("Clean Over-Quota Subscriptions")}
+            onClick={onCleanOverQuota}
+          >
+            <DeleteSweepRounded />
           </IconButton>
 
           <IconButton
