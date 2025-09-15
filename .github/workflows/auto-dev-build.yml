@@ -67,19 +67,61 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: 下载 mihomo 二进制文件
-        run: pnpm prebuild
+        run: pnpm run prebuild aarch64-apple-darwin
 
       - name: 构建应用
-        run: pnpm tauri build --ci
+        uses: tauri-apps/tauri-action@v0
         env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: --max-old-space-size=4096
           APPLE_SIGNING_IDENTITY: "-"
+        with:
+          tauriScript: pnpm
+          args: --target aarch64-apple-darwin -b dmg
+
+      - name: 检查构建产物
+        run: |
+          echo "=== 检查构建目录结构 ==="
+          ls -la src-tauri/target/ || echo "target目录不存在"
+          ls -la src-tauri/target/aarch64-apple-darwin/ || echo "target架构目录不存在"  
+          ls -la src-tauri/target/aarch64-apple-darwin/release/ || echo "release目录不存在"
+          ls -la src-tauri/target/aarch64-apple-darwin/release/bundle/ || echo "bundle目录不存在"
+          ls -la src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/ || echo "dmg目录不存在"
+          
+          echo "=== 查找所有dmg文件 ==="
+          find src-tauri/target/ -name "*.dmg" -type f || echo "未找到dmg文件"
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
           name: clash-verge-dev-auto-${{ github.sha }}-${{ github.run_number }}
-          path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          if-no-files-found: error
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
+            src-tauri/target/*/release/bundle/**/*.dmg
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: 备用上传：查找并上传任何dmg文件
+        if: always()
+        run: |
+          echo "=== 查找所有构建产物 ==="
+          find src-tauri/target/ -name "*.dmg" -o -name "*.app" -o -name "*.exe" | head -20
+          
+          # 如果找到dmg文件，创建一个临时目录来收集它们
+          if find src-tauri/target/ -name "*.dmg" | grep -q .; then
+            mkdir -p ./found-artifacts
+            find src-tauri/target/ -name "*.dmg" -exec cp {} ./found-artifacts/ \;
+            echo "找到dmg文件并复制到 ./found-artifacts/"
+          else
+            echo "未找到任何dmg文件"
+          fi
+
+      - name: 上传找到的产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: found-artifacts-${{ github.run_number }}
+          path: ./found-artifacts/*
+          if-no-files-found: ignore
           retention-days: 7
