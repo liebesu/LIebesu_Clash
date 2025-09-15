@@ -679,5 +679,11 @@
   "Some subscriptions failed to update due to quota exceeded": "部分订阅因超出配额限制而更新失败",
   "Selected subscriptions deleted": "已删除选中的 {{count}} 个订阅",
   "Selected subscriptions deleted_one": "已删除选中的 1 个订阅",
-  "Selected subscriptions deleted_other": "已删除选中的 {{count}} 个订阅"
+  "Selected subscriptions deleted_other": "已删除选中的 {{count}} 个订阅",
+  "Duplicate Subscription Detected": "检测到重复订阅",
+  "This subscription URL already exists in the following profiles": "此订阅URL已存在于以下配置文件中",
+  "Unnamed Profile": "未命名配置",
+  "New URL": "新URL",
+  "Adding duplicate subscriptions may cause conflicts or unnecessary resource usage. Are you sure you want to continue?": "添加重复订阅可能导致冲突或不必要的资源使用。您确定要继续吗？",
+  "Add Anyway": "仍然添加"
 }
