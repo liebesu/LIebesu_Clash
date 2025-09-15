@@ -67,7 +67,6 @@ mod app_init {
         #[allow(unused_mut)]
         let mut builder = builder
             .plugin(tauri_plugin_notification::init())
-            .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_clipboard_manager::init())
             .plugin(tauri_plugin_process::init())
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -75,6 +74,12 @@ mod app_init {
             .plugin(tauri_plugin_dialog::init())
             .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_deep_link::init());
+
+        // Enable updater plugin only on non-macOS targets to avoid missing config issues
+        #[cfg(not(target_os = "macos"))]
+        {
+            builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        }
 
         #[cfg(all(debug_assertions, not(feature = "tokio-trace")))]
         {
