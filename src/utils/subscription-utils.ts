@@ -6,11 +6,29 @@
 export const standardizeUrl = (url: string): string => {
   try {
     const urlObj = new URL(url);
-    // 移除常见的追踪参数
-    const paramsToRemove = ['timestamp', 'token', 'flag', 'emoji'];
-    paramsToRemove.forEach(param => {
-      urlObj.searchParams.delete(param);
+    // 仅移除非鉴权类的常见追踪/临时参数，保留 token 等鉴权参数
+    const paramsToRemove = [
+      'timestamp', 'ts', 't', '_', 'time', 'expires', 'expire', 'nonce',
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'emoji', 'flag'
+    ];
+    // 先收集后删除，避免遍历过程中修改迭代器
+    const toDelete: string[] = [];
+    urlObj.searchParams.forEach((_v, k) => {
+      if (paramsToRemove.includes(k.toLowerCase())) {
+        toDelete.push(k);
+      }
     });
+    toDelete.forEach((k) => urlObj.searchParams.delete(k));
+    
+    // 规范化查询参数顺序，确保等价 URL 一致
+    const entries = Array.from(urlObj.searchParams.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0]) || a[1].localeCompare(b[1])
+    );
+    urlObj.search = '';
+    for (const [k, v] of entries) {
+      urlObj.searchParams.append(k, v);
+    }
     
     // 标准化路径（移除尾部斜杠）
     urlObj.pathname = urlObj.pathname.replace(/\/$/, '');
