@@ -1,10 +1,10 @@
-name: Test Build (Manual)
+name: 配额超限订阅删除功能 - 测试构建
 
 on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Platform to build'
+        description: '选择构建平台来测试配额删除功能'
         required: true
         default: 'ubuntu-latest'
         type: choice
@@ -20,7 +20,8 @@ env:
   RUST_BACKTRACE: short
 
 jobs:
-  test-build:
+  build-quota-feature:
+    name: 构建配额删除功能
     runs-on: ${{ github.event.inputs.platform }}
     
     steps:
@@ -71,7 +72,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: test-build-${{ github.event.inputs.platform }}-${{ github.run_number }}
+          name: clash-verge-配额删除功能-${{ github.event.inputs.platform }}-${{ github.run_number }}
           path: |
             src-tauri/target/release/bundle
           retention-days: 3
