@@ -679,5 +679,17 @@
   "Some subscriptions failed to update due to quota exceeded": "部分订阅因超出配额限制而更新失败",
   "Selected subscriptions deleted": "已删除选中的 {{count}} 个订阅",
   "Selected subscriptions deleted_one": "已删除选中的 1 个订阅",
-  "Selected subscriptions deleted_other": "已删除选中的 {{count}} 个订阅"
+  "Selected subscriptions deleted_other": "已删除选中的 {{count}} 个订阅",
+  "Duplicate Subscription Detected": "检测到重复订阅",
+  "Duplicate subscription message": "您正在尝试添加的订阅 URL 已经存在。添加重复的订阅可能会导致配置冲突或资源浪费。",
+  "New Subscription URL": "新订阅 URL",
+  "Existing Duplicates": "已存在的重复项",
+  "Unnamed Subscription": "未命名订阅",
+  "Last Updated": "最后更新",
+  "Remote": "远程",
+  "Local": "本地",
+  "Merge": "合并",
+  "Script": "脚本",
+  "Unknown": "未知",
+  "Add Anyway": "仍要添加"
 }

@@ -679,5 +679,17 @@
   "Some subscriptions failed to update due to quota exceeded": "Some subscriptions failed to update due to quota exceeded",
   "Selected subscriptions deleted": "{{count}} selected subscriptions deleted",
   "Selected subscriptions deleted_one": "1 selected subscription deleted",
-  "Selected subscriptions deleted_other": "{{count}} selected subscriptions deleted"
+  "Selected subscriptions deleted_other": "{{count}} selected subscriptions deleted",
+  "Duplicate Subscription Detected": "Duplicate Subscription Detected",
+  "Duplicate subscription message": "The subscription URL you are trying to add already exists. Adding duplicate subscriptions may cause configuration conflicts or resource waste.",
+  "New Subscription URL": "New Subscription URL",
+  "Existing Duplicates": "Existing Duplicates",
+  "Unnamed Subscription": "Unnamed Subscription",
+  "Last Updated": "Last Updated",
+  "Remote": "Remote",
+  "Local": "Local",
+  "Merge": "Merge",
+  "Script": "Script",
+  "Unknown": "Unknown",
+  "Add Anyway": "Add Anyway"
 }

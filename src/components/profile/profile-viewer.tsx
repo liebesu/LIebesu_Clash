@@ -24,6 +24,8 @@ import { version } from "@root/package.json";
 import { FileInput } from "./file-input";
 import { useProfiles } from "@/hooks/use-profiles";
 import { showNotice } from "@/services/noticeService";
+import DuplicateSubscriptionDialog from "./duplicate-subscription-dialog";
+import { checkDuplicateSubscription } from "@/utils/subscription-utils";
 
 interface Props {
   onChange: (isActivating?: boolean) => void;
@@ -43,6 +45,11 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
     const [openType, setOpenType] = useState<"new" | "edit">("new");
     const [loading, setLoading] = useState(false);
     const { profiles } = useProfiles();
+    
+    // 重复检查对话框状态
+    const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+    const [duplicateProfiles, setDuplicateProfiles] = useState<IProfileItem[]>([]);
+    const [pendingFormData, setPendingFormData] = useState<any>(null);
 
     // file input
     const fileDataRef = useRef<string | null>(null);
@@ -92,6 +99,29 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
       if (withProxy) formIns.setValue("option.self_proxy", false);
     }, [withProxy]);
 
+    // 处理重复检查
+    const handleDuplicateCheck = async (form: IProfileItem) => {
+      const isRemote = form.type === "remote";
+      
+      // 只对远程订阅进行重复检查
+      if (isRemote && form.url) {
+        const duplicates = checkDuplicateSubscription(
+          form.url,
+          profiles?.items || [],
+          openType === "edit" ? form.uid : undefined
+        );
+        
+        if (duplicates.length > 0) {
+          setDuplicateProfiles(duplicates);
+          setPendingFormData(form);
+          setDuplicateDialogOpen(true);
+          return false; // 阻止继续执行
+        }
+      }
+      
+      return true; // 继续执行
+    };
+
     const handleOk = useLockFn(
       formIns.handleSubmit(async (form) => {
         if (form.option?.timeout_seconds) {
@@ -106,93 +136,15 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
             throw new Error("The URL should not be null");
           }
 
-          // 处理表单数据
-          if (form.option?.update_interval) {
-            form.option.update_interval = +form.option.update_interval;
-          } else {
-            delete form.option?.update_interval;
-          }
-          if (form.option?.user_agent === "") {
-            delete form.option.user_agent;
+          // 重复检查（仅对远程订阅）
+          const canProceed = await handleDuplicateCheck(form);
+          if (!canProceed) {
+            setLoading(false);
+            return;
           }
 
-          const name = form.name || `${form.type} file`;
-          const item = { ...form, name };
-          const isRemote = form.type === "remote";
-          const isUpdate = openType === "edit";
-
-          // 判断是否是当前激活的配置
-          const isActivating =
-            isUpdate && form.uid === (profiles?.current ?? "");
-
-          // 保存原始代理设置以便回退成功后恢复
-          const originalOptions = {
-            with_proxy: form.option?.with_proxy,
-            self_proxy: form.option?.self_proxy,
-          };
-
-          // 执行创建或更新操作，本地配置不需要回退机制
-          if (!isRemote) {
-            if (openType === "new") {
-              await createProfile(item, fileDataRef.current);
-            } else {
-              if (!form.uid) throw new Error("UID not found");
-              await patchProfile(form.uid, item);
-            }
-          } else {
-            // 远程配置使用回退机制
-            try {
-              // 尝试正常操作
-              if (openType === "new") {
-                await createProfile(item, fileDataRef.current);
-              } else {
-                if (!form.uid) throw new Error("UID not found");
-                await patchProfile(form.uid, item);
-              }
-            } catch {
-              // 首次创建/更新失败，尝试使用自身代理
-              showNotice(
-                "info",
-                t("Profile creation failed, retrying with Clash proxy..."),
-              );
-
-              // 使用自身代理的配置
-              const retryItem = {
-                ...item,
-                option: {
-                  ...item.option,
-                  with_proxy: false,
-                  self_proxy: true,
-                },
-              };
-
-              // 使用自身代理再次尝试
-              if (openType === "new") {
-                await createProfile(retryItem, fileDataRef.current);
-              } else {
-                if (!form.uid) throw new Error("UID not found");
-                await patchProfile(form.uid, retryItem);
-
-                // 编辑模式下恢复原始代理设置
-                await patchProfile(form.uid, { option: originalOptions });
-              }
-
-              showNotice(
-                "success",
-                t("Profile creation succeeded with Clash proxy"),
-              );
-            }
-          }
-
-          // 成功后的操作
-          setOpen(false);
-          setTimeout(() => formIns.reset(), 500);
-          fileDataRef.current = null;
-
-          // 优化：UI先关闭，异步通知父组件
-          setTimeout(() => {
-            props.onChange(isActivating);
-          }, 0);
+          // 继续执行创建/更新操作
+          await executeProfileOperation(form);
         } catch (err: any) {
           showNotice("error", err.message || err.toString());
         } finally {
@@ -211,6 +163,123 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
       }
     };
 
+    // 重复检查对话框处理函数
+    const handleDuplicateDialogClose = () => {
+      setDuplicateDialogOpen(false);
+      setDuplicateProfiles([]);
+      setPendingFormData(null);
+    };
+
+    const handleDuplicateDialogCancel = () => {
+      handleDuplicateDialogClose();
+    };
+
+    const handleDuplicateDialogConfirm = async () => {
+      if (!pendingFormData) return;
+      
+      try {
+        setDuplicateDialogOpen(false);
+        // 继续执行创建操作，跳过重复检查
+        await executeProfileOperation(pendingFormData);
+      } catch (error: any) {
+        showNotice("error", error?.message || "Failed to save profile");
+      } finally {
+        setDuplicateProfiles([]);
+        setPendingFormData(null);
+      }
+    };
+
+    // 实际执行创建/更新操作的函数（从原来的handleOk中提取）
+    const executeProfileOperation = async (form: IProfileItem) => {
+      // 处理表单数据
+      if (form.option?.update_interval) {
+        form.option.update_interval = +form.option.update_interval;
+      } else {
+        delete form.option?.update_interval;
+      }
+      if (form.option?.user_agent === "") {
+        delete form.option.user_agent;
+      }
+
+      const name = form.name || `${form.type} file`;
+      const item = { ...form, name };
+      const isRemote = form.type === "remote";
+      const isUpdate = openType === "edit";
+
+      // 判断是否是当前激活的配置
+      const isActivating =
+        isUpdate && form.uid === (profiles?.current ?? "");
+
+      // 保存原始代理设置以便回退成功后恢复
+      const originalOptions = {
+        with_proxy: form.option?.with_proxy,
+        self_proxy: form.option?.self_proxy,
+      };
+
+      // 执行创建或更新操作，本地配置不需要回退机制
+      if (!isRemote) {
+        if (openType === "new") {
+          await createProfile(item, fileDataRef.current);
+        } else {
+          if (!form.uid) throw new Error("UID not found");
+          await patchProfile(form.uid, item);
+        }
+      } else {
+        // 远程配置使用回退机制
+        try {
+          // 尝试正常操作
+          if (openType === "new") {
+            await createProfile(item, fileDataRef.current);
+          } else {
+            if (!form.uid) throw new Error("UID not found");
+            await patchProfile(form.uid, item);
+          }
+        } catch {
+          // 首次创建/更新失败，尝试使用自身代理
+          showNotice(
+            "info",
+            t("Profile creation failed, retrying with Clash proxy..."),
+          );
+
+          // 使用自身代理的配置
+          const retryItem = {
+            ...item,
+            option: {
+              ...item.option,
+              with_proxy: false,
+              self_proxy: true,
+            },
+          };
+
+          // 使用自身代理再次尝试
+          if (openType === "new") {
+            await createProfile(retryItem, fileDataRef.current);
+          } else {
+            if (!form.uid) throw new Error("UID not found");
+            await patchProfile(form.uid, retryItem);
+
+            // 编辑模式下恢复原始代理设置
+            await patchProfile(form.uid, { option: originalOptions });
+          }
+
+          showNotice(
+            "success",
+            t("Profile creation succeeded with Clash proxy"),
+          );
+        }
+      }
+
+      // 成功后的操作
+      setOpen(false);
+      setTimeout(() => formIns.reset(), 500);
+      fileDataRef.current = null;
+
+      // 优化：UI先关闭，异步通知父组件
+      setTimeout(() => {
+        props.onChange(isActivating);
+      }, 0);
+    };
+
     const text = {
       fullWidth: true,
       size: "small",
@@ -225,6 +294,7 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
     const isLocal = formType === "local";
 
     return (
+      <>
       <BaseDialog
         open={open}
         title={openType === "new" ? t("Create Profile") : t("Edit Profile")}
@@ -389,6 +459,16 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
           </>
         )}
       </BaseDialog>
+
+      <DuplicateSubscriptionDialog
+        open={duplicateDialogOpen}
+        duplicateProfiles={duplicateProfiles}
+        newUrl={pendingFormData?.url || ""}
+        onClose={handleDuplicateDialogClose}
+        onConfirm={handleDuplicateDialogConfirm}
+        onCancel={handleDuplicateDialogCancel}
+      />
+    </>
     );
   },
 );
