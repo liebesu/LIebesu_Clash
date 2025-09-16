@@ -1,4 +1,4 @@
-name: macOS M3 Personal Build
+name: macOS M3 个人构建
 
 on:
   workflow_dispatch:
