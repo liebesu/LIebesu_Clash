@@ -433,7 +433,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
         {groups.map((group) => {
           const stat = statistics.find(s => s.group_id === group.id);
           return (
-            <Grid item xs={12} sm={6} md={4} key={group.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4} key={group.id}>
               <Card variant="outlined" sx={{ position: "relative" }}>
                 <CardContent>
                   {/* 分组头部 */}
@@ -693,7 +693,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
 
       <Grid container spacing={2}>
         {/* 批量操作 */}
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card variant="outlined">
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -723,7 +723,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
         </Grid>
 
         {/* 导入导出 */}
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <Card variant="outlined">
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -753,14 +753,14 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
         </Grid>
 
         {/* 分组统计 */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Card variant="outlined">
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 分组统计概览
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
                       {groups.length}
@@ -770,7 +770,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="success.main">
                       {groups.filter(g => g.is_favorite).length}
@@ -780,7 +780,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="info.main">
                       {groups.reduce((sum, g) => sum + g.subscription_uids.length, 0)}
@@ -790,7 +790,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} sm={3}>
+                <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="warning.main">
                       {groups.reduce((sum, g) => sum + g.auto_rules.filter(r => r.is_enabled).length, 0)}

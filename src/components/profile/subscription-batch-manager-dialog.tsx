@@ -205,7 +205,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               当前订阅状态
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
                     {stats.total_subscriptions}
@@ -213,7 +213,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">总订阅数</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="success.main">
                     {stats.remote_subscriptions}
@@ -221,7 +221,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">远程订阅</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="warning.main">
                     {stats.outdated_1d}
@@ -229,7 +229,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">1天未更新</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid size={{ xs: 6, sm: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="error.main">
                     {stats.outdated_3d}
@@ -280,7 +280,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Typography>
             
             <Grid container spacing={2} mb={2}>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="success.main">
                     {updateResult.successful_updates}
@@ -288,7 +288,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">成功</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="error.main">
                     {updateResult.failed_updates}
@@ -296,7 +296,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">失败</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="primary">
                     {updateResult.total_subscriptions}
@@ -352,7 +352,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
           
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>删除时间窗口</InputLabel>
                 <Select
@@ -372,7 +372,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -429,7 +429,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Typography>
             
             <Grid container spacing={2} mb={2}>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="error.main">
                     {cleanupPreview.will_be_deleted}
@@ -437,7 +437,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">将被删除</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="success.main">
                     {cleanupPreview.will_be_kept}
@@ -445,7 +445,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">将被保留</Typography>
                 </Box>
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="primary">
                     {cleanupPreview.total_subscriptions}
@@ -516,7 +516,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       
       {stats && (
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -542,7 +542,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Card>
           </Grid>
           
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -602,7 +602,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
           
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>自动删除时间窗口</InputLabel>
                 <Select
@@ -622,7 +622,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <FormControlLabel
                 control={
                   <Switch

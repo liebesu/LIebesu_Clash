@@ -373,7 +373,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
         <>
           {/* 主要指标卡片 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="text.secondary" gutterBottom>
@@ -385,7 +385,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="success.main" gutterBottom>
@@ -397,7 +397,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="info.main" gutterBottom>
@@ -409,7 +409,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="warning.main" gutterBottom>
@@ -425,7 +425,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
 
           {/* 流量详情 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -441,7 +441,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -457,7 +457,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
@@ -477,7 +477,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
 
           {/* 今日和本月使用量 */}
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -494,7 +494,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Card variant="outlined">
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -575,7 +575,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
           <Box>
             {/* 订阅统计卡片 */}
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <Card>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
@@ -602,7 +602,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
               </Grid>
 
               {stats.quota_info && (
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Card>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>

@@ -322,7 +322,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
       </Typography>
       
       <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControl fullWidth>
             <InputLabel>选择订阅</InputLabel>
             <Select
@@ -338,7 +338,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControl fullWidth>
             <InputLabel>测试类型</InputLabel>
             <Select
@@ -421,7 +421,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           
           {/* 概览信息 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="text.secondary" gutterBottom>
@@ -433,7 +433,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="success.main" gutterBottom>
@@ -445,7 +445,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="warning.main" gutterBottom>
@@ -457,7 +457,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="error.main" gutterBottom>
@@ -474,7 +474,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           {/* 性能指标 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             {singleTestResult.avg_latency_ms && (
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="text.secondary" gutterBottom>
@@ -488,7 +488,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
               </Grid>
             )}
             {singleTestResult.avg_download_speed_mbps && (
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="text.secondary" gutterBottom>
@@ -502,7 +502,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
               </Grid>
             )}
             {singleTestResult.overall_stability_score && (
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Card variant="outlined">
                   <CardContent>
                     <Typography color="text.secondary" gutterBottom>
@@ -613,7 +613,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           
           {/* 测试摘要 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="text.secondary" gutterBottom>
@@ -625,7 +625,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="success.main" gutterBottom>
@@ -637,7 +637,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="info.main" gutterBottom>
@@ -649,7 +649,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={6} sm={3}>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <Card variant="outlined">
                 <CardContent sx={{ textAlign: "center" }}>
                   <Typography color="success.main" gutterBottom>
