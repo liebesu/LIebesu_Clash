@@ -46,7 +46,7 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { showNotice } from '../../services/notice';
+import { showNotice } from '@/services/notice';
 import {
   getSubscriptionCleanupPreview,
   updateAllSubscriptions,
@@ -113,7 +113,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       setStats(data);
     } catch (error) {
       console.error('获取统计信息失败:', error);
-      showNotice('error', '获取统计信息失败: ' + error);
+      showNotice('获取统计信息失败: ' + error);
     } finally {
       setStatsLoading(false);
     }
@@ -136,11 +136,11 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
     try {
       const result = await updateAllSubscriptions();
       setUpdateResult(result);
-      showNotice('success', `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`);
+      showNotice(`更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`);
       loadStats(); // 重新加载统计信息
     } catch (error) {
       console.error('批量更新失败:', error);
-      showNotice('error', '批量更新失败: ' + error);
+      showNotice('批量更新失败: ' + error);
     } finally {
       setUpdateInProgress(false);
     }
@@ -205,7 +205,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               当前订阅状态
             </Typography>
             <Grid container spacing={2}>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
                     {stats.total_subscriptions}
@@ -213,7 +213,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">总订阅数</Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="success.main">
                     {stats.remote_subscriptions}
@@ -221,7 +221,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">远程订阅</Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="warning.main">
                     {stats.outdated_1d}
@@ -229,7 +229,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">1天未更新</Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="error.main">
                     {stats.outdated_3d}
@@ -280,7 +280,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Typography>
             
             <Grid container spacing={2} mb={2}>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="success.main">
                     {updateResult.successful_updates}
@@ -288,7 +288,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">成功</Typography>
                 </Box>
               </Grid>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="error.main">
                     {updateResult.failed_updates}
@@ -296,7 +296,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">失败</Typography>
                 </Box>
               </Grid>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="primary">
                     {updateResult.total_subscriptions}
@@ -352,7 +352,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
           
           <Grid container spacing={2}>
-            <Grid xs={12} sm={6}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>删除时间窗口</InputLabel>
                 <Select
@@ -372,7 +372,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               </FormControl>
             </Grid>
             
-            <Grid xs={12} sm={6}>
+            <Grid item xs={12} sm={6}>
               <FormControlLabel
                 control={
                   <Switch
@@ -429,7 +429,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Typography>
             
             <Grid container spacing={2} mb={2}>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="error.main">
                     {cleanupPreview.will_be_deleted}
@@ -437,7 +437,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">将被删除</Typography>
                 </Box>
               </Grid>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="success.main">
                     {cleanupPreview.will_be_kept}
@@ -445,7 +445,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                   <Typography variant="body2">将被保留</Typography>
                 </Box>
               </Grid>
-              <Grid xs={4}>
+              <Grid item xs={4}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="primary">
                     {cleanupPreview.total_subscriptions}
@@ -516,7 +516,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       
       {stats && (
         <Grid container spacing={2}>
-          <Grid xs={12} md={6}>
+          <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -542,7 +542,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             </Card>
           </Grid>
           
-          <Grid xs={12} md={6}>
+          <Grid item xs={12} md={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
@@ -602,7 +602,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
           
           <Grid container spacing={2}>
-            <Grid xs={12} sm={6}>
+            <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
                 <InputLabel>自动删除时间窗口</InputLabel>
                 <Select
@@ -622,7 +622,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               </FormControl>
             </Grid>
             
-            <Grid xs={12} sm={6}>
+            <Grid item xs={12} sm={6}>
               <FormControlLabel
                 control={
                   <Switch

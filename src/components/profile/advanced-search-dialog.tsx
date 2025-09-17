@@ -552,7 +552,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
 
             {/* 添加新过滤器 */}
             <Grid container spacing={2} alignItems="center">
-              <Grid xs={12} sm={3}>
+              <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel>字段</InputLabel>
                   <Select
@@ -572,7 +572,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid xs={12} sm={3}>
+              <Grid item xs={12} sm={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel>操作</InputLabel>
                   <Select
@@ -591,7 +591,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid xs={12} sm={4}>
+              <Grid item xs={12} sm={4}>
                 <Autocomplete
                   freeSolo
                   options={fieldValueSuggestions}
@@ -610,7 +610,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   )}
                 />
               </Grid>
-              <Grid xs={12} sm={1}>
+              <Grid item xs={12} sm={1}>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -625,7 +625,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   label="区分大小写"
                 />
               </Grid>
-              <Grid xs={12} sm={1}>
+              <Grid item xs={12} sm={1}>
                 <Button
                   variant="contained"
                   size="small"
@@ -738,7 +738,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                 <AccordionDetails>
                   <Grid container spacing={2}>
                     {Object.entries(searchResult.facets).map(([facetName, values]) => (
-                      <Grid xs={12} sm={6} md={4} key={facetName}>
+                      <Grid item xs={12} sm={6} md={4} key={facetName}>
                         <Typography variant="subtitle2" gutterBottom>
                           {facetName}
                         </Typography>
@@ -844,7 +844,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               ) : (
                 <Grid container spacing={2}>
                   {searchResult.items.map((item) => (
-                    <Grid xs={12} sm={6} md={4} key={item.uid}>
+                    <Grid item xs={12} sm={6} md={4} key={item.uid}>
                       <Card variant="outlined" sx={{ height: "100%" }}>
                         <CardContent>
                           <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 1 }}>
@@ -1141,7 +1141,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               搜索统计
             </Typography>
             <Grid container spacing={2}>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
                     {searchStats.total_searches}
@@ -1151,7 +1151,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="info.main">
                     {searchStats.total_saved_searches}
@@ -1161,7 +1161,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="success.main">
                     {searchStats.avg_search_time_ms}ms
@@ -1171,7 +1171,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="warning.main">
                     {searchStats.popular_queries.length}

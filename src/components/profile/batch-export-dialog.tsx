@@ -271,7 +271,6 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
             <ListItem
               key={subscription.uid}
               onClick={() => handleToggleSubscription(subscription.uid)}
-              disabled={!subscription.is_valid}
             >
               <ListItemText
                 primary={
@@ -349,13 +348,13 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
 
       <Grid container spacing={3}>
         {/* 导出格式 */}
-        <Grid xs={12}>
+        <Grid item xs={12}>
           <Typography variant="subtitle2" gutterBottom>
             导出格式
           </Typography>
           <Grid container spacing={2}>
             {formatOptions.map((option) => (
-              <Grid xs={12} sm={6} key={option.value}>
+              <Grid item xs={12} sm={6} key={option.value}>
                 <Card
                   variant={exportOptions.format === option.value ? "elevation" : "outlined"}
                   sx={{
@@ -381,7 +380,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         </Grid>
 
         {/* 包含选项 */}
-        <Grid xs={12}>
+        <Grid item xs={12}>
           <Typography variant="subtitle2" gutterBottom>
             包含内容
           </Typography>
@@ -412,14 +411,14 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         </Grid>
 
         {/* 高级选项 */}
-        <Grid xs={12}>
+        <Grid item xs={12}>
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Typography variant="subtitle2">高级选项</Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Grid container spacing={2}>
-                <Grid xs={12}>
+                <Grid item xs={12}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -446,7 +445,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                   />
                 </Grid>
                 {exportOptions.encrypt && (
-                  <Grid xs={12}>
+                  <Grid item xs={12}>
                     <TextField
                       fullWidth
                       label="加密密码"
@@ -502,7 +501,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Grid container spacing={2}>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     导出格式
                   </Typography>
@@ -510,7 +509,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {formatOptions.find(f => f.value === exportPreview.format)?.label}
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     订阅数量
                   </Typography>
@@ -518,7 +517,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {exportPreview.subscription_count} 个
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     内容大小
                   </Typography>
@@ -526,7 +525,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {formatFileSize(exportPreview.content_size)}
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     包含设置
                   </Typography>

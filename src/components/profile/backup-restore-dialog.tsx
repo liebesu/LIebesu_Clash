@@ -494,7 +494,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       {backups.length > 0 ? (
         <Grid container spacing={2}>
           {backups.map((backup) => (
-            <Grid xs={12} sm={6} md={4} key={backup.backup_id}>
+            <Grid item xs={12} sm={6} md={4} key={backup.backup_id}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 2 }}>
@@ -640,7 +640,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
           <DialogTitle>备份详情</DialogTitle>
           <DialogContent>
             <Grid container spacing={2}>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">基本信息</Typography>
                 <Typography variant="body2">名称: {backupDetails.backup_name}</Typography>
                 <Typography variant="body2">描述: {backupDetails.description}</Typography>
@@ -648,7 +648,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 <Typography variant="body2">文件大小: {formatFileSize(backupDetails.file_size)}</Typography>
                 <Typography variant="body2">是否加密: {backupDetails.is_encrypted ? "是" : "否"}</Typography>
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <Typography variant="subtitle2">包含内容</Typography>
                 <Typography variant="body2">订阅数量: {backupDetails.profiles.length}</Typography>
                 <Typography variant="body2">包含设置: {backupDetails.settings ? "是" : "否"}</Typography>
@@ -679,7 +679,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
           <StepContent>
             <Box sx={{ mb: 2 }}>
               <Grid container spacing={2}>
-                <Grid xs={12}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="备份名称"
@@ -691,7 +691,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                     required
                   />
                 </Grid>
-                <Grid xs={12}>
+                <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="备份描述"
@@ -905,22 +905,22 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
               </Box>
 
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     最后同步: {syncStatus.last_sync ? formatDate(syncStatus.last_sync) : "从未"}
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     最后上传: {syncStatus.last_upload ? formatDate(syncStatus.last_upload) : "从未"}
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     待上传: {syncStatus.pending_uploads} 个文件
                   </Typography>
                 </Grid>
-                <Grid xs={6}>
+                <Grid item xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     待下载: {syncStatus.pending_downloads} 个文件
                   </Typography>
@@ -960,7 +960,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
         </AccordionSummary>
         <AccordionDetails>
           <Grid container spacing={2}>
-            <Grid xs={12}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="服务器地址"
@@ -972,7 +972,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 placeholder="https://your-webdav-server.com"
               />
             </Grid>
-            <Grid xs={6}>
+            <Grid item xs={6}>
               <TextField
                 fullWidth
                 label="用户名"
@@ -983,7 +983,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 })}
               />
             </Grid>
-            <Grid xs={6}>
+            <Grid item xs={6}>
               <TextField
                 fullWidth
                 label="密码"
@@ -1005,7 +1005,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 }}
               />
             </Grid>
-            <Grid xs={12}>
+            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="远程路径"
@@ -1016,7 +1016,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 })}
               />
             </Grid>
-            <Grid xs={12}>
+            <Grid item xs={12}>
               <FormControlLabel
                 control={
                   <Checkbox

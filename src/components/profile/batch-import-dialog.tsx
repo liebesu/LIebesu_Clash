@@ -282,7 +282,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   // 渲染导入结果统计
   const renderResultSummary = (result: BatchImportResult) => (
     <Grid container spacing={2} sx={{ mb: 3 }}>
-      <Grid xs={6} sm={3}>
+      <Grid item xs={6} sm={3}>
         <Card variant="outlined">
           <CardContent sx={{ textAlign: "center" }}>
             <Typography color="text.secondary" gutterBottom>
@@ -294,7 +294,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
           </CardContent>
         </Card>
       </Grid>
-      <Grid xs={6} sm={3}>
+      <Grid item xs={6} sm={3}>
         <Card variant="outlined">
           <CardContent sx={{ textAlign: "center" }}>
             <Typography color="success.main" gutterBottom>
@@ -306,7 +306,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
           </CardContent>
         </Card>
       </Grid>
-      <Grid xs={6} sm={3}>
+      <Grid item xs={6} sm={3}>
         <Card variant="outlined">
           <CardContent sx={{ textAlign: "center" }}>
             <Typography color="info.main" gutterBottom>
@@ -318,7 +318,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
           </CardContent>
         </Card>
       </Grid>
-      <Grid xs={6} sm={3}>
+      <Grid item xs={6} sm={3}>
         <Card variant="outlined">
           <CardContent sx={{ textAlign: "center" }}>
             <Typography color="error.main" gutterBottom>
@@ -428,7 +428,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             </Typography>
             
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid xs={12} sm={4}>
+              <Grid item xs={12} sm={4}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -439,7 +439,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   从剪贴板粘贴
                 </Button>
               </Grid>
-              <Grid xs={12} sm={4}>
+              <Grid item xs={12} sm={4}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -450,7 +450,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   选择文件
                 </Button>
               </Grid>
-              <Grid xs={12} sm={4}>
+              <Grid item xs={12} sm={4}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -508,7 +508,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             </Typography>
 
             <Grid container spacing={3}>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -519,7 +519,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   label="跳过重复订阅"
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -530,7 +530,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   label="自动生成订阅名称"
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="名称前缀（可选）"
@@ -538,7 +538,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   onChange={(e) => setOptions({...options, name_prefix: e.target.value})}
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="默认User-Agent"
@@ -546,7 +546,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   onChange={(e) => setOptions({...options, default_user_agent: e.target.value})}
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   type="number"

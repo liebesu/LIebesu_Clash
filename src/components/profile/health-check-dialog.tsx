@@ -207,7 +207,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
           
           {/* 基础信息 */}
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid xs={6} sm={3}>
+            <Grid item xs={6} sm={3}>
               <Box display="flex" alignItems="center" gap={1}>
                 <Speed fontSize="small" />
                 <Typography variant="body2">
@@ -215,7 +215,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                 </Typography>
               </Box>
             </Grid>
-            <Grid xs={6} sm={3}>
+            <Grid item xs={6} sm={3}>
               <Box display="flex" alignItems="center" gap={1}>
                 <Storage fontSize="small" />
                 <Typography variant="body2">
@@ -223,7 +223,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                 </Typography>
               </Box>
             </Grid>
-            <Grid xs={6} sm={3}>
+            <Grid item xs={6} sm={3}>
               <Box display="flex" alignItems="center" gap={1}>
                 <AccessTime fontSize="small" />
                 <Typography variant="body2">
@@ -231,7 +231,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                 </Typography>
               </Box>
             </Grid>
-            <Grid xs={6} sm={3}>
+            <Grid item xs={6} sm={3}>
               <Button
                 size="small"
                 startIcon={<Dns />}
@@ -317,7 +317,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
               检查结果概览
             </Typography>
             <Grid container spacing={2}>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography color="text.secondary" gutterBottom>
@@ -329,7 +329,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography color="success.main" gutterBottom>
@@ -341,7 +341,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography color="warning.main" gutterBottom>
@@ -353,7 +353,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid xs={6} sm={3}>
+              <Grid item xs={6} sm={3}>
                 <Card variant="outlined">
                   <CardContent sx={{ textAlign: "center" }}>
                     <Typography color="error.main" gutterBottom>
