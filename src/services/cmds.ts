@@ -2099,3 +2099,89 @@ export async function updateSearchIndex() {
 export async function getSearchStatistics() {
   return invoke<SearchStatistics>("get_search_statistics");
 }
+
+// Subscription Batch Manager Interfaces
+export interface SubscriptionCleanupOptions {
+  days_threshold: number;
+  preview_only: boolean;
+  exclude_favorites: boolean;
+  exclude_groups: string[];
+}
+
+export interface SubscriptionInfo {
+  uid: string;
+  name: string;
+  url?: string;
+  last_updated?: string;
+  days_since_update: number;
+  size?: number;
+  node_count?: number;
+  is_favorite: boolean;
+  groups: string[];
+}
+
+export interface CleanupPreview {
+  total_subscriptions: number;
+  expired_subscriptions: SubscriptionInfo[];
+  will_be_deleted: number;
+  will_be_kept: number;
+  cleanup_options: SubscriptionCleanupOptions;
+}
+
+export interface BatchUpdateResult {
+  total_subscriptions: number;
+  successful_updates: number;
+  failed_updates: number;
+  updated_subscriptions: string[];
+  failed_subscriptions: string[];
+  error_messages: Record<string, string>;
+}
+
+export interface CleanupResult {
+  deleted_count: number;
+  deleted_subscriptions: string[];
+  cleanup_options: SubscriptionCleanupOptions;
+  cleanup_time: string;
+}
+
+/**
+ * 获取订阅清理预览
+ */
+export async function getSubscriptionCleanupPreview(options: SubscriptionCleanupOptions) {
+  return invoke<CleanupPreview>("get_subscription_cleanup_preview", { options });
+}
+
+/**
+ * 批量更新所有订阅
+ */
+export async function updateAllSubscriptions() {
+  return invoke<BatchUpdateResult>("update_all_subscriptions");
+}
+
+/**
+ * 清理过期订阅
+ */
+export async function cleanupExpiredSubscriptions(options: SubscriptionCleanupOptions) {
+  return invoke<CleanupResult>("cleanup_expired_subscriptions", { options });
+}
+
+/**
+ * 获取订阅管理统计信息
+ */
+export async function getSubscriptionManagementStats() {
+  return invoke<any>("get_subscription_management_stats");
+}
+
+/**
+ * 设置自动清理规则
+ */
+export async function setAutoCleanupRules(enabled: boolean, cleanupOptions: SubscriptionCleanupOptions) {
+  return invoke<void>("set_auto_cleanup_rules", { enabled, cleanupOptions });
+}
+
+/**
+ * 获取自动清理规则
+ */
+export async function getAutoCleanupRules() {
+  return invoke<any>("get_auto_cleanup_rules");
+}

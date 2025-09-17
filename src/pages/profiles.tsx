@@ -33,6 +33,7 @@ import {
   Storage,
   Search,
   GetApp,
+  ManageAccounts,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -77,6 +78,7 @@ import SubscriptionGroupsDialog from "@/components/profile/subscription-groups-d
 import BackupRestoreDialog from "@/components/profile/backup-restore-dialog";
 import AdvancedSearchDialog from "@/components/profile/advanced-search-dialog";
 import BatchExportDialog from "@/components/profile/batch-export-dialog";
+import { SubscriptionBatchManagerDialog } from "@/components/profile/subscription-batch-manager-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -160,6 +162,9 @@ const ProfilePage = () => {
 
   // 批量导出对话框状态
   const [batchExportDialogOpen, setBatchExportDialogOpen] = useState(false);
+
+  // 订阅批量管理对话框状态
+  const [subscriptionBatchManagerDialogOpen, setSubscriptionBatchManagerDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -1029,6 +1034,16 @@ const ProfilePage = () => {
             <Search />
           </IconButton>
 
+          {/* 订阅批量管理 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="订阅批量管理"
+            onClick={() => setSubscriptionBatchManagerDialogOpen(true)}
+          >
+            <ManageAccounts />
+          </IconButton>
+
           <IconButton
             size="small"
             color="inherit"
@@ -1287,6 +1302,11 @@ const ProfilePage = () => {
       <BatchExportDialog
         open={batchExportDialogOpen}
         onClose={() => setBatchExportDialogOpen(false)}
+      />
+
+      <SubscriptionBatchManagerDialog
+        open={subscriptionBatchManagerDialogOpen}
+        onClose={() => setSubscriptionBatchManagerDialogOpen(false)}
       />
     </BasePage>
   );
