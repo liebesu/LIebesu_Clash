@@ -748,3 +748,409 @@ export const isAdmin = async () => {
 export async function getNextUpdateTime(uid: string) {
   return invoke<number | null>("get_next_update_time", { uid });
 }
+
+// ===== 订阅健康检查相关 =====
+
+export interface SubscriptionHealthResult {
+  uid: string;
+  name: string;
+  url?: string;
+  status: "Healthy" | "Warning" | "Unhealthy" | "Checking" | "Unknown";
+  response_time?: number; // 毫秒
+  node_count?: number;
+  last_update?: number;
+  error_message?: string;
+  last_checked: number;
+}
+
+export interface BatchHealthResult {
+  total: number;
+  healthy: number;
+  warning: number;
+  unhealthy: number;
+  results: SubscriptionHealthResult[];
+  check_duration: number; // 毫秒
+}
+
+/**
+ * 检查单个订阅的健康状态
+ */
+export async function checkSubscriptionHealth(uid: string) {
+  return invoke<SubscriptionHealthResult>("check_subscription_health", { uid });
+}
+
+/**
+ * 批量检查所有订阅的健康状态
+ */
+export async function checkAllSubscriptionsHealth() {
+  return invoke<BatchHealthResult>("check_all_subscriptions_health");
+}
+
+/**
+ * 获取订阅详细信息（包括节点数量等）
+ */
+export async function getSubscriptionDetails(uid: string) {
+  return invoke<SubscriptionHealthResult>("get_subscription_details", { uid });
+}
+
+/**
+ * 清理健康检查缓存
+ */
+export async function cleanupHealthCheckCache() {
+  return invoke<void>("cleanup_health_check_cache");
+}
+
+// ===== 批量导入相关 =====
+
+export interface BatchImportResult {
+  total_input: number;       // 输入的总数
+  valid_urls: number;        // 有效的URL数量
+  imported: number;          // 成功导入的数量
+  duplicates: number;        // 重复的数量
+  failed: number;            // 失败的数量
+  results: ImportResult[];   // 详细结果
+  import_duration: number;   // 导入耗时（毫秒）
+}
+
+export interface ImportResult {
+  url: string;
+  name?: string;
+  status: "Success" | "Duplicate" | "Failed" | "Invalid";
+  error_message?: string;
+  uid?: string;
+}
+
+export interface BatchImportOptions {
+  skip_duplicates: boolean;    // 跳过重复项
+  auto_generate_names: boolean; // 自动生成名称
+  name_prefix?: string;        // 名称前缀
+  default_user_agent?: string; // 默认User-Agent
+  update_interval?: number;    // 更新间隔（分钟）
+}
+
+/**
+ * 从文本批量导入订阅
+ */
+export async function batchImportFromText(
+  textContent: string,
+  options?: BatchImportOptions
+) {
+  return invoke<BatchImportResult>("batch_import_from_text", {
+    text_content: textContent,
+    options,
+  });
+}
+
+/**
+ * 从文件批量导入订阅
+ */
+export async function batchImportFromFile(
+  filePath: string,
+  options?: BatchImportOptions
+) {
+  return invoke<BatchImportResult>("batch_import_from_file", {
+    file_path: filePath,
+    options,
+  });
+}
+
+/**
+ * 从剪贴板批量导入订阅
+ */
+export async function batchImportFromClipboard(options?: BatchImportOptions) {
+  return invoke<BatchImportResult>("batch_import_from_clipboard", { options });
+}
+
+/**
+ * 获取批量导入预览（不实际导入）
+ */
+export async function previewBatchImport(
+  textContent: string,
+  options?: BatchImportOptions
+) {
+  return invoke<BatchImportResult>("preview_batch_import", {
+    text_content: textContent,
+    options,
+  });
+}
+
+// ===== 任务管理相关 =====
+
+export interface TaskConfig {
+  id: string;
+  name: string;
+  description: string;
+  task_type: "SubscriptionUpdate" | "HealthCheck" | "AutoCleanup" | "Custom";
+  status: "Active" | "Paused" | "Disabled" | "Error";
+  interval_minutes: number;
+  enabled: boolean;
+  target_profiles: string[];
+  options: TaskOptions;
+  created_at: number;
+  updated_at: number;
+  last_run?: number;
+  next_run?: number;
+}
+
+export interface TaskOptions {
+  max_retries: number;
+  timeout_seconds: number;
+  parallel_limit: number;
+  auto_cleanup_days?: number;
+  health_check_url?: string;
+  notification_enabled: boolean;
+}
+
+export interface TaskExecutionResult {
+  task_id: string;
+  execution_id: string;
+  status: "Success" | "Failed" | "Running" | "Timeout";
+  start_time: number;
+  end_time?: number;
+  duration_ms?: number;
+  message?: string;
+  error_details?: string;
+  affected_profiles: string[];
+  retry_count: number;
+}
+
+export interface TaskStatistics {
+  task_id: string;
+  total_executions: number;
+  successful_executions: number;
+  failed_executions: number;
+  avg_duration_ms: number;
+  last_execution?: TaskExecutionResult;
+  success_rate: number;
+}
+
+export interface TaskSystemOverview {
+  total_tasks: number;
+  active_tasks: number;
+  paused_tasks: number;
+  error_tasks: number;
+  running_tasks: number;
+  next_execution?: number;
+  recent_executions: TaskExecutionResult[];
+}
+
+/**
+ * 获取所有任务配置
+ */
+export async function getAllTasks() {
+  return invoke<TaskConfig[]>("get_all_tasks");
+}
+
+/**
+ * 创建新任务
+ */
+export async function createTask(taskConfig: TaskConfig) {
+  return invoke<string>("create_task", { task_config: taskConfig });
+}
+
+/**
+ * 更新任务配置
+ */
+export async function updateTask(taskConfig: TaskConfig) {
+  return invoke<void>("update_task", { task_config: taskConfig });
+}
+
+/**
+ * 删除任务
+ */
+export async function deleteTask(taskId: string) {
+  return invoke<void>("delete_task", { task_id: taskId });
+}
+
+/**
+ * 启用/禁用任务
+ */
+export async function toggleTask(taskId: string, enabled: boolean) {
+  return invoke<void>("toggle_task", { task_id: taskId, enabled });
+}
+
+/**
+ * 立即执行任务
+ */
+export async function executeTaskImmediately(taskId: string) {
+  return invoke<TaskExecutionResult>("execute_task_immediately", { task_id: taskId });
+}
+
+/**
+ * 获取任务执行历史
+ */
+export async function getTaskExecutionHistory(taskId: string, limit?: number) {
+  return invoke<TaskExecutionResult[]>("get_task_execution_history", { task_id: taskId, limit });
+}
+
+/**
+ * 获取任务统计信息
+ */
+export async function getTaskStatistics(taskId: string) {
+  return invoke<TaskStatistics>("get_task_statistics", { task_id: taskId });
+}
+
+/**
+ * 获取系统任务概览
+ */
+export async function getTaskSystemOverview() {
+  return invoke<TaskSystemOverview>("get_task_system_overview");
+}
+
+/**
+ * 清理过期的执行历史
+ */
+export async function cleanupExecutionHistory(days: number) {
+  return invoke<number>("cleanup_execution_history", { days });
+}
+
+/**
+ * 创建默认任务
+ */
+export async function createDefaultTasks() {
+  return invoke<string[]>("create_default_tasks");
+}
+
+// ===== 订阅测试相关 =====
+
+export interface NodeTestResult {
+  node_name: string;
+  node_type: string;
+  server: string;
+  port: number;
+  status: "Pass" | "Fail" | "Warning" | "Timeout" | "Error";
+  latency_ms?: number;
+  download_speed_mbps?: number;
+  upload_speed_mbps?: number;
+  packet_loss_rate?: number;
+  stability_score?: number;
+  error_message?: string;
+  test_duration_ms: number;
+  test_time: number;
+}
+
+export interface SubscriptionTestResult {
+  subscription_uid: string;
+  subscription_name: string;
+  test_type: TestType;
+  overall_status: "Pass" | "Fail" | "Warning" | "Timeout" | "Error";
+  total_nodes: number;
+  passed_nodes: number;
+  failed_nodes: number;
+  warning_nodes: number;
+  avg_latency_ms?: number;
+  avg_download_speed_mbps?: number;
+  avg_upload_speed_mbps?: number;
+  overall_stability_score?: number;
+  quality_grade: "Excellent" | "Good" | "Fair" | "Poor" | "VeryPoor";
+  node_results: NodeTestResult[];
+  recommendations: string[];
+  test_duration_ms: number;
+  test_time: number;
+}
+
+export interface BatchTestResult {
+  test_id: string;
+  test_type: TestType;
+  total_subscriptions: number;
+  completed_subscriptions: number;
+  results: SubscriptionTestResult[];
+  summary: TestSummary;
+  test_duration_ms: number;
+  test_time: number;
+}
+
+export interface TestSummary {
+  total_nodes: number;
+  working_nodes: number;
+  failed_nodes: number;
+  avg_latency_ms: number;
+  best_latency_ms: number;
+  worst_latency_ms: number;
+  fastest_node?: string;
+  recommended_subscriptions: string[];
+  quality_distribution: Record<string, number>;
+}
+
+export interface TestConfig {
+  test_timeout_seconds: number;
+  connection_timeout_seconds: number;
+  max_concurrent_tests: number;
+  speed_test_duration_seconds: number;
+  speed_test_file_size_mb: number;
+  latency_test_count: number;
+  stability_test_duration_seconds: number;
+  test_urls: string[];
+  skip_speed_test: boolean;
+  skip_stability_test: boolean;
+}
+
+export type TestType = "Connectivity" | "Latency" | "Speed" | "Stability" | "Comprehensive";
+
+/**
+ * 测试单个订阅
+ */
+export async function testSubscription(
+  subscriptionUid: string, 
+  testType: TestType, 
+  config?: TestConfig
+) {
+  return invoke<SubscriptionTestResult>("test_subscription", {
+    subscription_uid: subscriptionUid,
+    test_type: testType,
+    config,
+  });
+}
+
+/**
+ * 批量测试所有订阅
+ */
+export async function testAllSubscriptions(testType: TestType, config?: TestConfig) {
+  return invoke<BatchTestResult>("test_all_subscriptions", {
+    test_type: testType,
+    config,
+  });
+}
+
+/**
+ * 快速连通性测试
+ */
+export async function quickConnectivityTest(subscriptionUid: string) {
+  return invoke<NodeTestResult[]>("quick_connectivity_test", {
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 获取节点质量排名
+ */
+export async function getNodeQualityRanking(subscriptionUid: string, limit?: number) {
+  return invoke<NodeTestResult[]>("get_node_quality_ranking", {
+    subscription_uid: subscriptionUid,
+    limit,
+  });
+}
+
+/**
+ * 获取优化建议
+ */
+export async function getOptimizationSuggestions(subscriptionUid: string) {
+  return invoke<string[]>("get_optimization_suggestions", {
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 设置定期测试任务
+ */
+export async function schedulePeriodicTest(
+  subscriptionUids: string[],
+  testType: TestType,
+  intervalHours: number
+) {
+  return invoke<string>("schedule_periodic_test", {
+    subscription_uids: subscriptionUids,
+    test_type: testType,
+    interval_hours: intervalHours,
+  });
+}

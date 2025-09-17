@@ -24,6 +24,10 @@ import {
   TextSnippetOutlined,
   DeleteSweepRounded,
   ContentCutRounded,
+  HealthAndSafetyRounded,
+  CloudDownloadRounded,
+  Assignment,
+  Speed,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -59,6 +63,10 @@ import { TauriEvent } from "@tauri-apps/api/event";
 import { showNotice } from "@/services/noticeService";
 import QuotaExceededDialog from "@/components/profile/quota-exceeded-dialog";
 import DuplicateCleanupDialog from "@/components/profile/duplicate-cleanup-dialog";
+import HealthCheckDialog from "@/components/profile/health-check-dialog";
+import BatchImportDialog from "@/components/profile/batch-import-dialog";
+import TaskManagerDialog from "@/components/profile/task-manager-dialog";
+import SubscriptionTestingDialog from "@/components/profile/subscription-testing-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -115,6 +123,18 @@ const ProfilePage = () => {
   // 重复订阅清理对话框
   const [dupDialogOpen, setDupDialogOpen] = useState(false);
   const [dupGroups, setDupGroups] = useState<{ url: string; items: IProfileItem[] }[]>([]);
+
+  // 健康检查对话框状态
+  const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
+
+  // 批量导入对话框状态
+  const [batchImportDialogOpen, setBatchImportDialogOpen] = useState(false);
+
+  // 任务管理对话框状态
+  const [taskManagerDialogOpen, setTaskManagerDialogOpen] = useState(false);
+
+  // 订阅测试对话框状态
+  const [subscriptionTestingDialogOpen, setSubscriptionTestingDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -894,6 +914,46 @@ const ProfilePage = () => {
             <DeleteSweepRounded />
           </IconButton>
 
+          {/* 健康检查 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="健康检查"
+            onClick={() => setHealthCheckDialogOpen(true)}
+          >
+            <HealthAndSafetyRounded />
+          </IconButton>
+
+          {/* 批量导入 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="批量导入订阅"
+            onClick={() => setBatchImportDialogOpen(true)}
+          >
+            <CloudDownloadRounded />
+          </IconButton>
+
+          {/* 任务管理 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="任务管理"
+            onClick={() => setTaskManagerDialogOpen(true)}
+          >
+            <Assignment />
+          </IconButton>
+
+          {/* 订阅测试 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="订阅测试工具"
+            onClick={() => setSubscriptionTestingDialogOpen(true)}
+          >
+            <Speed />
+          </IconButton>
+
           <IconButton
             size="small"
             color="inherit"
@@ -1096,6 +1156,37 @@ const ProfilePage = () => {
         groups={dupGroups}
         onClose={handleDupDialogClose}
         onConfirm={handleDupDialogConfirm}
+      />
+
+      <HealthCheckDialog
+        open={healthCheckDialogOpen}
+        onClose={() => setHealthCheckDialogOpen(false)}
+      />
+
+      <BatchImportDialog
+        open={batchImportDialogOpen}
+        onClose={() => setBatchImportDialogOpen(false)}
+        onImportComplete={(result) => {
+          setBatchImportDialogOpen(false);
+          if (result.imported > 0) {
+            showNotice("success", `成功导入 ${result.imported} 个订阅`, 3000);
+            // 刷新订阅列表
+            mutate("getProfiles");
+          }
+          if (result.failed > 0) {
+            showNotice("warning", `${result.failed} 个订阅导入失败`, 3000);
+          }
+        }}
+      />
+
+      <TaskManagerDialog
+        open={taskManagerDialogOpen}
+        onClose={() => setTaskManagerDialogOpen(false)}
+      />
+
+      <SubscriptionTestingDialog
+        open={subscriptionTestingDialogOpen}
+        onClose={() => setSubscriptionTestingDialogOpen(false)}
       />
     </BasePage>
   );
