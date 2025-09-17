@@ -67,7 +67,8 @@ pub async fn get_subscription_cleanup_preview(
     
     let threshold_date = Local::now() - Duration::days(options.days_threshold as i64);
     
-    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
         if let Some(uid) = &profile.uid {
             let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
@@ -98,7 +99,9 @@ pub async fn get_subscription_cleanup_preview(
                 uid: uid.clone(),
                 name,
                 url,
-                last_updated,
+                last_updated: last_updated.map(|ts| DateTime::from_timestamp(ts as i64, 0)
+                    .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+                    .unwrap_or_else(|| "Invalid timestamp".to_string())),
                 days_since_update,
                 size: None, // TODO: 计算文件大小
                 node_count: None, // TODO: 计算节点数量
@@ -140,7 +143,8 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
     
-    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
         if let Some(uid) = &profile.uid {
             let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
@@ -222,7 +226,8 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
     
     let now = Local::now();
     
-    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
         total_count += 1;
         
