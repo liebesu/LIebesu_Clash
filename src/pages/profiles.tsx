@@ -1174,7 +1174,7 @@ const ProfilePage = () => {
             mutate("getProfiles");
           }
           if (result.failed > 0) {
-            showNotice("warning", `${result.failed} 个订阅导入失败`, 3000);
+            showNotice("error", `${result.failed} 个订阅导入失败`, 3000);
           }
         }}
       />
