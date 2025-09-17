@@ -9,7 +9,7 @@ import {
   Typography,
   Card,
   CardContent,
-  Grid2 as Grid,
+  Grid,
   Chip,
   IconButton,
   List,
@@ -235,7 +235,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       
       {overview && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid xs={6} sm={3}>
+          <Grid item xs={6} sm={3}>
             <Card variant="outlined">
               <CardContent sx={{ textAlign: "center" }}>
                 <Typography color="text.secondary" gutterBottom>
@@ -247,7 +247,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
               </CardContent>
             </Card>
           </Grid>
-          <Grid xs={6} sm={3}>
+          <Grid item xs={6} sm={3}>
             <Card variant="outlined">
               <CardContent sx={{ textAlign: "center" }}>
                 <Typography color="success.main" gutterBottom>
@@ -259,7 +259,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
               </CardContent>
             </Card>
           </Grid>
-          <Grid xs={6} sm={3}>
+          <Grid item xs={6} sm={3}>
             <Card variant="outlined">
               <CardContent sx={{ textAlign: "center" }}>
                 <Typography color="warning.main" gutterBottom>
@@ -271,7 +271,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
               </CardContent>
             </Card>
           </Grid>
-          <Grid xs={6} sm={3}>
+          <Grid item xs={6} sm={3}>
             <Card variant="outlined">
               <CardContent sx={{ textAlign: "center" }}>
                 <Typography color="error.main" gutterBottom>

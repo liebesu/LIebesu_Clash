@@ -13,7 +13,7 @@ import {
   LinearProgress,
   Card,
   CardContent,
-  Grid2 as Grid,
+  Grid,
   Chip,
   Alert,
   IconButton,
@@ -508,7 +508,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             </Typography>
 
             <Grid container spacing={3}>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -519,7 +519,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   label="跳过重复订阅"
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -530,7 +530,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   label="自动生成订阅名称"
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="名称前缀（可选）"
@@ -538,7 +538,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   onChange={(e) => setOptions({...options, name_prefix: e.target.value})}
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="默认User-Agent"
@@ -546,7 +546,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   onChange={(e) => setOptions({...options, default_user_agent: e.target.value})}
                 />
               </Grid>
-              <Grid xs={12} sm={6}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
                   type="number"

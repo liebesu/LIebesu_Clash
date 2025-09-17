@@ -10,7 +10,7 @@ import {
   LinearProgress,
   Card,
   CardContent,
-  Grid2 as Grid,
+  Grid,
   Chip,
   Alert,
   IconButton,

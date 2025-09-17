@@ -1154,3 +1154,398 @@ export async function schedulePeriodicTest(
     interval_hours: intervalHours,
   });
 }
+
+// ===== 流量统计相关 =====
+
+export interface TrafficRecord {
+  subscription_uid: string;
+  subscription_name: string;
+  upload_bytes: number;
+  download_bytes: number;
+  total_bytes: number;
+  session_duration_seconds: number;
+  start_time: number;
+  end_time: number;
+  avg_speed_mbps: number;
+  peak_speed_mbps: number;
+}
+
+export interface SubscriptionTrafficStats {
+  subscription_uid: string;
+  subscription_name: string;
+  total_upload_bytes: number;
+  total_download_bytes: number;
+  total_bytes: number;
+  session_count: number;
+  total_duration_seconds: number;
+  avg_speed_mbps: number;
+  peak_speed_mbps: number;
+  first_used?: number;
+  last_used?: number;
+  daily_usage: DailyUsage[];
+  monthly_usage: MonthlyUsage[];
+  quota_info?: QuotaInfo;
+}
+
+export interface DailyUsage {
+  date: string;
+  upload_bytes: number;
+  download_bytes: number;
+  total_bytes: number;
+  session_count: number;
+  duration_seconds: number;
+}
+
+export interface MonthlyUsage {
+  month: string;
+  upload_bytes: number;
+  download_bytes: number;
+  total_bytes: number;
+  session_count: number;
+  duration_seconds: number;
+}
+
+export interface QuotaInfo {
+  total_quota_bytes?: number;
+  used_quota_bytes: number;
+  remaining_quota_bytes?: number;
+  quota_reset_date?: number;
+  expire_date?: number;
+  warning_threshold: number;
+  is_unlimited: boolean;
+}
+
+export interface TrafficAlert {
+  alert_id: string;
+  subscription_uid: string;
+  subscription_name: string;
+  alert_type: "QuotaUsage" | "ExpirationDate" | "HighUsage" | "SpeedDrop" | "ConnectionIssue";
+  message: string;
+  threshold_value: number;
+  current_value: number;
+  created_at: number;
+  is_read: boolean;
+  severity: "Info" | "Warning" | "Critical" | "Emergency";
+}
+
+export interface TrafficOverview {
+  total_subscriptions: number;
+  active_subscriptions: number;
+  total_upload_bytes: number;
+  total_download_bytes: number;
+  total_bytes: number;
+  avg_speed_mbps: number;
+  peak_speed_mbps: number;
+  total_sessions: number;
+  total_duration_seconds: number;
+  today_usage: number;
+  this_month_usage: number;
+  alerts_count: number;
+  critical_alerts_count: number;
+}
+
+export interface TrafficPrediction {
+  subscription_uid: string;
+  predicted_monthly_usage: number;
+  predicted_exhaust_date?: number;
+  recommended_plan?: string;
+  confidence_level: number;
+  trend_direction: "Increasing" | "Stable" | "Decreasing";
+}
+
+/**
+ * 记录流量使用
+ */
+export async function recordTrafficUsage(
+  subscriptionUid: string,
+  uploadBytes: number,
+  downloadBytes: number,
+  durationSeconds: number
+) {
+  return invoke<void>("record_traffic_usage", {
+    subscription_uid: subscriptionUid,
+    upload_bytes: uploadBytes,
+    download_bytes: downloadBytes,
+    duration_seconds: durationSeconds,
+  });
+}
+
+/**
+ * 获取订阅流量统计
+ */
+export async function getSubscriptionTrafficStats(subscriptionUid: string) {
+  return invoke<SubscriptionTrafficStats>("get_subscription_traffic_stats", {
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 获取所有订阅流量统计
+ */
+export async function getAllTrafficStats() {
+  return invoke<SubscriptionTrafficStats[]>("get_all_traffic_stats");
+}
+
+/**
+ * 获取流量概览
+ */
+export async function getTrafficOverview() {
+  return invoke<TrafficOverview>("get_traffic_overview");
+}
+
+/**
+ * 获取流量警告
+ */
+export async function getTrafficAlerts(includeRead?: boolean) {
+  return invoke<TrafficAlert[]>("get_traffic_alerts", {
+    include_read: includeRead,
+  });
+}
+
+/**
+ * 标记警告为已读
+ */
+export async function markAlertAsRead(alertId: string) {
+  return invoke<void>("mark_alert_as_read", { alert_id: alertId });
+}
+
+/**
+ * 清理历史数据
+ */
+export async function cleanupTrafficHistory(daysToKeep: number) {
+  return invoke<number>("cleanup_traffic_history", { days_to_keep: daysToKeep });
+}
+
+/**
+ * 导出流量数据
+ */
+export async function exportTrafficData(
+  subscriptionUid?: string,
+  startDate?: string,
+  endDate?: string
+) {
+  return invoke<string>("export_traffic_data", {
+    subscription_uid: subscriptionUid,
+    start_date: startDate,
+    end_date: endDate,
+  });
+}
+
+/**
+ * 设置订阅配额信息
+ */
+export async function setSubscriptionQuota(subscriptionUid: string, quotaInfo: QuotaInfo) {
+  return invoke<void>("set_subscription_quota", {
+    subscription_uid: subscriptionUid,
+    quota_info: quotaInfo,
+  });
+}
+
+/**
+ * 获取流量预测
+ */
+export async function getTrafficPrediction(subscriptionUid: string) {
+  return invoke<TrafficPrediction>("get_traffic_prediction", {
+    subscription_uid: subscriptionUid,
+  });
+}
+
+// ===== 订阅分组相关 =====
+
+export interface SubscriptionGroup {
+  id: string;
+  name: string;
+  description: string;
+  group_type: "Region" | "Provider" | "Usage" | "Speed" | "Custom";
+  color: string;
+  icon: string;
+  subscription_uids: string[];
+  tags: string[];
+  is_favorite: boolean;
+  sort_order: number;
+  auto_rules: AutoRule[];
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AutoRule {
+  rule_type: "NameContains" | "NameMatches" | "UrlContains" | "UrlMatches" | "TagEquals" | "SpeedRange" | "LatencyRange";
+  condition: "Contains" | "NotContains" | "Equals" | "NotEquals" | "StartsWith" | "EndsWith" | "Matches" | "NotMatches" | "GreaterThan" | "LessThan" | "Between";
+  value: string;
+  is_enabled: boolean;
+}
+
+export interface GroupStatistics {
+  group_id: string;
+  group_name: string;
+  total_subscriptions: number;
+  active_subscriptions: number;
+  total_nodes: number;
+  avg_latency_ms: number;
+  avg_speed_mbps: number;
+  health_score: number;
+  last_updated: number;
+}
+
+export interface BatchOperationResult {
+  total_items: number;
+  successful_items: number;
+  failed_items: number;
+  errors: string[];
+  operation_duration_ms: number;
+}
+
+export interface GroupSuggestion {
+  suggested_name: string;
+  suggested_type: "Region" | "Provider" | "Usage" | "Speed" | "Custom";
+  suggested_subscriptions: string[];
+  confidence_score: number;
+  reason: string;
+}
+
+export interface GroupExportData {
+  groups: SubscriptionGroup[];
+  export_time: number;
+  version: string;
+}
+
+/**
+ * 创建分组
+ */
+export async function createSubscriptionGroup(group: SubscriptionGroup) {
+  return invoke<string>("create_subscription_group", { group });
+}
+
+/**
+ * 更新分组
+ */
+export async function updateSubscriptionGroup(group: SubscriptionGroup) {
+  return invoke<void>("update_subscription_group", { group });
+}
+
+/**
+ * 删除分组
+ */
+export async function deleteSubscriptionGroup(groupId: string) {
+  return invoke<void>("delete_subscription_group", { group_id: groupId });
+}
+
+/**
+ * 获取所有分组
+ */
+export async function getAllSubscriptionGroups() {
+  return invoke<SubscriptionGroup[]>("get_all_subscription_groups");
+}
+
+/**
+ * 获取单个分组
+ */
+export async function getSubscriptionGroup(groupId: string) {
+  return invoke<SubscriptionGroup>("get_subscription_group", { group_id: groupId });
+}
+
+/**
+ * 添加订阅到分组
+ */
+export async function addSubscriptionToGroup(groupId: string, subscriptionUid: string) {
+  return invoke<void>("add_subscription_to_group", {
+    group_id: groupId,
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 从分组中移除订阅
+ */
+export async function removeSubscriptionFromGroup(groupId: string, subscriptionUid: string) {
+  return invoke<void>("remove_subscription_from_group", {
+    group_id: groupId,
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 获取订阅所属的分组
+ */
+export async function getSubscriptionGroups(subscriptionUid: string) {
+  return invoke<SubscriptionGroup[]>("get_subscription_groups", {
+    subscription_uid: subscriptionUid,
+  });
+}
+
+/**
+ * 批量添加订阅到分组
+ */
+export async function batchAddSubscriptionsToGroup(
+  groupId: string,
+  subscriptionUids: string[]
+) {
+  return invoke<BatchOperationResult>("batch_add_subscriptions_to_group", {
+    group_id: groupId,
+    subscription_uids: subscriptionUids,
+  });
+}
+
+/**
+ * 批量从分组移除订阅
+ */
+export async function batchRemoveSubscriptionsFromGroup(
+  groupId: string,
+  subscriptionUids: string[]
+) {
+  return invoke<BatchOperationResult>("batch_remove_subscriptions_from_group", {
+    group_id: groupId,
+    subscription_uids: subscriptionUids,
+  });
+}
+
+/**
+ * 应用自动分组规则
+ */
+export async function applyAutoGroupingRules() {
+  return invoke<BatchOperationResult>("apply_auto_grouping_rules");
+}
+
+/**
+ * 获取分组统计信息
+ */
+export async function getGroupStatistics(groupId: string) {
+  return invoke<GroupStatistics>("get_group_statistics", { group_id: groupId });
+}
+
+/**
+ * 获取所有分组统计信息
+ */
+export async function getAllGroupStatistics() {
+  return invoke<GroupStatistics[]>("get_all_group_statistics");
+}
+
+/**
+ * 导出分组配置
+ */
+export async function exportSubscriptionGroups() {
+  return invoke<string>("export_subscription_groups");
+}
+
+/**
+ * 导入分组配置
+ */
+export async function importSubscriptionGroups(importData: string) {
+  return invoke<BatchOperationResult>("import_subscription_groups", {
+    import_data: importData,
+  });
+}
+
+/**
+ * 获取智能分组建议
+ */
+export async function getSmartGroupingSuggestions() {
+  return invoke<GroupSuggestion[]>("get_smart_grouping_suggestions");
+}
+
+/**
+ * 创建默认分组
+ */
+export async function createDefaultGroups() {
+  return invoke<string[]>("create_default_groups");
+}

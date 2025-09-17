@@ -28,6 +28,8 @@ import {
   CloudDownloadRounded,
   Assignment,
   Speed,
+  DataUsage,
+  Group,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -67,6 +69,8 @@ import HealthCheckDialog from "@/components/profile/health-check-dialog";
 import BatchImportDialog from "@/components/profile/batch-import-dialog";
 import TaskManagerDialog from "@/components/profile/task-manager-dialog";
 import SubscriptionTestingDialog from "@/components/profile/subscription-testing-dialog";
+import TrafficStatsDialog from "@/components/profile/traffic-stats-dialog";
+import SubscriptionGroupsDialog from "@/components/profile/subscription-groups-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -135,6 +139,12 @@ const ProfilePage = () => {
 
   // 订阅测试对话框状态
   const [subscriptionTestingDialogOpen, setSubscriptionTestingDialogOpen] = useState(false);
+
+  // 流量统计对话框状态
+  const [trafficStatsDialogOpen, setTrafficStatsDialogOpen] = useState(false);
+
+  // 订阅分组对话框状态
+  const [subscriptionGroupsDialogOpen, setSubscriptionGroupsDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -954,6 +964,26 @@ const ProfilePage = () => {
             <Speed />
           </IconButton>
 
+          {/* 流量统计 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="流量统计面板"
+            onClick={() => setTrafficStatsDialogOpen(true)}
+          >
+            <DataUsage />
+          </IconButton>
+
+          {/* 订阅分组 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="订阅分组管理"
+            onClick={() => setSubscriptionGroupsDialogOpen(true)}
+          >
+            <Group />
+          </IconButton>
+
           <IconButton
             size="small"
             color="inherit"
@@ -1187,6 +1217,16 @@ const ProfilePage = () => {
       <SubscriptionTestingDialog
         open={subscriptionTestingDialogOpen}
         onClose={() => setSubscriptionTestingDialogOpen(false)}
+      />
+
+      <TrafficStatsDialog
+        open={trafficStatsDialogOpen}
+        onClose={() => setTrafficStatsDialogOpen(false)}
+      />
+
+      <SubscriptionGroupsDialog
+        open={subscriptionGroupsDialogOpen}
+        onClose={() => setSubscriptionGroupsDialogOpen(false)}
       />
     </BasePage>
   );
