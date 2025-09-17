@@ -46,7 +46,7 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
-import { showNotice } from '../../services/notice';
+import { showNotice } from '../../services/noticeService';
 import {
   getSubscriptionCleanupPreview,
   updateAllSubscriptions,
@@ -113,7 +113,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       setStats(data);
     } catch (error) {
       console.error('获取统计信息失败:', error);
-      showNotice('获取统计信息失败: ' + error);
+      showNotice('error', '获取统计信息失败: ' + error);
     } finally {
       setStatsLoading(false);
     }
@@ -136,11 +136,11 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
     try {
       const result = await updateAllSubscriptions();
       setUpdateResult(result);
-      showNotice(`更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`);
+      showNotice('success', `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`);
       loadStats(); // 重新加载统计信息
     } catch (error) {
       console.error('批量更新失败:', error);
-      showNotice('批量更新失败: ' + error);
+      showNotice('error', '批量更新失败: ' + error);
     } finally {
       setUpdateInProgress(false);
     }
@@ -152,7 +152,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       setCleanupPreview(preview);
     } catch (error) {
       console.error('生成清理预览失败:', error);
-      showNotice('生成清理预览失败: ' + error);
+      showNotice('error', '生成清理预览失败: ' + error);
     }
   };
 
@@ -166,11 +166,11 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       const result = await cleanupExpiredSubscriptions(executeOptions);
       setCleanupResult(result);
       setCleanupPreview(null);
-      showNotice(`清理完成: 删除了 ${result.deleted_count} 个过期订阅`);
+      showNotice('success', `清理完成: 删除了 ${result.deleted_count} 个过期订阅`);
       loadStats(); // 重新加载统计信息
     } catch (error) {
       console.error('执行清理失败:', error);
-      showNotice('执行清理失败: ' + error);
+      showNotice('error', '执行清理失败: ' + error);
     } finally {
       setCleanupInProgress(false);
     }
@@ -179,11 +179,11 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
   const handleSaveAutoCleanupRules = async () => {
     try {
       await setAutoCleanupRules(autoCleanupEnabled, cleanupOptions);
-      showNotice('自动清理规则保存成功');
+      showNotice('success', '自动清理规则保存成功');
       loadAutoCleanupRules();
     } catch (error) {
       console.error('保存自动清理规则失败:', error);
-      showNotice('保存自动清理规则失败: ' + error);
+      showNotice('error', '保存自动清理规则失败: ' + error);
     }
   };
 
