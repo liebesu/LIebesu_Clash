@@ -179,7 +179,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       setCurrentStep(2);
     } catch (error) {
       console.error("生成预览失败:", error);
-      showNotice("生成预览失败: " "error", error as string);
+      showNotice("生成预览失败: "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -197,7 +197,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       showNotice("success", "导出成功");
     } catch (error) {
       console.error("导出失败:", error);
-      showNotice("导出失败: " "error", error as string);
+      showNotice("导出失败: "error", error as string);
     } finally {
       setLoading(false);
     }

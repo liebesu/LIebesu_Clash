@@ -192,7 +192,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
     try {
       const profilesData = await getProfiles();
       const remoteSubscriptions = profilesData?.items?.filter(
-        (item: any) =>.type === "remote"
+        (item: any) => item.type === "remote"
       ) || [];
       setSubscriptions(remoteSubscriptions);
       
