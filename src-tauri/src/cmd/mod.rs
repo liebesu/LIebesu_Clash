@@ -3,7 +3,9 @@ use anyhow::Result;
 pub type CmdResult<T = ()> = Result<T, String>;
 
 // Command modules
+pub mod advanced_search;
 pub mod app;
+pub mod backup_restore;
 pub mod batch_import;
 pub mod clash;
 pub mod health_check;
@@ -26,7 +28,9 @@ pub mod verge;
 pub mod webdav;
 
 // Re-export all command functions for backwards compatibility
+pub use advanced_search::*;
 pub use app::*;
+pub use backup_restore::*;
 pub use batch_import::*;
 pub use clash::*;
 pub use health_check::*;

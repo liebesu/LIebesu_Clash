@@ -30,6 +30,8 @@ import {
   Speed,
   DataUsage,
   Group,
+  Storage,
+  Search,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -71,6 +73,8 @@ import TaskManagerDialog from "@/components/profile/task-manager-dialog";
 import SubscriptionTestingDialog from "@/components/profile/subscription-testing-dialog";
 import TrafficStatsDialog from "@/components/profile/traffic-stats-dialog";
 import SubscriptionGroupsDialog from "@/components/profile/subscription-groups-dialog";
+import BackupRestoreDialog from "@/components/profile/backup-restore-dialog";
+import AdvancedSearchDialog from "@/components/profile/advanced-search-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -145,6 +149,12 @@ const ProfilePage = () => {
 
   // 订阅分组对话框状态
   const [subscriptionGroupsDialogOpen, setSubscriptionGroupsDialogOpen] = useState(false);
+
+  // 备份恢复对话框状态
+  const [backupRestoreDialogOpen, setBackupRestoreDialogOpen] = useState(false);
+
+  // 高级搜索对话框状态
+  const [advancedSearchDialogOpen, setAdvancedSearchDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -984,6 +994,26 @@ const ProfilePage = () => {
             <Group />
           </IconButton>
 
+          {/* 备份恢复 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="备份与恢复"
+            onClick={() => setBackupRestoreDialogOpen(true)}
+          >
+            <Storage />
+          </IconButton>
+
+          {/* 高级搜索 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="高级搜索"
+            onClick={() => setAdvancedSearchDialogOpen(true)}
+          >
+            <Search />
+          </IconButton>
+
           <IconButton
             size="small"
             color="inherit"
@@ -1227,6 +1257,16 @@ const ProfilePage = () => {
       <SubscriptionGroupsDialog
         open={subscriptionGroupsDialogOpen}
         onClose={() => setSubscriptionGroupsDialogOpen(false)}
+      />
+
+      <BackupRestoreDialog
+        open={backupRestoreDialogOpen}
+        onClose={() => setBackupRestoreDialogOpen(false)}
+      />
+
+      <AdvancedSearchDialog
+        open={advancedSearchDialogOpen}
+        onClose={() => setAdvancedSearchDialogOpen(false)}
       />
     </BasePage>
   );

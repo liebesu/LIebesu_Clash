@@ -1549,3 +1549,475 @@ export async function getSmartGroupingSuggestions() {
 export async function createDefaultGroups() {
   return invoke<string[]>("create_default_groups");
 }
+
+// ===== 备份恢复相关 =====
+
+export interface BackupData {
+  backup_id: string;
+  backup_name: string;
+  description: string;
+  version: string;
+  app_version: string;
+  created_at: number;
+  file_size: number;
+  checksum: string;
+  is_encrypted: boolean;
+  backup_type: BackupType;
+  profiles: ProfileBackup[];
+  settings: SettingsBackup;
+  groups?: GroupsBackup;
+  traffic_stats?: TrafficStatsBackup;
+  tasks?: TasksBackup;
+}
+
+export type BackupType = "Full" | "Profiles" | "Settings" | "Custom";
+
+export interface ProfileBackup {
+  uid: string;
+  name: string;
+  desc?: string;
+  file?: string;
+  url?: string;
+  selected: string[];
+  chain: string[];
+  valid: boolean;
+  updated?: number;
+  option?: string;
+  home?: string;
+  extra?: string;
+}
+
+export interface SettingsBackup {
+  clash_config: string;
+  verge_config: string;
+  profiles_config: string;
+}
+
+export interface GroupsBackup {
+  groups: string;
+}
+
+export interface TrafficStatsBackup {
+  traffic_data: string;
+}
+
+export interface TasksBackup {
+  tasks_data: string;
+}
+
+export interface BackupOptions {
+  backup_type: BackupType;
+  include_profiles: boolean;
+  include_settings: boolean;
+  include_groups: boolean;
+  include_traffic_stats: boolean;
+  include_tasks: boolean;
+  encrypt: boolean;
+  password?: string;
+  compression_level: number;
+  backup_name: string;
+  description: string;
+}
+
+export interface RestoreOptions {
+  backup_id: string;
+  restore_profiles: boolean;
+  restore_settings: boolean;
+  restore_groups: boolean;
+  restore_traffic_stats: boolean;
+  restore_tasks: boolean;
+  merge_mode: boolean;
+  password?: string;
+  create_backup_before_restore: boolean;
+}
+
+export interface BackupInfo {
+  backup_id: string;
+  backup_name: string;
+  description: string;
+  file_path: string;
+  file_size: number;
+  created_at: number;
+  version: string;
+  app_version: string;
+  backup_type: BackupType;
+  is_encrypted: boolean;
+  checksum: string;
+  is_valid: boolean;
+}
+
+export interface RestoreResult {
+  success: boolean;
+  restored_items: number;
+  failed_items: number;
+  errors: string[];
+  warnings: string[];
+  operation_duration_ms: number;
+  backup_created?: string;
+}
+
+export interface WebDAVConfig {
+  enabled: boolean;
+  server_url: string;
+  username: string;
+  password: string;
+  remote_path: string;
+  auto_sync: boolean;
+  sync_interval_hours: number;
+  encrypt_before_upload: boolean;
+  compression_enabled: boolean;
+}
+
+export interface SyncStatus {
+  last_sync?: number;
+  last_upload?: number;
+  last_download?: number;
+  pending_uploads: number;
+  pending_downloads: number;
+  sync_errors: string[];
+  is_syncing: boolean;
+}
+
+/**
+ * 创建备份
+ */
+export async function createBackup(options: BackupOptions) {
+  return invoke<string>("create_backup", { options });
+}
+
+/**
+ * 获取所有备份
+ */
+export async function getAllBackups() {
+  return invoke<BackupInfo[]>("get_all_backups");
+}
+
+/**
+ * 获取备份详情
+ */
+export async function getBackupDetails(backupId: string) {
+  return invoke<BackupData>("get_backup_details", { backup_id: backupId });
+}
+
+/**
+ * 恢复备份
+ */
+export async function restoreBackup(options: RestoreOptions) {
+  return invoke<RestoreResult>("restore_backup", { options });
+}
+
+/**
+ * 删除备份
+ */
+export async function deleteBackup(backupId: string) {
+  return invoke<void>("delete_backup", { backup_id: backupId });
+}
+
+/**
+ * 验证备份
+ */
+export async function validateBackup(backupId: string) {
+  return invoke<boolean>("validate_backup", { backup_id: backupId });
+}
+
+/**
+ * 导出备份
+ */
+export async function exportBackup(backupId: string, exportPath: string) {
+  return invoke<void>("export_backup", {
+    backup_id: backupId,
+    export_path: exportPath,
+  });
+}
+
+/**
+ * 导入备份
+ */
+export async function importBackup(importPath: string, backupName: string) {
+  return invoke<string>("import_backup", {
+    import_path: importPath,
+    backup_name: backupName,
+  });
+}
+
+/**
+ * 设置WebDAV配置
+ */
+export async function setWebDAVConfig(config: WebDAVConfig) {
+  return invoke<void>("set_webdav_config", { config });
+}
+
+/**
+ * 获取WebDAV配置
+ */
+export async function getWebDAVConfig() {
+  return invoke<WebDAVConfig>("get_webdav_config");
+}
+
+/**
+ * 同步到WebDAV
+ */
+export async function syncToWebDAV() {
+  return invoke<SyncStatus>("sync_to_webdav");
+}
+
+/**
+ * 从WebDAV同步
+ */
+export async function syncFromWebDAV() {
+  return invoke<SyncStatus>("sync_from_webdav");
+}
+
+/**
+ * 获取同步状态
+ */
+export async function getSyncStatus() {
+  return invoke<SyncStatus>("get_sync_status");
+}
+
+/**
+ * 清理旧备份
+ */
+export async function cleanupOldBackups(keepDays: number, keepCount: number) {
+  return invoke<number>("cleanup_old_backups", {
+    keep_days: keepDays,
+    keep_count: keepCount,
+  });
+}
+
+// ===== 高级搜索相关 =====
+
+export interface SearchCriteria {
+  query: string;
+  filters: SearchFilter[];
+  sort_by: SortBy;
+  sort_order: SortOrder;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchFilter {
+  field: SearchField;
+  operator: FilterOperator;
+  value: string;
+  case_sensitive: boolean;
+}
+
+export type SearchField =
+  | "Name"
+  | "Description"
+  | "Url"
+  | "Type"
+  | "UpdatedAt"
+  | "CreatedAt"
+  | "NodeCount"
+  | "Tags"
+  | "Groups"
+  | "Country"
+  | "Provider"
+  | "Protocol"
+  | "Latency"
+  | "Speed"
+  | "Status"
+  | "TrafficUsage"
+  | "ExpiryDate";
+
+export type FilterOperator =
+  | "Equals"
+  | "NotEquals"
+  | "Contains"
+  | "NotContains"
+  | "StartsWith"
+  | "EndsWith"
+  | "Matches"
+  | "NotMatches"
+  | "GreaterThan"
+  | "LessThan"
+  | "GreaterEqual"
+  | "LessEqual"
+  | "Between"
+  | "NotBetween"
+  | "IsEmpty"
+  | "IsNotEmpty"
+  | "InList"
+  | "NotInList";
+
+export type SortBy =
+  | "Name"
+  | "UpdatedAt"
+  | "CreatedAt"
+  | "NodeCount"
+  | "Latency"
+  | "Speed"
+  | "TrafficUsage"
+  | "ExpiryDate"
+  | "Relevance";
+
+export type SortOrder = "Ascending" | "Descending";
+
+export interface SearchResult {
+  total_count: number;
+  items: SubscriptionSearchItem[];
+  search_time_ms: number;
+  suggestions: string[];
+  facets: Record<string, FacetValue[]>;
+}
+
+export interface SubscriptionSearchItem {
+  uid: string;
+  name: string;
+  description?: string;
+  url?: string;
+  subscription_type: string;
+  node_count: number;
+  country?: string;
+  provider?: string;
+  tags: string[];
+  groups: string[];
+  created_at: number;
+  updated_at?: number;
+  latency?: number;
+  speed?: number;
+  traffic_usage?: number;
+  expiry_date?: number;
+  status: string;
+  relevance_score: number;
+  highlights: Record<string, string[]>;
+}
+
+export interface FacetValue {
+  value: string;
+  count: number;
+  selected: boolean;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  description: string;
+  criteria: SearchCriteria;
+  created_at: number;
+  updated_at: number;
+  is_favorite: boolean;
+  usage_count: number;
+  last_used?: number;
+}
+
+export interface SearchHistory {
+  id: string;
+  query: string;
+  criteria: SearchCriteria;
+  result_count: number;
+  search_time: number;
+  search_duration_ms: number;
+}
+
+export interface SearchSuggestion {
+  suggestion: string;
+  suggestion_type: SuggestionType;
+  frequency: number;
+  relevance: number;
+}
+
+export type SuggestionType = "Query" | "Filter" | "Tag" | "Country" | "Provider";
+
+export interface SearchStatistics {
+  total_searches: number;
+  total_saved_searches: number;
+  avg_search_time_ms: number;
+  popular_queries: PopularQuery[];
+  recent_searches: string[];
+}
+
+export interface PopularQuery {
+  query: string;
+  count: number;
+}
+
+/**
+ * 高级搜索
+ */
+export async function advancedSearch(criteria: SearchCriteria) {
+  return invoke<SearchResult>("advanced_search", { criteria });
+}
+
+/**
+ * 快速搜索
+ */
+export async function quickSearch(query: string, limit?: number) {
+  return invoke<SubscriptionSearchItem[]>("quick_search", { query, limit });
+}
+
+/**
+ * 保存搜索
+ */
+export async function saveSearch(
+  name: string,
+  description: string,
+  criteria: SearchCriteria
+) {
+  return invoke<string>("save_search", { name, description, criteria });
+}
+
+/**
+ * 获取保存的搜索
+ */
+export async function getSavedSearches() {
+  return invoke<SavedSearch[]>("get_saved_searches");
+}
+
+/**
+ * 删除保存的搜索
+ */
+export async function deleteSavedSearch(searchId: string) {
+  return invoke<void>("delete_saved_search", { search_id: searchId });
+}
+
+/**
+ * 执行保存的搜索
+ */
+export async function executeSavedSearch(searchId: string) {
+  return invoke<SearchResult>("execute_saved_search", { search_id: searchId });
+}
+
+/**
+ * 获取搜索历史
+ */
+export async function getSearchHistory(limit?: number) {
+  return invoke<SearchHistory[]>("get_search_history", { limit });
+}
+
+/**
+ * 清理搜索历史
+ */
+export async function clearSearchHistory() {
+  return invoke<void>("clear_search_history");
+}
+
+/**
+ * 获取搜索建议
+ */
+export async function getSearchSuggestions(query: string) {
+  return invoke<SearchSuggestion[]>("get_search_suggestions", { query });
+}
+
+/**
+ * 获取字段值建议
+ */
+export async function getFieldValueSuggestions(field: SearchField) {
+  return invoke<string[]>("get_field_value_suggestions", { field });
+}
+
+/**
+ * 更新搜索索引
+ */
+export async function updateSearchIndex() {
+  return invoke<void>("update_search_index");
+}
+
+/**
+ * 获取搜索统计
+ */
+export async function getSearchStatistics() {
+  return invoke<SearchStatistics>("get_search_statistics");
+}
