@@ -137,35 +137,41 @@ pub async fn get_subscription_cleanup_preview(
 #[tauri::command]
 pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     let profiles_config = Config::profiles().await;
-    let profiles = profiles_config.latest_ref();
+    let remote_profiles: Vec<(String, String)> = {
+        let profiles = profiles_config.latest_ref();
+        let empty_vec = Vec::new();
+        let items = profiles.items.as_ref().unwrap_or(&empty_vec);
+        items.iter()
+            .filter(|profile| profile.url.is_some())
+            .filter_map(|profile| {
+                profile.uid.as_ref().map(|uid| {
+                    let name = profile.name.as_ref()
+                        .unwrap_or(&"未知订阅".to_string())
+                        .clone();
+                    (uid.clone(), name)
+                })
+            })
+            .collect()
+    };
     
     let mut updated_subscriptions = Vec::new();
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
     
-    let empty_vec = Vec::new();
-    let items = profiles.items.as_ref().unwrap_or(&empty_vec);
-    for profile in items {
-        if let Some(uid) = &profile.uid {
-            let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
-            
-            // 只更新远程订阅
-            if profile.url.is_some() {
-                match update_single_subscription(uid).await {
-                    Ok(_) => {
-                        updated_subscriptions.push(name);
-                    }
-                    Err(e) => {
-                        failed_subscriptions.push(name.clone());
-                        error_messages.insert(name, e.to_string());
-                    }
-                }
+    for (uid, name) in remote_profiles {
+        match update_single_subscription(&uid).await {
+            Ok(_) => {
+                updated_subscriptions.push(name);
+            }
+            Err(e) => {
+                failed_subscriptions.push(name.clone());
+                error_messages.insert(name, e.to_string());
             }
         }
     }
     
     let result = BatchUpdateResult {
-        total_subscriptions: items.len(),
+        total_subscriptions: remote_profiles.len(),
         successful_updates: updated_subscriptions.len(),
         failed_updates: failed_subscriptions.len(),
         updated_subscriptions,
