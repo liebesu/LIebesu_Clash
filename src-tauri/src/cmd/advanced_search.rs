@@ -224,7 +224,8 @@ pub async fn advanced_search(criteria: SearchCriteria) -> Result<SearchResult, S
     };
 
     // 生成高亮显示
-    add_highlights(&mut paginated_items.iter_mut().collect(), &criteria.query);
+    let mut paginated_items_vec: Vec<&mut SearchResultItem> = paginated_items.iter_mut().collect();
+    add_highlights(&mut paginated_items_vec, &criteria.query);
 
     // 生成搜索建议
     let suggestions = generate_search_suggestions(&criteria.query, &all_subscriptions)
@@ -321,13 +322,15 @@ pub async fn execute_saved_search(search_id: String) -> Result<SearchResult, Str
         // 更新使用统计
         search.usage_count += 1;
         search.last_used = Some(Utc::now().timestamp());
+        
+        let criteria = search.criteria.clone();
 
         // 保存更新
         save_saved_searches(&searches)
             .map_err(|e| format!("Failed to update search stats: {}", e))?;
 
         // 执行搜索
-        advanced_search(search.criteria.clone()).await
+        advanced_search(criteria).await
     } else {
         Err("Saved search not found".to_string())
     }
@@ -424,8 +427,8 @@ pub async fn update_search_index() -> Result<(), String> {
             let mut searchable_text = format!(
                 "{} {} {} {}",
                 item.name,
-                item.description.unwrap_or_default(),
-                item.url.unwrap_or_default(),
+                item.description.as_ref().map(|s| s.clone()).unwrap_or_default(),
+                item.url.as_ref().map(|s| s.clone()).unwrap_or_default(),
                 item.tags.join(" ")
             );
 
