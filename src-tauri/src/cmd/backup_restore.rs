@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use tauri::{api::path::app_data_dir, Config, PackageInfo};
+use tauri::{Config, Manager};
 use nanoid::nanoid;
 
 /// 备份数据结构
@@ -180,8 +180,8 @@ pub struct BackupVersion {
 
 /// 获取备份目录
 fn get_backup_dir() -> Result<PathBuf> {
-    let app_dir = app_data_dir(&Config::default(), &PackageInfo::default())
-        .context("Failed to get app data directory")?;
+    let app_dir = dirs::verge_path()
+        .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
     let backup_dir = app_dir.join("backups");
     
     if !backup_dir.exists() {

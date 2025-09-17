@@ -395,9 +395,11 @@ async fn check_duplicates(urls: Vec<String>) -> CmdResult<(Vec<String>, Vec<Impo
     
     // 获取现有的订阅URL
     let existing_urls: HashSet<String> = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
         .filter_map(|item| {
-            item.option.as_ref()?.url.as_ref().map(|url| url.clone())
+            item.url.as_ref().map(|url| url.clone())
         })
         .collect();
     
@@ -436,23 +438,25 @@ async fn import_subscriptions(
         let uid = nanoid!();
         let item = PrfItem {
             uid: Some(uid.clone()),
+            itype: Some("remote".to_string()),
             name: name.clone(),
-            desc: None,
             file: None,
-            url: None,
+            desc: None,
+            url: Some(url.clone()),
             selected: None,
             extra: None,
             updated: None,
             option: Some(PrfOption {
-                url: Some(url.clone()),
                 user_agent: options.default_user_agent.clone(),
                 update_interval: options.update_interval.map(|i| i as u64),
                 ..Default::default()
             }),
+            home: None,
+            file_data: None,
         };
         
         // 尝试导入
-        match feat::import_profile(url.clone(), Some(item.option.clone().unwrap())).await {
+        match super::import_profile(url.clone(), item.option.clone()).await {
             Ok(_) => {
                 success_results.push(ImportResult {
                     url,

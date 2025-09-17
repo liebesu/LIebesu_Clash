@@ -21,7 +21,7 @@ pub enum TaskType {
 }
 
 /// 任务状态枚举
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum TaskStatus {
     Active,                // 活跃
     Paused,               // 暂停
@@ -244,7 +244,7 @@ pub async fn get_task_execution_history(
 pub async fn get_task_statistics(task_id: String) -> CmdResult<TaskStatistics> {
     logging!(info, Type::Cmd, true, "[任务管理] 获取任务统计: {}", task_id);
     
-    let history = load_execution_history(&task_id, None).await?;
+    let history = load_execution_history(&task_id, 10).await?;
     let statistics = calculate_task_statistics(&task_id, &history);
     
     Ok(statistics)

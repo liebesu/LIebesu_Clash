@@ -2,7 +2,7 @@ use crate::config::Config;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tauri::{api::path::app_data_dir, Config as TauriConfig, PackageInfo};
+use tauri::{Config as TauriConfig, Manager};
 use chrono::{DateTime, Duration, Local, Utc};
 use nanoid::nanoid;
 
@@ -59,7 +59,7 @@ pub struct CleanupResult {
 pub async fn get_subscription_cleanup_preview(
     options: SubscriptionCleanupOptions,
 ) -> Result<CleanupPreview, String> {
-    let config = Config::verge().latest();
+    let config = Config::verge().await.latest();
     let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
     
     let mut all_subscriptions = Vec::new();
@@ -133,7 +133,7 @@ pub async fn get_subscription_cleanup_preview(
 // 批量更新所有订阅
 #[tauri::command]
 pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
-    let config = Config::verge().latest();
+    let config = Config::verge().await.latest();
     let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
     
     let mut updated_subscriptions = Vec::new();
@@ -208,7 +208,7 @@ pub async fn cleanup_expired_subscriptions(
 // 获取订阅管理统计信息
 #[tauri::command]
 pub async fn get_subscription_management_stats() -> Result<serde_json::Value, String> {
-    let config = Config::verge().latest();
+    let config = Config::verge().await.latest();
     let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
     
     let mut total_count = 0;
@@ -318,7 +318,8 @@ async fn update_single_subscription(uid: &str) -> Result<()> {
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     
     // 50% 的成功率（用于测试）
-    if rand::random::<f32>() > 0.5 {
+    use rand::Rng;
+    if rand::thread_rng().gen::<f32>() > 0.5 {
         Ok(())
     } else {
         Err(anyhow!("网络连接失败"))

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
-use tauri::{api::path::app_data_dir, Config, PackageInfo};
+use tauri::{Config, Manager};
 use nanoid::nanoid;
 
 /// 搜索条件
@@ -1038,8 +1038,8 @@ async fn record_search_history(
 
 /// 获取搜索数据目录
 fn get_search_data_dir() -> Result<PathBuf> {
-    let app_dir = app_data_dir(&Config::default(), &PackageInfo::default())
-        .context("Failed to get app data directory")?;
+    let app_dir = dirs::verge_path()
+        .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
     let search_dir = app_dir.join("search");
     
     if !search_dir.exists() {

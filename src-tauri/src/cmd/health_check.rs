@@ -57,8 +57,10 @@ pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHea
     let profiles_ref = profiles.latest_ref();
     
     let profile = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
-        .find(|item| item.uid == Some(uid.clone()))
+        .find(|item| item.uid.as_ref() == Some(&uid))
         .ok_or_else(|| "Profile not found".to_string())?;
     
     let result = check_single_subscription(profile).await;
@@ -78,8 +80,10 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
     
     // 过滤出远程订阅
     let remote_profiles: Vec<&PrfItem> = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
-        .filter(|item| item.option.as_ref().map(|opt| opt.url.is_some()).unwrap_or(false))
+        .filter(|item| item.url.is_some())
         .collect();
     
     let total = remote_profiles.len();
@@ -141,8 +145,10 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
     let profiles_ref = profiles.latest_ref();
     
     let profile = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
-        .find(|item| item.uid == Some(uid.clone()))
+        .find(|item| item.uid.as_ref() == Some(&uid))
         .ok_or_else(|| "Profile not found".to_string())?;
     
     let mut result = check_single_subscription(profile).await;
@@ -163,7 +169,7 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
 async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResult {
     let uid = profile.uid.clone().unwrap_or_default();
     let name = profile.name.clone().unwrap_or("未知订阅".to_string());
-    let url = profile.option.as_ref().and_then(|opt| opt.url.clone());
+    let url = profile.url.clone();
     let last_update = profile.updated;
     let now = chrono::Utc::now().timestamp();
     
@@ -174,7 +180,7 @@ async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResul
         status: HealthStatus::Unknown,
         response_time: None,
         node_count: None,
-        last_update,
+        last_update: last_update.map(|u| u as i64),
         error_message: None,
         last_checked: now,
     };

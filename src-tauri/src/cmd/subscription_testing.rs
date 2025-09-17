@@ -75,7 +75,7 @@ pub struct SubscriptionTestResult {
 }
 
 /// 质量等级
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum QualityGrade {
     Excellent,  // 优秀 (90-100分)
     Good,       // 良好 (70-89分)
@@ -164,8 +164,10 @@ pub async fn test_subscription(
     let profiles_ref = profiles.latest_ref();
     
     let subscription = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
-        .find(|item| item.uid == Some(subscription_uid.clone()))
+        .find(|item| item.uid.as_ref() == Some(&subscription_uid))
         .ok_or_else(|| "Subscription not found".to_string())?;
     
     // 解析订阅配置获取节点列表
@@ -183,7 +185,7 @@ pub async fn test_subscription(
     // 分析结果
     let result = analyze_test_results(
         subscription_uid,
-        subscription.name.clone().unwrap_or("Unknown".to_string()),
+        subscription.name.clone().unwrap_or_else(|| "Unknown".to_string()),
         test_type,
         node_results,
         start_time,
@@ -213,8 +215,10 @@ pub async fn test_all_subscriptions(
     let profiles_ref = profiles.latest_ref();
     
     let subscriptions: Vec<&PrfItem> = profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
         .iter()
-        .filter(|item| item.option.as_ref().map(|opt| opt.url.is_some()).unwrap_or(false))
+        .filter(|item| item.url.is_some())
         .collect();
     
     if subscriptions.is_empty() {
@@ -639,7 +643,7 @@ fn analyze_test_results(
             .filter_map(|r| r.download_speed_mbps)
             .collect();
         if !speeds.is_empty() {
-            Some(speeds.iter().sum::<f64>() / speeds.len())
+            Some(speeds.iter().sum::<f64>() / speeds.len() as f64)
         } else {
             None
         }
@@ -652,7 +656,7 @@ fn analyze_test_results(
             .filter_map(|r| r.upload_speed_mbps)
             .collect();
         if !speeds.is_empty() {
-            Some(speeds.iter().sum::<f64>() / speeds.len())
+            Some(speeds.iter().sum::<f64>() / speeds.len() as f64)
         } else {
             None
         }
@@ -812,7 +816,7 @@ fn generate_test_summary(results: &[SubscriptionTestResult]) -> TestSummary {
         .collect();
     
     let avg_latency_ms = if !latencies.is_empty() {
-        latencies.iter().sum::<f64>() / latencies.len()
+        latencies.iter().sum::<f64>() / latencies.len() as f64
     } else {
         0.0
     };

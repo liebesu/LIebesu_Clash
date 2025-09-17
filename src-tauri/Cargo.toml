@@ -82,6 +82,9 @@ isahc = { version = "1.7.2", default-features = false, features = [
   "text-decoding",
   "parking_lot",
 ] }
+url = "2.5.4"
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
+rand = "0.8.5"
 
 
 [target.'cfg(windows)'.dependencies]

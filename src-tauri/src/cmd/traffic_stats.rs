@@ -1,7 +1,7 @@
 use super::CmdResult;
 use crate::{
     config::Config,
-    utils::logging::{logging, Type},
+    utils::logging::Type,
 };
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -221,14 +221,16 @@ pub async fn record_traffic_usage(
         .push(record);
 
     // 更新统计
-    update_subscription_stats(&mut storage, &subscription_uid, &subscription_name).await?;
+    update_subscription_stats(&mut storage, &subscription_uid, &subscription_name).await
+        .map_err(|e| format!("Failed to update subscription stats: {}", e))?;
 
     // 更新全局计数器
     storage.total_upload.fetch_add(upload_bytes, Ordering::Relaxed);
     storage.total_download.fetch_add(download_bytes, Ordering::Relaxed);
 
     // 检查并生成警告
-    check_and_generate_alerts(&mut storage, &subscription_uid).await?;
+    check_and_generate_alerts(&mut storage, &subscription_uid).await
+        .map_err(|e| format!("Failed to check and generate alerts: {}", e))?;
 
     Ok(())
 }
@@ -407,7 +409,8 @@ pub async fn cleanup_traffic_history(days_to_keep: u32) -> CmdResult<u64> {
         if !records.is_empty() {
             let subscription_name = get_subscription_name(uid).await
                 .unwrap_or_else(|| "Unknown".to_string());
-            update_subscription_stats(&mut storage, uid, &subscription_name).await?;
+            update_subscription_stats(&mut storage, uid, &subscription_name).await
+                .map_err(|e| format!("Failed to update subscription stats: {}", e))?;
         }
     }
 
@@ -438,12 +441,12 @@ pub async fn export_traffic_data(
     // 应用日期过滤
     let start_timestamp = start_date.as_ref()
         .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
-        .map(|d| d.and_hms_opt(0, 0, 0).unwrap().timestamp())
+        .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc().timestamp())
         .unwrap_or(0);
 
     let end_timestamp = end_date.as_ref()
         .and_then(|d| chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").ok())
-        .map(|d| d.and_hms_opt(23, 59, 59).unwrap().timestamp())
+        .map(|d| d.and_hms_opt(23, 59, 59).unwrap().and_utc().timestamp())
         .unwrap_or(i64::MAX);
 
     for record in records_to_export {
@@ -521,7 +524,10 @@ async fn get_subscription_name(subscription_uid: &str) -> Option<String> {
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
     
-    profiles_ref.items.iter()
+    profiles_ref.items
+        .as_ref()
+        .unwrap_or(&Vec::new())
+        .iter()
         .find(|item| item.uid.as_deref() == Some(subscription_uid))
         .and_then(|item| item.name.clone())
 }
@@ -543,7 +549,8 @@ async fn update_subscription_stats(
     subscription_uid: &str,
     subscription_name: &str,
 ) -> Result<()> {
-    let records = storage.records.get(subscription_uid).unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let records = storage.records.get(subscription_uid).unwrap_or(&empty_vec);
     
     if records.is_empty() {
         return Ok(());

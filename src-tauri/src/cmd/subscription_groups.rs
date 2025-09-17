@@ -1,7 +1,6 @@
 use super::CmdResult;
 use crate::{
-    config::Config,
-    utils::logging::{logging, Type},
+    utils::logging::Type,
 };
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -430,7 +429,7 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
     let subscriptions: Vec<_> = profiles_ref.items.iter()
-        .filter(|item| item.type == "remote")
+        .filter(|item| item.itype == "remote")
         .collect();
 
     // 应用每个分组的自动规则
@@ -615,7 +614,7 @@ pub async fn get_smart_grouping_suggestions() -> CmdResult<Vec<GroupSuggestion>>
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
     let subscriptions: Vec<_> = profiles_ref.items.iter()
-        .filter(|item| item.type == "remote")
+        .filter(|item| item.itype == "remote")
         .collect();
 
     let mut suggestions = Vec::new();
@@ -728,7 +727,7 @@ pub async fn create_default_groups() -> CmdResult<Vec<String>> {
             color: "#FF6347".to_string(),
             icon: "games".to_string(),
             subscription_uids: Vec::new(),
-            tags: vec!["gaming", "low-latency".to_string()],
+            tags: vec!["gaming".to_string(), "low-latency".to_string()],
             is_favorite: false,
             sort_order: 2,
             auto_rules: vec![
