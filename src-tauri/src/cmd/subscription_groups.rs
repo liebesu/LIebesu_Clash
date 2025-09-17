@@ -172,14 +172,16 @@ pub async fn update_subscription_group(group: SubscriptionGroup) -> CmdResult<()
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     
     // 获取旧的分组信息以清理映射
-    if let Some(old_group) = storage.groups.get(&group.id) {
-        // 清理旧的映射
-        for subscription_uid in &old_group.subscription_uids {
-            if let Some(groups) = storage.subscription_to_groups.get_mut(subscription_uid) {
-                groups.remove(&group.id);
-                if groups.is_empty() {
-                    storage.subscription_to_groups.remove(subscription_uid);
-                }
+    let old_subscription_uids = storage.groups.get(&group.id)
+        .map(|old_group| old_group.subscription_uids.clone())
+        .unwrap_or_default();
+    
+    // 清理旧的映射
+    for subscription_uid in &old_subscription_uids {
+        if let Some(groups) = storage.subscription_to_groups.get_mut(subscription_uid) {
+            groups.remove(&group.id);
+            if groups.is_empty() {
+                storage.subscription_to_groups.remove(subscription_uid);
             }
         }
     }
@@ -336,24 +338,36 @@ pub async fn batch_add_subscriptions_to_group(
     let mut successful = 0;
     let mut errors = Vec::new();
 
-    if let Some(group) = storage.groups.get_mut(&group_id) {
-        for subscription_uid in &subscription_uids {
-            if !group.subscription_uids.contains(subscription_uid) {
-                group.subscription_uids.push(subscription_uid.clone());
-                
-                // 更新映射
-                storage.subscription_to_groups
-                    .entry(subscription_uid.clone())
-                    .or_insert_with(HashSet::new)
-                    .insert(group_id.clone());
-                
-                successful += 1;
-            } else {
-                errors.push(format!("订阅 {} 已在分组中", subscription_uid));
+    if storage.groups.contains_key(&group_id) {
+        let mut uids_to_add = Vec::new();
+        
+        // 首先确定哪些订阅需要添加
+        if let Some(group) = storage.groups.get(&group_id) {
+            for subscription_uid in &subscription_uids {
+                if !group.subscription_uids.contains(subscription_uid) {
+                    uids_to_add.push(subscription_uid.clone());
+                    successful += 1;
+                } else {
+                    errors.push(format!("订阅 {} 已在分组中", subscription_uid));
+                }
             }
         }
         
-        group.updated_at = chrono::Utc::now().timestamp();
+        // 然后添加订阅并更新映射
+        if let Some(group) = storage.groups.get_mut(&group_id) {
+            for uid in &uids_to_add {
+                group.subscription_uids.push(uid.clone());
+            }
+            group.updated_at = chrono::Utc::now().timestamp();
+        }
+        
+        // 更新映射
+        for uid in &uids_to_add {
+            storage.subscription_to_groups
+                .entry(uid.clone())
+                .or_insert_with(HashSet::new)
+                .insert(group_id.clone());
+        }
     } else {
         errors.push("分组不存在".to_string());
     }
@@ -382,26 +396,38 @@ pub async fn batch_remove_subscriptions_from_group(
     let mut successful = 0;
     let mut errors = Vec::new();
 
-    if let Some(group) = storage.groups.get_mut(&group_id) {
-        for subscription_uid in &subscription_uids {
-            if group.subscription_uids.contains(subscription_uid) {
-                group.subscription_uids.retain(|uid| uid != subscription_uid);
-                
-                // 更新映射
-                if let Some(groups) = storage.subscription_to_groups.get_mut(subscription_uid) {
-                    groups.remove(&group_id);
-                    if groups.is_empty() {
-                        storage.subscription_to_groups.remove(subscription_uid);
-                    }
+    if storage.groups.contains_key(&group_id) {
+        let mut uids_to_remove = Vec::new();
+        
+        // 首先确定哪些订阅需要移除
+        if let Some(group) = storage.groups.get(&group_id) {
+            for subscription_uid in &subscription_uids {
+                if group.subscription_uids.contains(subscription_uid) {
+                    uids_to_remove.push(subscription_uid.clone());
+                    successful += 1;
+                } else {
+                    errors.push(format!("订阅 {} 不在分组中", subscription_uid));
                 }
-                
-                successful += 1;
-            } else {
-                errors.push(format!("订阅 {} 不在分组中", subscription_uid));
             }
         }
         
-        group.updated_at = chrono::Utc::now().timestamp();
+        // 然后移除订阅并更新映射
+        if let Some(group) = storage.groups.get_mut(&group_id) {
+            for uid in &uids_to_remove {
+                group.subscription_uids.retain(|existing_uid| existing_uid != uid);
+            }
+            group.updated_at = chrono::Utc::now().timestamp();
+        }
+        
+        // 更新映射
+        for uid in &uids_to_remove {
+            if let Some(groups) = storage.subscription_to_groups.get_mut(uid) {
+                groups.remove(&group_id);
+                if groups.is_empty() {
+                    storage.subscription_to_groups.remove(uid);
+                }
+            }
+        }
     } else {
         errors.push("分组不存在".to_string());
     }
@@ -430,8 +456,9 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
     // 获取所有订阅
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let subscriptions: Vec<_> = profiles_ref.items.iter()
-        .filter(|item| item.itype == "remote")
+    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let subscriptions: Vec<_> = items.iter()
+        .filter(|item| item.itype.as_ref().map(|t| t == "remote").unwrap_or(false))
         .collect();
 
     // 应用每个分组的自动规则
@@ -576,6 +603,7 @@ pub async fn import_subscription_groups(import_data: String) -> CmdResult<BatchO
     let mut successful = 0;
     let mut errors = Vec::new();
 
+    let total_groups = export_data.groups.len();
     for mut group in export_data.groups {
         // 生成新的ID避免冲突
         let old_id = group.id.clone();
@@ -590,16 +618,17 @@ pub async fn import_subscription_groups(import_data: String) -> CmdResult<BatchO
                 .insert(group.id.clone());
         }
 
-        storage.groups.insert(group.id.clone(), group);
+        let new_id = group.id.clone();
+        storage.groups.insert(new_id.clone(), group);
         successful += 1;
 
-        logging!(info, Type::Cmd, true, "[分组管理] 导入分组: {} -> {}", old_id, group.id);
+        logging!(info, Type::Cmd, true, "[分组管理] 导入分组: {} -> {}", old_id, new_id);
     }
 
     let duration = start_time.elapsed().as_millis() as u64;
     
     Ok(BatchOperationResult {
-        total_items: export_data.groups.len(),
+        total_items: total_groups,
         successful_items: successful,
         failed_items: 0,
         errors,
@@ -615,8 +644,9 @@ pub async fn get_smart_grouping_suggestions() -> CmdResult<Vec<GroupSuggestion>>
     // 获取所有订阅
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let subscriptions: Vec<_> = profiles_ref.items.iter()
-        .filter(|item| item.itype == "remote")
+    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let subscriptions: Vec<_> = items.iter()
+        .filter(|item| item.itype.as_ref().map(|t| t == "remote").unwrap_or(false))
         .collect();
 
     let mut suggestions = Vec::new();
@@ -756,7 +786,9 @@ pub async fn create_default_groups() -> CmdResult<Vec<String>> {
     for group in default_groups {
         match create_subscription_group(group).await {
             Ok(id) => group_ids.push(id),
-            Err(e) => logging!(warn, Type::Cmd, true, "[分组管理] 创建默认分组失败: {}", e),
+            Err(e) => {
+                logging!(warn, Type::Cmd, true, "[分组管理] 创建默认分组失败: {}", e);
+            }
         }
     }
 

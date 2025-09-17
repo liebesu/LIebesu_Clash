@@ -406,13 +406,16 @@ pub async fn cleanup_traffic_history(days_to_keep: u32) -> CmdResult<u64> {
     cleaned_count += (original_alerts_len - storage.alerts.len()) as u64;
 
     // 重新计算统计数据
-    for (uid, records) in &storage.records {
-        if !records.is_empty() {
-            let subscription_name = get_subscription_name(uid).await
-                .unwrap_or_else(|| "Unknown".to_string());
-            update_subscription_stats(&mut storage, uid, &subscription_name).await
-                .map_err(|e| format!("Failed to update subscription stats: {}", e))?;
-        }
+    let uids_to_update: Vec<String> = storage.records.iter()
+        .filter(|(_, records)| !records.is_empty())
+        .map(|(uid, _)| uid.clone())
+        .collect();
+        
+    for uid in uids_to_update {
+        let subscription_name = get_subscription_name(&uid).await
+            .unwrap_or_else(|| "Unknown".to_string());
+        update_subscription_stats(&mut storage, &uid, &subscription_name).await
+            .map_err(|e| format!("Failed to update subscription stats: {}", e))?;
     }
 
     logging!(info, Type::Cmd, true, "[流量统计] 清理完成，删除{}条记录", cleaned_count);

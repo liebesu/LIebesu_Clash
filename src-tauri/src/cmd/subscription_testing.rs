@@ -161,18 +161,20 @@ pub async fn test_subscription(
     
     // 获取订阅信息
     let profiles = Config::profiles().await;
-    let profiles_ref = profiles.latest_ref();
-    
-    let empty_vec = Vec::new();
-    let subscription = profiles_ref.items
-        .as_ref()
-        .unwrap_or(&empty_vec)
-        .iter()
-        .find(|item| item.uid.as_ref() == Some(&subscription_uid))
-        .ok_or_else(|| "Subscription not found".to_string())?;
+    let subscription = {
+        let profiles_ref = profiles.latest_ref();
+        let empty_vec = Vec::new();
+        profiles_ref.items
+            .as_ref()
+            .unwrap_or(&empty_vec)
+            .iter()
+            .find(|item| item.uid.as_ref() == Some(&subscription_uid))
+            .cloned()
+            .ok_or_else(|| "Subscription not found".to_string())?
+    };
     
     // 解析订阅配置获取节点列表
-    let nodes = parse_subscription_nodes(subscription).await?;
+    let nodes = parse_subscription_nodes(&subscription).await?;
     
     if nodes.is_empty() {
         return Err("No nodes found in subscription".to_string());
@@ -213,15 +215,17 @@ pub async fn test_all_subscriptions(
     
     // 获取所有订阅
     let profiles = Config::profiles().await;
-    let profiles_ref = profiles.latest_ref();
-    
-    let empty_vec = Vec::new();
-    let subscriptions: Vec<&PrfItem> = profiles_ref.items
-        .as_ref()
-        .unwrap_or(&empty_vec)
-        .iter()
-        .filter(|item| item.url.is_some())
-        .collect();
+    let subscriptions: Vec<PrfItem> = {
+        let profiles_ref = profiles.latest_ref();
+        let empty_vec = Vec::new();
+        profiles_ref.items
+            .as_ref()
+            .unwrap_or(&empty_vec)
+            .iter()
+            .filter(|item| item.url.is_some())
+            .cloned()
+            .collect()
+    };
     
     if subscriptions.is_empty() {
         return Err("No subscriptions found".to_string());

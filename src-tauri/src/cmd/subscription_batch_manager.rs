@@ -59,15 +59,16 @@ pub struct CleanupResult {
 pub async fn get_subscription_cleanup_preview(
     options: SubscriptionCleanupOptions,
 ) -> Result<CleanupPreview, String> {
-    let config = Config::verge().await.latest_ref();
-    let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
+    let profiles_config = Config::profiles().await;
+    let profiles = profiles_config.latest_ref();
     
     let mut all_subscriptions = Vec::new();
     let mut expired_subscriptions = Vec::new();
     
     let threshold_date = Local::now() - Duration::days(options.days_threshold as i64);
     
-    for profile in profiles {
+    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    for profile in items {
         if let Some(uid) = &profile.uid {
             let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
             let url = profile.url.clone();
@@ -133,14 +134,15 @@ pub async fn get_subscription_cleanup_preview(
 // 批量更新所有订阅
 #[tauri::command]
 pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
-    let config = Config::verge().await.latest_ref();
-    let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
+    let profiles_config = Config::profiles().await;
+    let profiles = profiles_config.latest_ref();
     
     let mut updated_subscriptions = Vec::new();
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
     
-    for profile in profiles {
+    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    for profile in items {
         if let Some(uid) = &profile.uid {
             let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
             
@@ -208,8 +210,8 @@ pub async fn cleanup_expired_subscriptions(
 // 获取订阅管理统计信息
 #[tauri::command]
 pub async fn get_subscription_management_stats() -> Result<serde_json::Value, String> {
-    let config = Config::verge().await.latest_ref();
-    let profiles = config.profiles.as_ref().unwrap_or(&vec![]);
+    let profiles_config = Config::profiles().await;
+    let profiles = profiles_config.latest_ref();
     
     let mut total_count = 0;
     let mut remote_count = 0;
@@ -221,7 +223,8 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
     
     let now = Local::now();
     
-    for profile in profiles {
+    let items = profiles.items.as_ref().unwrap_or(&Vec::new());
+    for profile in items {
         total_count += 1;
         
         if profile.url.is_some() {

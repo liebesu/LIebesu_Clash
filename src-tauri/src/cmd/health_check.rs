@@ -54,17 +54,19 @@ pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHea
     logging!(info, Type::Cmd, true, "[健康检查] 开始检查订阅: {}", uid);
     
     let profiles = Config::profiles().await;
-    let profiles_ref = profiles.latest_ref();
+    let profile = {
+        let profiles_ref = profiles.latest_ref();
+        let empty_vec = Vec::new();
+        profiles_ref.items
+            .as_ref()
+            .unwrap_or(&empty_vec)
+            .iter()
+            .find(|item| item.uid.as_ref() == Some(&uid))
+            .cloned()
+            .ok_or_else(|| "Profile not found".to_string())?
+    };
     
-    let empty_vec = Vec::new();
-    let profile = profiles_ref.items
-        .as_ref()
-        .unwrap_or(&empty_vec)
-        .iter()
-        .find(|item| item.uid.as_ref() == Some(&uid))
-        .ok_or_else(|| "Profile not found".to_string())?;
-    
-    let result = check_single_subscription(profile).await;
+    let result = check_single_subscription(&profile).await;
     logging!(info, Type::Cmd, true, "[健康检查] 完成检查订阅 {}: {:?}", uid, result.status);
     
     Ok(result)
@@ -77,16 +79,17 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
     logging!(info, Type::Cmd, true, "[批量健康检查] 开始检查所有订阅");
     
     let profiles = Config::profiles().await;
-    let profiles_ref = profiles.latest_ref();
-    
-    // 过滤出远程订阅
-    let empty_vec = Vec::new();
-    let remote_profiles: Vec<&PrfItem> = profiles_ref.items
-        .as_ref()
-        .unwrap_or(&empty_vec)
-        .iter()
-        .filter(|item| item.url.is_some())
-        .collect();
+    let remote_profiles: Vec<PrfItem> = {
+        let profiles_ref = profiles.latest_ref();
+        let empty_vec = Vec::new();
+        profiles_ref.items
+            .as_ref()
+            .unwrap_or(&empty_vec)
+            .iter()
+            .filter(|item| item.url.is_some())
+            .cloned()
+            .collect()
+    };
     
     let total = remote_profiles.len();
     let mut results = Vec::new();
@@ -96,12 +99,11 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
     let mut tasks = Vec::new();
     
     for profile in remote_profiles {
-        let profile_clone = profile.clone();
         let permit = semaphore.clone();
         
         let task = tokio::spawn(async move {
             let _permit = permit.acquire().await.unwrap();
-            check_single_subscription(&profile_clone).await
+            check_single_subscription(&profile).await
         });
         
         tasks.push(task);
@@ -144,17 +146,19 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
     logging!(info, Type::Cmd, true, "[订阅详情] 获取订阅详细信息: {}", uid);
     
     let profiles = Config::profiles().await;
-    let profiles_ref = profiles.latest_ref();
+    let profile = {
+        let profiles_ref = profiles.latest_ref();
+        let empty_vec = Vec::new();
+        profiles_ref.items
+            .as_ref()
+            .unwrap_or(&empty_vec)
+            .iter()
+            .find(|item| item.uid.as_ref() == Some(&uid))
+            .cloned()
+            .ok_or_else(|| "Profile not found".to_string())?
+    };
     
-    let empty_vec = Vec::new();
-    let profile = profiles_ref.items
-        .as_ref()
-        .unwrap_or(&empty_vec)
-        .iter()
-        .find(|item| item.uid.as_ref() == Some(&uid))
-        .ok_or_else(|| "Profile not found".to_string())?;
-    
-    let mut result = check_single_subscription(profile).await;
+    let mut result = check_single_subscription(&profile).await;
     
     // 如果订阅可访问，尝试解析节点数量
     if matches!(result.status, HealthStatus::Healthy | HealthStatus::Warning) {

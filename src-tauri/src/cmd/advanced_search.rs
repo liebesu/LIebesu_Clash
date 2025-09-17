@@ -216,7 +216,7 @@ pub async fn advanced_search(criteria: SearchCriteria) -> Result<SearchResult, S
     let offset = criteria.offset.unwrap_or(0) as usize;
     let limit = criteria.limit.unwrap_or(100) as usize;
     
-    let paginated_items = if offset < filtered_items.len() {
+    let mut paginated_items = if offset < filtered_items.len() {
         let end = std::cmp::min(offset + limit, filtered_items.len());
         filtered_items[offset..end].to_vec()
     } else {
