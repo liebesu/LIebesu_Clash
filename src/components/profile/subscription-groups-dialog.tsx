@@ -433,7 +433,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
         {groups.map((group) => {
           const stat = statistics.find(s => s.group_id === group.id);
           return (
-            <Grid size={{ xs: 12, sm: 6, md: 4} key={group.id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.id}>
               <Card variant="outlined" sx={{ position: "relative" }}>
                 <CardContent>
                   {/* 分组头部 */}

@@ -738,7 +738,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                 <AccordionDetails>
                   <Grid container spacing={2}>
                     {Object.entries(searchResult.facets).map(([facetName, values]) => (
-                      <Grid size={{ xs: 12, sm: 6, md: 4} key={facetName}>
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={facetName}>
                         <Typography variant="subtitle2" gutterBottom>
                           {facetName}
                         </Typography>
@@ -844,7 +844,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               ) : (
                 <Grid container spacing={2}>
                   {searchResult.items.map((item) => (
-                    <Grid size={{ xs: 12, sm: 6, md: 4} key={item.uid}>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.uid}>
                       <Card variant="outlined" sx={{ height: "100%" }}>
                         <CardContent>
                           <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 1 }}>

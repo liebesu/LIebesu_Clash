@@ -354,7 +354,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           </Typography>
           <Grid container spacing={2}>
             {formatOptions.map((option) => (
-              <Grid size={{ xs: 12, sm: 6} key={option.value}>
+              <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
                 <Card
                   variant={exportOptions.format === option.value ? "elevation" : "outlined"}
                   sx={{

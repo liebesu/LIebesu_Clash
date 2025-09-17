@@ -494,7 +494,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       {backups.length > 0 ? (
         <Grid container spacing={2}>
           {backups.map((backup) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4} key={backup.backup_id}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={backup.backup_id}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 2 }}>
