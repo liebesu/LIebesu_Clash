@@ -340,7 +340,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       setSelectedBackup(backup);
     } catch (error) {
       console.error("获取备份详情失败:", error);
-      showNotice("获取备份详情失败: "error", error as string);
+      showNotice("error", "获取备份详情失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -360,7 +360,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       handleMenuClose();
     } catch (error) {
       console.error("删除备份失败:", error);
-      showNotice("删除备份失败: "error", error as string);
+      showNotice("error", "删除备份失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -379,7 +379,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       handleMenuClose();
     } catch (error) {
       console.error("验证备份失败:", error);
-      showNotice("验证备份失败: "error", error as string);
+      showNotice("error", "验证备份失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -394,7 +394,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       showNotice("success", "同步到云端成功");
     } catch (error) {
       console.error("同步失败:", error);
-      showNotice("同步失败: "error", error as string);
+      showNotice("error", "同步失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -410,7 +410,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       showNotice("success", "从云端同步成功");
     } catch (error) {
       console.error("同步失败:", error);
-      showNotice("同步失败: "error", error as string);
+      showNotice("error", "同步失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -424,7 +424,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       showNotice("success", "WebDAV配置保存成功");
     } catch (error) {
       console.error("保存配置失败:", error);
-      showNotice("保存配置失败: "error", error as string);
+      showNotice("error", "保存配置失败: " + error);
     } finally {
       setLoading(false);
     }
