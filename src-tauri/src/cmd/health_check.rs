@@ -289,7 +289,7 @@ async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, St
 /// 统计配置文件中的节点数量
 fn count_nodes_in_config(content: &str) -> usize {
     // 尝试解析YAML格式
-    if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(content) {
+    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content) {
         if let Some(proxies) = yaml_value.get("proxies") {
             if let Some(proxies_array) = proxies.as_sequence() {
                 return proxies_array.len();

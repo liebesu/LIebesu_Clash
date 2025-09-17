@@ -388,7 +388,7 @@ fn parse_clash_config(content: &str) -> CmdResult<Vec<NodeInfo>> {
     let mut nodes = Vec::new();
     
     // 尝试解析YAML
-    if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(content) {
+    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content) {
         if let Some(proxies) = yaml_value.get("proxies") {
             if let Some(proxies_array) = proxies.as_sequence() {
                 for proxy in proxies_array {

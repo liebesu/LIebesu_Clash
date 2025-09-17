@@ -287,8 +287,8 @@ fn parse_json_urls(content: &str) -> Result<Vec<String>, serde_json::Error> {
 }
 
 /// 从YAML格式解析URL
-fn parse_yaml_urls(content: &str) -> Result<Vec<String>, serde_yaml::Error> {
-    let value: serde_yaml::Value = serde_yaml::from_str(content)?;
+fn parse_yaml_urls(content: &str) -> Result<Vec<String>, serde_yaml_ng::Error> {
+    let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(content)?;
     let mut urls = Vec::new();
     
     if let Some(sequence) = value.as_sequence() {
@@ -446,7 +446,7 @@ async fn import_subscriptions(
             option: Some(PrfOption {
                 url: Some(url.clone()),
                 user_agent: options.default_user_agent.clone(),
-                update_interval: options.update_interval,
+                update_interval: options.update_interval.map(|i| i as u64),
                 ..Default::default()
             }),
         };
