@@ -8,7 +8,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use uuid::Uuid;
+use nanoid::nanoid;
 use url::Url;
 
 /// 批量导入结果
@@ -193,7 +193,7 @@ pub async fn preview_batch_import(
             url,
             status: ImportStatus::Success,
             error_message: None,
-            uid: Some(Uuid::new_v4().to_string()),
+            uid: Some(nanoid!()),
         }
     }).collect();
     
@@ -433,7 +433,7 @@ async fn import_subscriptions(
         let name = generate_subscription_name(&url, options);
         
         // 创建订阅项
-        let uid = Uuid::new_v4().to_string();
+        let uid = nanoid!();
         let item = PrfItem {
             uid: Some(uid.clone()),
             name: name.clone(),
@@ -498,4 +498,319 @@ fn generate_subscription_name(url: &str, options: &BatchImportOptions) -> Option
     };
     
     Some(name)
+}
+
+// ===== 批量导出功能 =====
+
+/// 导出预览结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportPreview {
+    pub format: String,
+    pub subscription_count: u32,
+    pub content_size: u64,
+    pub preview_content: String,
+    pub include_settings: bool,
+}
+
+/// 导出选项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportOptions {
+    pub format: String,              // 导出格式: json, yaml, txt, clash
+    pub include_settings: bool,      // 是否包含设置
+    pub include_groups: bool,        // 是否包含分组信息
+    pub compress: bool,              // 是否压缩
+    pub encrypt: bool,               // 是否加密
+    pub password: Option<String>,    // 加密密码
+}
+
+/// 批量导出订阅
+#[tauri::command]
+pub async fn batch_export_subscriptions(
+    subscription_uids: Vec<String>,
+    options: ExportOptions,
+) -> Result<String, String> {
+    let start_time = std::time::Instant::now();
+    
+    match options.format.as_str() {
+        "json" => export_as_json(subscription_uids, &options).await,
+        "yaml" => export_as_yaml(subscription_uids, &options).await,
+        "txt" => export_as_text(subscription_uids).await,
+        "clash" => export_as_clash_config(subscription_uids, &options).await,
+        _ => Err("不支持的导出格式".to_string()),
+    }
+}
+
+/// 导出到文件
+#[tauri::command]
+pub async fn export_subscriptions_to_file(
+    subscription_uids: Vec<String>,
+    file_path: String,
+    options: ExportOptions,
+) -> Result<(), String> {
+    let export_data = batch_export_subscriptions(subscription_uids, options).await?;
+    
+    std::fs::write(&file_path, export_data)
+        .map_err(|e| format!("写入文件失败: {}", e))?;
+    
+    Ok(())
+}
+
+/// 获取导出预览
+#[tauri::command]
+pub async fn preview_export(
+    subscription_uids: Vec<String>,
+    options: ExportOptions,
+) -> Result<ExportPreview, String> {
+    let export_data = batch_export_subscriptions(subscription_uids.clone(), options.clone()).await?;
+    
+    let preview = ExportPreview {
+        format: options.format,
+        subscription_count: subscription_uids.len() as u32,
+        content_size: export_data.len() as u64,
+        preview_content: if export_data.len() > 1000 {
+            format!("{}...", &export_data[..1000])
+        } else {
+            export_data
+        },
+        include_settings: options.include_settings,
+    };
+    
+    Ok(preview)
+}
+
+/// 获取所有订阅用于导出
+#[tauri::command]
+pub async fn get_all_subscriptions_for_export() -> Result<Vec<ExportableSubscription>, String> {
+    // TODO: 从实际配置读取所有订阅
+    // 这里返回模拟数据
+    Ok(vec![
+        ExportableSubscription {
+            uid: "sub1".to_string(),
+            name: "高速美国节点".to_string(),
+            url: Some("https://example.com/sub1".to_string()),
+            subscription_type: "clash".to_string(),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: Some(chrono::Utc::now().timestamp()),
+            node_count: 25,
+            is_valid: true,
+        },
+        ExportableSubscription {
+            uid: "sub2".to_string(),
+            name: "日本游戏专用".to_string(),
+            url: Some("https://example.com/sub2".to_string()),
+            subscription_type: "v2ray".to_string(),
+            created_at: chrono::Utc::now().timestamp() - 86400,
+            updated_at: Some(chrono::Utc::now().timestamp() - 3600),
+            node_count: 15,
+            is_valid: true,
+        },
+    ])
+}
+
+/// 可导出的订阅信息
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportableSubscription {
+    pub uid: String,
+    pub name: String,
+    pub url: Option<String>,
+    pub subscription_type: String,
+    pub created_at: i64,
+    pub updated_at: Option<i64>,
+    pub node_count: u32,
+    pub is_valid: bool,
+}
+
+// 导出格式实现
+
+async fn export_as_json(subscription_uids: Vec<String>, options: &ExportOptions) -> Result<String, String> {
+    let mut export_obj = serde_json::Map::new();
+    
+    // 添加元数据
+    export_obj.insert("export_time".to_string(), serde_json::Value::String(
+        chrono::Utc::now().to_rfc3339()
+    ));
+    export_obj.insert("format_version".to_string(), serde_json::Value::String("1.0".to_string()));
+    export_obj.insert("exported_by".to_string(), serde_json::Value::String("Clash Verge Rev".to_string()));
+    
+    // 添加订阅数据
+    let mut subscriptions = Vec::new();
+    for uid in subscription_uids {
+        // TODO: 从实际配置读取订阅数据
+        let subscription = serde_json::json!({
+            "uid": uid,
+            "name": format!("订阅_{}", uid),
+            "url": format!("https://example.com/sub/{}", uid),
+            "type": "clash",
+            "created_at": chrono::Utc::now().timestamp(),
+            "updated_at": chrono::Utc::now().timestamp(),
+            "valid": true
+        });
+        subscriptions.push(subscription);
+    }
+    
+    export_obj.insert("subscriptions".to_string(), serde_json::Value::Array(subscriptions));
+    
+    // 可选包含设置
+    if options.include_settings {
+        export_obj.insert("settings".to_string(), serde_json::json!({
+            "auto_update": true,
+            "update_interval": 86400,
+            "proxy_mode": "rule",
+            "mixed_port": 7890,
+            "socks_port": 7891
+        }));
+    }
+    
+    // 可选包含分组
+    if options.include_groups {
+        export_obj.insert("groups".to_string(), serde_json::json!([
+            {
+                "id": "group1",
+                "name": "美国节点",
+                "type": "Region",
+                "subscription_uids": ["sub1"]
+            }
+        ]));
+    }
+    
+    serde_json::to_string_pretty(&export_obj)
+        .map_err(|e| format!("JSON序列化失败: {}", e))
+}
+
+async fn export_as_yaml(subscription_uids: Vec<String>, options: &ExportOptions) -> Result<String, String> {
+    let json_data = export_as_json(subscription_uids, options).await?;
+    let json_value: serde_json::Value = serde_json::from_str(&json_data)
+        .map_err(|e| format!("JSON解析失败: {}", e))?;
+    
+    serde_yaml_ng::to_string(&json_value)
+        .map_err(|e| format!("YAML序列化失败: {}", e))
+}
+
+async fn export_as_text(subscription_uids: Vec<String>) -> Result<String, String> {
+    let mut lines = Vec::new();
+    lines.push(format!("# 订阅导出 - {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")));
+    lines.push("# 每行一个订阅链接".to_string());
+    lines.push(format!("# 导出数量: {}", subscription_uids.len()));
+    lines.push("".to_string());
+    
+    for uid in subscription_uids {
+        // TODO: 从实际配置读取订阅URL
+        lines.push(format!("https://example.com/sub/{}", uid));
+    }
+    
+    Ok(lines.join("\n"))
+}
+
+async fn export_as_clash_config(subscription_uids: Vec<String>, options: &ExportOptions) -> Result<String, String> {
+    let mut config = serde_yaml_ng::Mapping::new();
+    
+    // 基础配置
+    if options.include_settings {
+        config.insert(
+            serde_yaml_ng::Value::String("port".to_string()),
+            serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(7890))
+        );
+        config.insert(
+            serde_yaml_ng::Value::String("socks-port".to_string()),
+            serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(7891))
+        );
+        config.insert(
+            serde_yaml_ng::Value::String("mode".to_string()),
+            serde_yaml_ng::Value::String("rule".to_string())
+        );
+        config.insert(
+            serde_yaml_ng::Value::String("log-level".to_string()),
+            serde_yaml_ng::Value::String("info".to_string())
+        );
+        config.insert(
+            serde_yaml_ng::Value::String("external-controller".to_string()),
+            serde_yaml_ng::Value::String("127.0.0.1:9090".to_string())
+        );
+    }
+    
+    // 代理提供者
+    let mut proxy_providers = serde_yaml_ng::Mapping::new();
+    for (index, uid) in subscription_uids.iter().enumerate() {
+        let mut provider = serde_yaml_ng::Mapping::new();
+        provider.insert(
+            serde_yaml_ng::Value::String("type".to_string()),
+            serde_yaml_ng::Value::String("http".to_string())
+        );
+        provider.insert(
+            serde_yaml_ng::Value::String("url".to_string()),
+            serde_yaml_ng::Value::String(format!("https://example.com/sub/{}", uid))
+        );
+        provider.insert(
+            serde_yaml_ng::Value::String("interval".to_string()),
+            serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(3600))
+        );
+        provider.insert(
+            serde_yaml_ng::Value::String("path".to_string()),
+            serde_yaml_ng::Value::String(format!("./providers/provider_{}.yaml", index + 1))
+        );
+        provider.insert(
+            serde_yaml_ng::Value::String("health-check".to_string()),
+            serde_yaml_ng::Value::Mapping({
+                let mut health_check = serde_yaml_ng::Mapping::new();
+                health_check.insert(
+                    serde_yaml_ng::Value::String("enable".to_string()),
+                    serde_yaml_ng::Value::Bool(true)
+                );
+                health_check.insert(
+                    serde_yaml_ng::Value::String("interval".to_string()),
+                    serde_yaml_ng::Value::Number(serde_yaml_ng::Number::from(600))
+                );
+                health_check.insert(
+                    serde_yaml_ng::Value::String("url".to_string()),
+                    serde_yaml_ng::Value::String("http://www.gstatic.com/generate_204".to_string())
+                );
+                health_check
+            })
+        );
+        
+        proxy_providers.insert(
+            serde_yaml_ng::Value::String(format!("provider_{}", index + 1)),
+            serde_yaml_ng::Value::Mapping(provider)
+        );
+    }
+    
+    if !proxy_providers.is_empty() {
+        config.insert(
+            serde_yaml_ng::Value::String("proxy-providers".to_string()),
+            serde_yaml_ng::Value::Mapping(proxy_providers)
+        );
+    }
+    
+    // 代理组
+    if options.include_groups {
+        let mut proxy_groups = Vec::new();
+        
+        // 自动选择组
+        let mut auto_group = serde_yaml_ng::Mapping::new();
+        auto_group.insert(
+            serde_yaml_ng::Value::String("name".to_string()),
+            serde_yaml_ng::Value::String("自动选择".to_string())
+        );
+        auto_group.insert(
+            serde_yaml_ng::Value::String("type".to_string()),
+            serde_yaml_ng::Value::String("url-test".to_string())
+        );
+        auto_group.insert(
+            serde_yaml_ng::Value::String("use".to_string()),
+            serde_yaml_ng::Value::Sequence(
+                subscription_uids.iter().enumerate().map(|(i, _)| 
+                    serde_yaml_ng::Value::String(format!("provider_{}", i + 1))
+                ).collect()
+            )
+        );
+        proxy_groups.push(serde_yaml_ng::Value::Mapping(auto_group));
+        
+        config.insert(
+            serde_yaml_ng::Value::String("proxy-groups".to_string()),
+            serde_yaml_ng::Value::Sequence(proxy_groups)
+        );
+    }
+    
+    serde_yaml_ng::to_string(&config)
+        .map_err(|e| format!("Clash配置序列化失败: {}", e))
 }

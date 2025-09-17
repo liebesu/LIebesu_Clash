@@ -874,6 +874,84 @@ export async function previewBatchImport(
   });
 }
 
+// ===== 批量导出相关 =====
+
+export interface ExportOptions {
+  format: string;              // 导出格式: json, yaml, txt, clash
+  include_settings: boolean;   // 是否包含设置
+  include_groups: boolean;     // 是否包含分组信息
+  compress: boolean;           // 是否压缩
+  encrypt: boolean;            // 是否加密
+  password?: string;           // 加密密码
+}
+
+export interface ExportPreview {
+  format: string;
+  subscription_count: number;
+  content_size: number;
+  preview_content: string;
+  include_settings: boolean;
+}
+
+export interface ExportableSubscription {
+  uid: string;
+  name: string;
+  url?: string;
+  subscription_type: string;
+  created_at: number;
+  updated_at?: number;
+  node_count: number;
+  is_valid: boolean;
+}
+
+/**
+ * 批量导出订阅
+ */
+export async function batchExportSubscriptions(
+  subscriptionUids: string[],
+  options: ExportOptions
+) {
+  return invoke<string>("batch_export_subscriptions", {
+    subscription_uids: subscriptionUids,
+    options,
+  });
+}
+
+/**
+ * 导出订阅到文件
+ */
+export async function exportSubscriptionsToFile(
+  subscriptionUids: string[],
+  filePath: string,
+  options: ExportOptions
+) {
+  return invoke<void>("export_subscriptions_to_file", {
+    subscription_uids: subscriptionUids,
+    file_path: filePath,
+    options,
+  });
+}
+
+/**
+ * 预览导出内容
+ */
+export async function previewExport(
+  subscriptionUids: string[],
+  options: ExportOptions
+) {
+  return invoke<ExportPreview>("preview_export", {
+    subscription_uids: subscriptionUids,
+    options,
+  });
+}
+
+/**
+ * 获取所有可导出的订阅
+ */
+export async function getAllSubscriptionsForExport() {
+  return invoke<ExportableSubscription[]>("get_all_subscriptions_for_export");
+}
+
 // ===== 任务管理相关 =====
 
 export interface TaskConfig {

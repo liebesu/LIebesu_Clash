@@ -219,6 +219,11 @@ mod app_init {
             cmd::batch_import_from_file,
             cmd::batch_import_from_clipboard,
             cmd::preview_batch_import,
+            // Batch export commands
+            cmd::batch_export_subscriptions,
+            cmd::export_subscriptions_to_file,
+            cmd::preview_export,
+            cmd::get_all_subscriptions_for_export,
             // Task manager commands
             cmd::get_all_tasks,
             cmd::create_task,

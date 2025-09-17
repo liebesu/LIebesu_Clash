@@ -32,6 +32,7 @@ import {
   Group,
   Storage,
   Search,
+  GetApp,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -75,6 +76,7 @@ import TrafficStatsDialog from "@/components/profile/traffic-stats-dialog";
 import SubscriptionGroupsDialog from "@/components/profile/subscription-groups-dialog";
 import BackupRestoreDialog from "@/components/profile/backup-restore-dialog";
 import AdvancedSearchDialog from "@/components/profile/advanced-search-dialog";
+import BatchExportDialog from "@/components/profile/batch-export-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -155,6 +157,9 @@ const ProfilePage = () => {
 
   // 高级搜索对话框状态
   const [advancedSearchDialogOpen, setAdvancedSearchDialogOpen] = useState(false);
+
+  // 批量导出对话框状态
+  const [batchExportDialogOpen, setBatchExportDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -954,6 +959,16 @@ const ProfilePage = () => {
             <CloudDownloadRounded />
           </IconButton>
 
+          {/* 批量导出 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="批量导出订阅"
+            onClick={() => setBatchExportDialogOpen(true)}
+          >
+            <GetApp />
+          </IconButton>
+
           {/* 任务管理 */}
           <IconButton
             size="small"
@@ -1267,6 +1282,11 @@ const ProfilePage = () => {
       <AdvancedSearchDialog
         open={advancedSearchDialogOpen}
         onClose={() => setAdvancedSearchDialogOpen(false)}
+      />
+
+      <BatchExportDialog
+        open={batchExportDialogOpen}
+        onClose={() => setBatchExportDialogOpen(false)}
       />
     </BasePage>
   );
