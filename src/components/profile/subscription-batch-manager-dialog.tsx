@@ -52,7 +52,7 @@ import {
   updateAllSubscriptions,
   cleanupExpiredSubscriptions,
   getSubscriptionManagementStats,
-  setAutoCleanupRules,
+  setAutoCleanupRules as saveAutoCleanupRules,
   getAutoCleanupRules,
   type SubscriptionCleanupOptions,
   type CleanupPreview,
@@ -178,7 +178,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
 
   const handleSaveAutoCleanupRules = async () => {
     try {
-      await setAutoCleanupRules(autoCleanupEnabled, cleanupOptions);
+      await saveAutoCleanupRules(autoCleanupEnabled, cleanupOptions);
       showNotice('success', '自动清理规则保存成功');
       loadAutoCleanupRules();
     } catch (error) {
