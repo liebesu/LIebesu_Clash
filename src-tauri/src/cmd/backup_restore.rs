@@ -180,7 +180,7 @@ pub struct BackupVersion {
 
 /// 获取备份目录
 fn get_backup_dir() -> Result<PathBuf> {
-    let app_dir = dirs::verge_path()
+    let app_dir = crate::utils::dirs::verge_path()
         .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
     let backup_dir = app_dir.join("backups");
     

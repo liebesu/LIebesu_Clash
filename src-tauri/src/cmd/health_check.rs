@@ -56,9 +56,10 @@ pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHea
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
     
+    let empty_vec = Vec::new();
     let profile = profiles_ref.items
         .as_ref()
-        .unwrap_or(&Vec::new())
+        .unwrap_or(&empty_vec)
         .iter()
         .find(|item| item.uid.as_ref() == Some(&uid))
         .ok_or_else(|| "Profile not found".to_string())?;
@@ -79,9 +80,10 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
     let profiles_ref = profiles.latest_ref();
     
     // 过滤出远程订阅
+    let empty_vec = Vec::new();
     let remote_profiles: Vec<&PrfItem> = profiles_ref.items
         .as_ref()
-        .unwrap_or(&Vec::new())
+        .unwrap_or(&empty_vec)
         .iter()
         .filter(|item| item.url.is_some())
         .collect();
@@ -144,9 +146,10 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
     
+    let empty_vec = Vec::new();
     let profile = profiles_ref.items
         .as_ref()
-        .unwrap_or(&Vec::new())
+        .unwrap_or(&empty_vec)
         .iter()
         .find(|item| item.uid.as_ref() == Some(&uid))
         .ok_or_else(|| "Profile not found".to_string())?;

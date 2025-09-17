@@ -224,7 +224,7 @@ pub async fn advanced_search(criteria: SearchCriteria) -> Result<SearchResult, S
     };
 
     // 生成高亮显示
-    let mut paginated_items_vec: Vec<&mut SearchResultItem> = paginated_items.iter_mut().collect();
+    let mut paginated_items_vec: Vec<&mut SubscriptionSearchItem> = paginated_items.iter_mut().collect();
     add_highlights(&mut paginated_items_vec, &criteria.query);
 
     // 生成搜索建议
@@ -1041,7 +1041,7 @@ async fn record_search_history(
 
 /// 获取搜索数据目录
 fn get_search_data_dir() -> Result<PathBuf> {
-    let app_dir = dirs::verge_path()
+    let app_dir = crate::utils::dirs::verge_path()
         .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
     let search_dir = app_dir.join("search");
     

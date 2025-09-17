@@ -2,6 +2,7 @@ use super::CmdResult;
 use crate::{
     config::Config,
     utils::logging::Type,
+    logging,
 };
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
