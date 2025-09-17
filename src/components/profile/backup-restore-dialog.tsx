@@ -246,7 +246,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       setBackups(data);
     } catch (error) {
       console.error("加载备份列表失败:", error);
-      showNotice("加载备份列表失败", "error");
+      showNotice("error", "加载备份列表失败");
     } finally {
       setLoading(false);
     }
@@ -283,19 +283,19 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   // 创建备份
   const handleCreateBackup = async () => {
     if (!backupOptions.backup_name.trim()) {
-      showNotice("请输入备份名称", "warning");
+      showNotice("info", "请输入备份名称");
       return;
     }
 
     setLoading(true);
     try {
       const backupId = await createBackup(backupOptions);
-      showNotice("备份创建成功", "success");
+      showNotice("success", "备份创建成功");
       setCreateStep(0);
       loadBackups();
     } catch (error) {
       console.error("创建备份失败:", error);
-      showNotice("创建备份失败: " + error, "error");
+      showNotice("error", "创建备份失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -304,7 +304,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   // 恢复备份
   const handleRestoreBackup = async (backup: BackupInfo) => {
     if (backup.is_encrypted && !restoreOptions.password) {
-      showNotice("加密备份需要密码", "warning");
+      showNotice("info", "加密备份需要密码");
       return;
     }
 
@@ -318,14 +318,14 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       setRestoreResult(result);
       
       if (result.success) {
-        showNotice("备份恢复成功", "success");
+        showNotice("success", "备份恢复成功");
         loadBackups();
       } else {
-        showNotice("备份恢复失败", "error");
+        showNotice("error", "备份恢复失败");
       }
     } catch (error) {
       console.error("恢复备份失败:", error);
-      showNotice("恢复备份失败: " + error, "error");
+      showNotice("恢复备份失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -340,7 +340,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       setSelectedBackup(backup);
     } catch (error) {
       console.error("获取备份详情失败:", error);
-      showNotice("获取备份详情失败: " + error, "error");
+      showNotice("获取备份详情失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -355,12 +355,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     setLoading(true);
     try {
       await deleteBackup(backupId);
-      showNotice("备份删除成功", "success");
+      showNotice("success", "备份删除成功");
       loadBackups();
       handleMenuClose();
     } catch (error) {
       console.error("删除备份失败:", error);
-      showNotice("删除备份失败: " + error, "error");
+      showNotice("删除备份失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -372,14 +372,14 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     try {
       const isValid = await validateBackup(backupId);
       if (isValid) {
-        showNotice("备份文件完整", "success");
+        showNotice("success", "备份文件完整");
       } else {
-        showNotice("备份文件已损坏", "error");
+        showNotice("error", "备份文件已损坏");
       }
       handleMenuClose();
     } catch (error) {
       console.error("验证备份失败:", error);
-      showNotice("验证备份失败: " + error, "error");
+      showNotice("验证备份失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -391,10 +391,10 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     try {
       const status = await syncToWebDAV();
       setSyncStatus(status);
-      showNotice("同步到云端成功", "success");
+      showNotice("success", "同步到云端成功");
     } catch (error) {
       console.error("同步失败:", error);
-      showNotice("同步失败: " + error, "error");
+      showNotice("同步失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -407,10 +407,10 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       const status = await syncFromWebDAV();
       setSyncStatus(status);
       loadBackups();
-      showNotice("从云端同步成功", "success");
+      showNotice("success", "从云端同步成功");
     } catch (error) {
       console.error("同步失败:", error);
-      showNotice("同步失败: " + error, "error");
+      showNotice("同步失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -421,10 +421,10 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     setLoading(true);
     try {
       await setWebDAVConfig(webdavConfig);
-      showNotice("WebDAV配置保存成功", "success");
+      showNotice("success", "WebDAV配置保存成功");
     } catch (error) {
       console.error("保存配置失败:", error);
-      showNotice("保存配置失败: " + error, "error");
+      showNotice("保存配置失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -439,11 +439,11 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     setLoading(true);
     try {
       const deletedCount = await cleanupOldBackups(30, 10);
-      showNotice(`已清理 ${deletedCount} 个旧备份`, "success");
+      showNotice("success", `已清理 ${deletedCount} 个旧备份`);
       loadBackups();
     } catch (error) {
       console.error("清理失败:", error);
-      showNotice("清理失败: " + error, "error");
+      showNotice("error", "清理失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -494,7 +494,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       {backups.length > 0 ? (
         <Grid container spacing={2}>
           {backups.map((backup) => (
-            <Grid item xs={12} sm={6} md={4} key={backup.backup_id}>
+            <Grid xs={12} sm={6} md={4} key={backup.backup_id}>
               <Card variant="outlined">
                 <CardContent>
                   <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 2 }}>
@@ -640,7 +640,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
           <DialogTitle>备份详情</DialogTitle>
           <DialogContent>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <Typography variant="subtitle2">基本信息</Typography>
                 <Typography variant="body2">名称: {backupDetails.backup_name}</Typography>
                 <Typography variant="body2">描述: {backupDetails.description}</Typography>
@@ -648,7 +648,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 <Typography variant="body2">文件大小: {formatFileSize(backupDetails.file_size)}</Typography>
                 <Typography variant="body2">是否加密: {backupDetails.is_encrypted ? "是" : "否"}</Typography>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <Typography variant="subtitle2">包含内容</Typography>
                 <Typography variant="body2">订阅数量: {backupDetails.profiles.length}</Typography>
                 <Typography variant="body2">包含设置: {backupDetails.settings ? "是" : "否"}</Typography>
@@ -679,7 +679,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
           <StepContent>
             <Box sx={{ mb: 2 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="备份名称"
@@ -691,7 +691,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                     required
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <TextField
                     fullWidth
                     label="备份描述"
@@ -905,22 +905,22 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
               </Box>
 
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     最后同步: {syncStatus.last_sync ? formatDate(syncStatus.last_sync) : "从未"}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     最后上传: {syncStatus.last_upload ? formatDate(syncStatus.last_upload) : "从未"}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     待上传: {syncStatus.pending_uploads} 个文件
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     待下载: {syncStatus.pending_downloads} 个文件
                   </Typography>
@@ -960,7 +960,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
         </AccordionSummary>
         <AccordionDetails>
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 fullWidth
                 label="服务器地址"
@@ -972,7 +972,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 placeholder="https://your-webdav-server.com"
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid xs={6}>
               <TextField
                 fullWidth
                 label="用户名"
@@ -983,7 +983,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 })}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid xs={6}>
               <TextField
                 fullWidth
                 label="密码"
@@ -1005,7 +1005,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 }}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <TextField
                 fullWidth
                 label="远程路径"
@@ -1016,7 +1016,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 })}
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid xs={12}>
               <FormControlLabel
                 control={
                   <Checkbox

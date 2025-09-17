@@ -45,7 +45,7 @@ import {
 import {
   Search,
   FilterList,
-  SavedSearch,
+  SavedSearch as SavedSearchIcon,
   History,
   Clear,
   Add,
@@ -258,7 +258,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   // 执行高级搜索
   const handleAdvancedSearch = async () => {
     if (!searchCriteria.query.trim() && searchCriteria.filters.length === 0) {
-      showNotice("请输入搜索关键词或添加过滤条件", "warning");
+      showNotice("info", "请输入搜索关键词或添加过滤条件");
       return;
     }
 
@@ -269,7 +269,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
       loadData(); // 重新加载历史和统计
     } catch (error) {
       console.error("搜索失败:", error);
-      showNotice("搜索失败: " + error, "error");
+      showNotice("error", "搜索失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -307,7 +307,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   // 添加过滤器
   const handleAddFilter = () => {
     if (!newFilter.value.trim()) {
-      showNotice("请输入过滤值", "warning");
+      showNotice("info", "请输入过滤值");
       return;
     }
 
@@ -337,20 +337,20 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   // 保存搜索
   const handleSaveSearch = async () => {
     if (!saveSearchName.trim()) {
-      showNotice("请输入搜索名称", "warning");
+      showNotice("info", "请输入搜索名称");
       return;
     }
 
     try {
       await saveSearch(saveSearchName, saveSearchDescription, searchCriteria);
-      showNotice("搜索保存成功", "success");
+      showNotice("success", "搜索保存成功");
       setSaveDialogOpen(false);
       setSaveSearchName("");
       setSaveSearchDescription("");
       loadData();
     } catch (error) {
       console.error("保存搜索失败:", error);
-      showNotice("保存搜索失败: " + error, "error");
+      showNotice("error", "保存搜索失败: " + error);
     }
   };
 
@@ -364,7 +364,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
       loadData();
     } catch (error) {
       console.error("执行保存的搜索失败:", error);
-      showNotice("执行搜索失败: " + error, "error");
+      showNotice("error", "执行搜索失败: " + error);
     } finally {
       setLoading(false);
     }
@@ -378,12 +378,12 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
 
     try {
       await deleteSavedSearch(searchId);
-      showNotice("搜索删除成功", "success");
+      showNotice("success", "搜索删除成功");
       loadData();
       handleMenuClose();
     } catch (error) {
       console.error("删除搜索失败:", error);
-      showNotice("删除搜索失败: " + error, "error");
+      showNotice("error", "删除搜索失败: " + error);
     }
   };
 
@@ -395,11 +395,11 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
 
     try {
       await clearSearchHistory();
-      showNotice("搜索历史已清空", "success");
+      showNotice("success", "搜索历史已清空");
       loadData();
     } catch (error) {
       console.error("清空历史失败:", error);
-      showNotice("清空历史失败: " + error, "error");
+      showNotice("error", "清空历史失败: " + error);
     }
   };
 
@@ -499,7 +499,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
           </Button>
           <Button
             size="small"
-            startIcon={<SavedSearch />}
+            startIcon={<SavedSearchIcon />}
             onClick={() => setSaveDialogOpen(true)}
             disabled={!searchCriteria.query.trim() && searchCriteria.filters.length === 0}
           >
@@ -552,7 +552,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
 
             {/* 添加新过滤器 */}
             <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={3}>
+              <Grid xs={12} sm={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel>字段</InputLabel>
                   <Select
@@ -572,7 +572,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={3}>
+              <Grid xs={12} sm={3}>
                 <FormControl fullWidth size="small">
                   <InputLabel>操作</InputLabel>
                   <Select
@@ -591,7 +591,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={4}>
+              <Grid xs={12} sm={4}>
                 <Autocomplete
                   freeSolo
                   options={fieldValueSuggestions}
@@ -610,7 +610,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   )}
                 />
               </Grid>
-              <Grid item xs={12} sm={1}>
+              <Grid xs={12} sm={1}>
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -625,7 +625,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   label="区分大小写"
                 />
               </Grid>
-              <Grid item xs={12} sm={1}>
+              <Grid xs={12} sm={1}>
                 <Button
                   variant="contained"
                   size="small"
@@ -698,7 +698,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                 </IconButton>
                 <Button
                   size="small"
-                  startIcon={<SavedSearch />}
+                  startIcon={<SavedSearchIcon />}
                   onClick={() => setSaveDialogOpen(true)}
                 >
                   保存搜索
@@ -738,7 +738,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                 <AccordionDetails>
                   <Grid container spacing={2}>
                     {Object.entries(searchResult.facets).map(([facetName, values]) => (
-                      <Grid item xs={12} sm={6} md={4} key={facetName}>
+                      <Grid xs={12} sm={6} md={4} key={facetName}>
                         <Typography variant="subtitle2" gutterBottom>
                           {facetName}
                         </Typography>
@@ -844,7 +844,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               ) : (
                 <Grid container spacing={2}>
                   {searchResult.items.map((item) => (
-                    <Grid item xs={12} sm={6} md={4} key={item.uid}>
+                    <Grid xs={12} sm={6} md={4} key={item.uid}>
                       <Card variant="outlined" sx={{ height: "100%" }}>
                         <CardContent>
                           <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 1 }}>
@@ -1025,7 +1025,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               <ListItem>
                 <ListItemAvatar>
                   <Avatar>
-                    <SavedSearch />
+                    <SavedSearchIcon />
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
@@ -1077,7 +1077,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
         </List>
       ) : (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <SavedSearch sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
+          <SavedSearchIcon sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
           <Typography color="text.secondary">
             暂无保存的搜索
           </Typography>
@@ -1141,7 +1141,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
               搜索统计
             </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={6} sm={3}>
+              <Grid xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="primary">
                     {searchStats.total_searches}
@@ -1151,7 +1151,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="info.main">
                     {searchStats.total_saved_searches}
@@ -1161,7 +1161,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="success.main">
                     {searchStats.avg_search_time_ms}ms
@@ -1171,7 +1171,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
                   </Typography>
                 </Box>
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid xs={6} sm={3}>
                 <Box textAlign="center">
                   <Typography variant="h4" color="warning.main">
                     {searchStats.popular_queries.length}

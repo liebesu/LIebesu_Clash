@@ -114,7 +114,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       setSubscriptions(data);
     } catch (error) {
       console.error("加载订阅列表失败:", error);
-      showNotice("加载订阅列表失败", "error");
+      showNotice("error", "加载订阅列表失败");
     } finally {
       setLoading(false);
     }
@@ -168,7 +168,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
   // 生成导出预览
   const handleGeneratePreview = async () => {
     if (selectedSubscriptions.size === 0) {
-      showNotice("请选择要导出的订阅", "warning");
+      showNotice("info", "请选择要导出的订阅");
       return;
     }
 
@@ -179,7 +179,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       setCurrentStep(2);
     } catch (error) {
       console.error("生成预览失败:", error);
-      showNotice("生成预览失败: " + error, "error");
+      showNotice("生成预览失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -194,10 +194,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       const result = await batchExportSubscriptions(Array.from(selectedSubscriptions), exportOptions);
       setExportResult(result);
       setCurrentStep(3);
-      showNotice("导出成功", "success");
+      showNotice("success", "导出成功");
     } catch (error) {
       console.error("导出失败:", error);
-      showNotice("导出失败: " + error, "error");
+      showNotice("导出失败: " "error", error as string);
     } finally {
       setLoading(false);
     }
@@ -211,10 +211,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       const filePath = `/tmp/${fileName}`; // 临时路径，实际应该使用文件选择器
       
       await exportSubscriptionsToFile(Array.from(selectedSubscriptions), filePath, exportOptions);
-      showNotice(`已保存到: ${filePath}`, "success");
+      showNotice("success", `已保存到: ${filePath}`);
     } catch (error) {
       console.error("保存文件失败:", error);
-      showNotice("保存文件失败: " + error, "error");
+      showNotice("error", "保存文件失败: " + error);
     }
   };
 
@@ -224,10 +224,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
 
     try {
       await navigator.clipboard.writeText(exportResult);
-      showNotice("已复制到剪贴板", "success");
+      showNotice("success", "已复制到剪贴板");
     } catch (error) {
       console.error("复制失败:", error);
-      showNotice("复制失败", "error");
+      showNotice("error", "复制失败");
     }
   };
 
@@ -270,7 +270,6 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           {subscriptions.map((subscription) => (
             <ListItem
               key={subscription.uid}
-              button
               onClick={() => handleToggleSubscription(subscription.uid)}
               disabled={!subscription.is_valid}
             >
@@ -350,13 +349,13 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
 
       <Grid container spacing={3}>
         {/* 导出格式 */}
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <Typography variant="subtitle2" gutterBottom>
             导出格式
           </Typography>
           <Grid container spacing={2}>
             {formatOptions.map((option) => (
-              <Grid item xs={12} sm={6} key={option.value}>
+              <Grid xs={12} sm={6} key={option.value}>
                 <Card
                   variant={exportOptions.format === option.value ? "elevation" : "outlined"}
                   sx={{
@@ -382,7 +381,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         </Grid>
 
         {/* 包含选项 */}
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <Typography variant="subtitle2" gutterBottom>
             包含内容
           </Typography>
@@ -413,14 +412,14 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         </Grid>
 
         {/* 高级选项 */}
-        <Grid item xs={12}>
+        <Grid xs={12}>
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
               <Typography variant="subtitle2">高级选项</Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid xs={12}>
                   <FormControlLabel
                     control={
                       <Checkbox
@@ -447,7 +446,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                   />
                 </Grid>
                 {exportOptions.encrypt && (
-                  <Grid item xs={12}>
+                  <Grid xs={12}>
                     <TextField
                       fullWidth
                       label="加密密码"
@@ -503,7 +502,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           <Card variant="outlined" sx={{ mb: 2 }}>
             <CardContent>
               <Grid container spacing={2}>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     导出格式
                   </Typography>
@@ -511,7 +510,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {formatOptions.find(f => f.value === exportPreview.format)?.label}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     订阅数量
                   </Typography>
@@ -519,7 +518,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {exportPreview.subscription_count} 个
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     内容大小
                   </Typography>
@@ -527,7 +526,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     {formatFileSize(exportPreview.content_size)}
                   </Typography>
                 </Grid>
-                <Grid item xs={6}>
+                <Grid xs={6}>
                   <Typography variant="body2" color="text.secondary">
                     包含设置
                   </Typography>
