@@ -336,7 +336,7 @@ pub async fn batch_add_subscriptions_to_group(
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let _errors = Vec::new();
 
     if storage.groups.contains_key(&group_id) {
         let mut uids_to_add = Vec::new();
@@ -394,7 +394,7 @@ pub async fn batch_remove_subscriptions_from_group(
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let _errors = Vec::new();
 
     if storage.groups.contains_key(&group_id) {
         let mut uids_to_remove = Vec::new();
@@ -451,18 +451,22 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let _errors = Vec::new();
 
     // 获取所有订阅
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles_ref.items.as_ref().unwrap_or(&empty_vec);
     let subscriptions: Vec<_> = items.iter()
         .filter(|item| item.itype.as_ref().map(|t| t == "remote").unwrap_or(false))
         .collect();
 
-    // 应用每个分组的自动规则
-    for group in storage.groups.values_mut() {
+    // 先收集所有需要添加的订阅和分组对应关系，避免在遍历时修改storage
+    let mut additions = Vec::new();
+    let mut group_updates = Vec::new();
+    
+    for group in storage.groups.values() {
         for rule in &group.auto_rules {
             if !rule.is_enabled {
                 continue;
@@ -489,21 +493,35 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
                     };
 
                     if matches {
-                        group.subscription_uids.push(uid.clone());
-                        
-                        // 更新映射
-                        storage.subscription_to_groups
-                            .entry(uid.clone())
-                            .or_insert_with(HashSet::new)
-                            .insert(group.id.clone());
-                        
-                        successful += 1;
+                        additions.push((group.id.clone(), uid.clone()));
                     }
                 }
             }
         }
         
-        group.updated_at = chrono::Utc::now().timestamp();
+        group_updates.push(group.id.clone());
+    }
+    
+    // 应用所有添加操作
+    for (group_id, uid) in additions {
+        if let Some(group) = storage.groups.get_mut(&group_id) {
+            group.subscription_uids.push(uid.clone());
+        }
+        
+        // 更新映射
+        storage.subscription_to_groups
+            .entry(uid)
+            .or_insert_with(HashSet::new)
+            .insert(group_id);
+        
+        successful += 1;
+    }
+    
+    // 更新所有分组的时间戳
+    for group_id in group_updates {
+        if let Some(group) = storage.groups.get_mut(&group_id) {
+            group.updated_at = chrono::Utc::now().timestamp();
+        }
     }
 
     let duration = start_time.elapsed().as_millis() as u64;
@@ -512,7 +530,7 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
         total_items: subscriptions.len(),
         successful_items: successful,
         failed_items: 0,
-        errors,
+        errors: _errors,
         operation_duration_ms: duration,
     })
 }
@@ -601,7 +619,7 @@ pub async fn import_subscription_groups(import_data: String) -> CmdResult<BatchO
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let _errors = Vec::new();
 
     let total_groups = export_data.groups.len();
     for mut group in export_data.groups {
@@ -644,7 +662,8 @@ pub async fn get_smart_grouping_suggestions() -> CmdResult<Vec<GroupSuggestion>>
     // 获取所有订阅
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles_ref.items.as_ref().unwrap_or(&empty_vec);
     let subscriptions: Vec<_> = items.iter()
         .filter(|item| item.itype.as_ref().map(|t| t == "remote").unwrap_or(false))
         .collect();

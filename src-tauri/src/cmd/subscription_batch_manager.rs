@@ -75,10 +75,9 @@ pub async fn get_subscription_cleanup_preview(
             
             // 获取最后更新时间
             let last_updated = profile.updated.clone();
-            let last_update_time = if let Some(updated_str) = &last_updated {
-                DateTime::parse_from_rfc3339(updated_str)
+            let last_update_time = if let Some(timestamp) = last_updated {
+                DateTime::from_timestamp(timestamp as i64, 0)
                     .map(|dt| dt.with_timezone(&Local))
-                    .ok()
             } else {
                 None
             };
@@ -162,7 +161,7 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     }
     
     let result = BatchUpdateResult {
-        total_subscriptions: profiles.len(),
+        total_subscriptions: items.len(),
         successful_updates: updated_subscriptions.len(),
         failed_updates: failed_subscriptions.len(),
         updated_subscriptions,
@@ -233,10 +232,9 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
             local_count += 1;
         }
         
-        let last_update_time = if let Some(updated_str) = &profile.updated {
-            DateTime::parse_from_rfc3339(updated_str)
+        let last_update_time = if let Some(timestamp) = profile.updated {
+            DateTime::from_timestamp(timestamp as i64, 0)
                 .map(|dt| dt.with_timezone(&Local))
-                .ok()
         } else {
             None
         };
