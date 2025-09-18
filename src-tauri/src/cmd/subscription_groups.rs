@@ -335,7 +335,7 @@ pub async fn batch_add_subscriptions_to_group(
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let errors = Vec::new();
 
     if storage.groups.contains_key(&group_id) {
         let mut uids_to_add = Vec::new();
@@ -393,7 +393,7 @@ pub async fn batch_remove_subscriptions_from_group(
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let errors = Vec::new();
 
     if storage.groups.contains_key(&group_id) {
         let mut uids_to_remove = Vec::new();
@@ -450,7 +450,7 @@ pub async fn apply_auto_grouping_rules() -> CmdResult<BatchOperationResult> {
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let errors = Vec::new();
 
     // 获取所有订阅
     let profiles = Config::profiles().await;
@@ -618,7 +618,7 @@ pub async fn import_subscription_groups(import_data: String) -> CmdResult<BatchO
 
     let mut storage = SUBSCRIPTION_GROUPS.write().await;
     let mut successful = 0;
-    let mut errors = Vec::new();
+    let errors = Vec::new();
 
     let total_groups = export_data.groups.len();
     for mut group in export_data.groups {

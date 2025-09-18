@@ -146,7 +146,7 @@ pub async fn batch_import_from_file(
 /// 从剪贴板批量导入订阅
 #[tauri::command]
 pub async fn batch_import_from_clipboard(
-    options: Option<BatchImportOptions>,
+    _options: Option<BatchImportOptions>,
 ) -> CmdResult<BatchImportResult> {
     logging!(info, Type::Cmd, true, "[批量导入] 从剪贴板导入");
     
@@ -532,7 +532,7 @@ pub async fn batch_export_subscriptions(
     subscription_uids: Vec<String>,
     options: ExportOptions,
 ) -> Result<String, String> {
-    let start_time = std::time::Instant::now();
+    let _start_time = std::time::Instant::now();
     
     match options.format.as_str() {
         "json" => export_as_json(subscription_uids, &options).await,
@@ -600,7 +600,7 @@ pub async fn get_all_subscriptions_for_export() -> Result<Vec<ExportableSubscrip
                 url: item.url.clone(),
                 subscription_type: item.itype.as_ref().unwrap_or(&"unknown".to_string()).clone(),
                 created_at: chrono::Utc::now().timestamp(), // 创建时间暂时使用当前时间
-                updated_at: item.updated.as_ref().and_then(|u| u.parse::<i64>().ok()),
+                updated_at: item.updated.as_ref().map(|u| *u as i64),
                 node_count: 0, // 节点数量需要解析配置文件获得，暂时设为0
                 is_valid: true,
             };
@@ -654,7 +654,7 @@ async fn export_as_json(subscription_uids: Vec<String>, options: &ExportOptions)
                 "url": item.url.as_ref().unwrap_or(&"".to_string()),
                 "type": item.itype.as_ref().unwrap_or(&"unknown".to_string()),
                 "created_at": chrono::Utc::now().timestamp(),
-                "updated_at": item.updated.as_ref().and_then(|u| u.parse::<i64>().ok()).unwrap_or_else(|| chrono::Utc::now().timestamp()),
+                "updated_at": item.updated.as_ref().map(|u| *u as i64).unwrap_or_else(|| chrono::Utc::now().timestamp()),
                 "valid": true,
                 "user_agent": item.option.as_ref().and_then(|opt| opt.user_agent.as_ref()),
                 "update_interval": item.option.as_ref().and_then(|opt| opt.update_interval)

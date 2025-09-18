@@ -2,7 +2,6 @@ use crate::config::Config;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tauri::Manager;
 use chrono::{DateTime, Duration, Local};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,7 +76,7 @@ pub async fn get_subscription_cleanup_preview(
             // 获取最后更新时间
             let last_updated = profile.updated.clone();
             let last_update_time = if let Some(timestamp_str) = last_updated {
-                if let Ok(timestamp) = timestamp_str.parse::<i64>() {
+                if let timestamp = *timestamp_str as i64 {
                     DateTime::from_timestamp(timestamp, 0)
                         .map(|dt| dt.with_timezone(&Local))
                 } else {

@@ -1,12 +1,10 @@
 // use crate::utils::{config, help};
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use tauri::{Config, Manager};
 use nanoid::nanoid;
 
 /// 备份数据结构
@@ -619,7 +617,7 @@ pub async fn import_backup(import_path: String, backup_name: String) -> Result<S
 
 /// WebDAV 同步配置
 #[tauri::command]
-pub async fn set_webdav_config(config: WebDAVConfig) -> Result<(), String> {
+pub async fn set_webdav_config(_config: WebDAVConfig) -> Result<(), String> {
     // TODO: 实现WebDAV配置保存
     Ok(())
 }

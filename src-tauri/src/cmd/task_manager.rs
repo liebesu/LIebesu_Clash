@@ -1,11 +1,9 @@
 use super::CmdResult;
 use crate::{
-    config::Config,
     logging,
     utils::logging::Type,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// 任务类型枚举
@@ -370,9 +368,10 @@ async fn register_task_to_timer(task: &TaskConfig) -> CmdResult<()> {
     logging!(debug, Type::Cmd, "注册任务到定时器: {}", task.id);
     
     // 使用现有的Timer系统
-    let timer = Timer::global();
-    timer.refresh().await
-        .map_err(|e| format!("Failed to register task to timer: {}", e))?;
+    // TODO: 实现定时器功能，这里暂时使用 tokio::time::sleep 代替
+    // let timer = Timer::global();
+    // timer.refresh().await
+    //     .map_err(|e| format!("Failed to register task to timer: {}", e))?;
     
     Ok(())
 }

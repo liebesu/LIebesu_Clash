@@ -4,11 +4,12 @@ use crate::{
     logging,
     utils::logging::Type,
 };
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
+use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
 
 /// 测试类型枚举
@@ -665,8 +666,6 @@ async fn test_download_speed(client: &reqwest::Client, _node: &NodeInfo) -> Resu
 
 /// 测试节点稳定性
 async fn test_node_stability(node: &NodeInfo, config: &TestConfig) -> Result<(u8, f64), String> {
-    use std::net::SocketAddr;
-    use tokio::net::TcpStream;
     
     // 执行多次连接测试来评估稳定性
     let test_count = std::cmp::min(config.latency_test_count, 10); // 限制最大测试次数
