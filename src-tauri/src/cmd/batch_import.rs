@@ -394,9 +394,10 @@ async fn check_duplicates(urls: Vec<String>) -> CmdResult<(Vec<String>, Vec<Impo
     let profiles_ref = profiles.latest_ref();
     
     // 获取现有的订阅URL
+    let empty_vec = Vec::new();
     let existing_urls: HashSet<String> = profiles_ref.items
         .as_ref()
-        .unwrap_or(&Vec::new())
+        .unwrap_or(&empty_vec)
         .iter()
         .filter_map(|item| {
             item.url.as_ref().map(|url| url.clone())
@@ -587,7 +588,8 @@ pub async fn preview_export(
 pub async fn get_all_subscriptions_for_export() -> Result<Vec<ExportableSubscription>, String> {
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles_ref.items.as_ref().unwrap_or(&empty_vec);
     
     let mut exportable_subscriptions = Vec::new();
     
@@ -639,7 +641,8 @@ async fn export_as_json(subscription_uids: Vec<String>, options: &ExportOptions)
     // 添加订阅数据
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles_ref.items.as_ref().unwrap_or(&empty_vec);
     
     let mut subscriptions = Vec::new();
     for uid in subscription_uids {
@@ -703,7 +706,8 @@ async fn export_as_yaml(subscription_uids: Vec<String>, options: &ExportOptions)
 async fn export_as_text(subscription_uids: Vec<String>) -> Result<String, String> {
     let profiles = Config::profiles().await;
     let profiles_ref = profiles.latest_ref();
-    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    let empty_vec = Vec::new();
+    let items = profiles_ref.items.as_ref().unwrap_or(&empty_vec);
     
     let mut lines = Vec::new();
     lines.push(format!("# 订阅导出 - {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")));

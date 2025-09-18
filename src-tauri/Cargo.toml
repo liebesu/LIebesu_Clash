@@ -85,6 +85,7 @@ isahc = { version = "1.7.2", default-features = false, features = [
 url = "2.5.4"
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 rand = "0.8.5"
+chrono = { version = "0.4.38", features = ["serde"] }
 
 
 [target.'cfg(windows)'.dependencies]

@@ -2,7 +2,7 @@ use crate::config::Config;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tauri::{Config as TauriConfig, Manager};
+use tauri::Manager;
 use chrono::{DateTime, Duration, Local, Utc};
 use nanoid::nanoid;
 
@@ -71,14 +71,19 @@ pub async fn get_subscription_cleanup_preview(
     let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
         if let Some(uid) = &profile.uid {
-            let name = profile.name.as_ref().unwrap_or(&"未知订阅".to_string()).clone();
+            let default_name = "未知订阅".to_string();
+            let name = profile.name.as_ref().unwrap_or(&default_name).clone();
             let url = profile.url.clone();
             
             // 获取最后更新时间
             let last_updated = profile.updated.clone();
-            let last_update_time = if let Some(timestamp) = last_updated {
-                DateTime::from_timestamp(timestamp as i64, 0)
-                    .map(|dt| dt.with_timezone(&Local))
+            let last_update_time = if let Some(timestamp_str) = last_updated {
+                if let Ok(timestamp) = timestamp_str.parse::<i64>() {
+                    DateTime::from_timestamp(timestamp, 0)
+                        .map(|dt| dt.with_timezone(&Local))
+                } else {
+                    None
+                }
             } else {
                 None
             };
