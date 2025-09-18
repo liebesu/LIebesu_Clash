@@ -458,7 +458,12 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
           <Assignment />
-          <Typography variant="h6">任务管理</Typography>
+          <Box>
+            <Typography variant="h6">任务管理</Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+              自动化管理订阅更新、健康检查和清理任务，支持定时执行和并发控制
+            </Typography>
+          </Box>
         </Box>
       </DialogTitle>
 

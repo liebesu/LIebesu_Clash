@@ -585,30 +585,30 @@ pub async fn preview_export(
 /// 获取所有订阅用于导出
 #[tauri::command]
 pub async fn get_all_subscriptions_for_export() -> Result<Vec<ExportableSubscription>, String> {
-    // TODO: 从实际配置读取所有订阅
-    // 这里返回模拟数据
-    Ok(vec![
-        ExportableSubscription {
-            uid: "sub1".to_string(),
-            name: "高速美国节点".to_string(),
-            url: Some("https://example.com/sub1".to_string()),
-            subscription_type: "clash".to_string(),
-            created_at: chrono::Utc::now().timestamp(),
-            updated_at: Some(chrono::Utc::now().timestamp()),
-            node_count: 25,
-            is_valid: true,
-        },
-        ExportableSubscription {
-            uid: "sub2".to_string(),
-            name: "日本游戏专用".to_string(),
-            url: Some("https://example.com/sub2".to_string()),
-            subscription_type: "v2ray".to_string(),
-            created_at: chrono::Utc::now().timestamp() - 86400,
-            updated_at: Some(chrono::Utc::now().timestamp() - 3600),
-            node_count: 15,
-            is_valid: true,
-        },
-    ])
+    let profiles = Config::profiles().await;
+    let profiles_ref = profiles.latest_ref();
+    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    
+    let mut exportable_subscriptions = Vec::new();
+    
+    for item in items {
+        // 只导出remote类型的订阅（即有URL的订阅）
+        if item.itype.as_ref() == Some(&"remote".to_string()) {
+            let exportable = ExportableSubscription {
+                uid: item.uid.as_ref().unwrap_or(&"unknown".to_string()).clone(),
+                name: item.name.as_ref().unwrap_or(&"未命名订阅".to_string()).clone(),
+                url: item.url.clone(),
+                subscription_type: item.itype.as_ref().unwrap_or(&"unknown".to_string()).clone(),
+                created_at: chrono::Utc::now().timestamp(), // 创建时间暂时使用当前时间
+                updated_at: item.updated.as_ref().and_then(|u| u.parse::<i64>().ok()),
+                node_count: 0, // 节点数量需要解析配置文件获得，暂时设为0
+                is_valid: true,
+            };
+            exportable_subscriptions.push(exportable);
+        }
+    }
+    
+    Ok(exportable_subscriptions)
 }
 
 /// 可导出的订阅信息
@@ -637,19 +637,29 @@ async fn export_as_json(subscription_uids: Vec<String>, options: &ExportOptions)
     export_obj.insert("exported_by".to_string(), serde_json::Value::String("Clash Verge Rev".to_string()));
     
     // 添加订阅数据
+    let profiles = Config::profiles().await;
+    let profiles_ref = profiles.latest_ref();
+    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    
     let mut subscriptions = Vec::new();
     for uid in subscription_uids {
-        // TODO: 从实际配置读取订阅数据
-        let subscription = serde_json::json!({
-            "uid": uid,
-            "name": format!("订阅_{}", uid),
-            "url": format!("https://example.com/sub/{}", uid),
-            "type": "clash",
-            "created_at": chrono::Utc::now().timestamp(),
-            "updated_at": chrono::Utc::now().timestamp(),
-            "valid": true
-        });
-        subscriptions.push(subscription);
+        // 从实际配置中查找对应的订阅
+        if let Some(item) = items.iter().find(|item| {
+            item.uid.as_ref() == Some(&uid)
+        }) {
+            let subscription = serde_json::json!({
+                "uid": uid,
+                "name": item.name.as_ref().unwrap_or(&"未命名订阅".to_string()),
+                "url": item.url.as_ref().unwrap_or(&"".to_string()),
+                "type": item.itype.as_ref().unwrap_or(&"unknown".to_string()),
+                "created_at": chrono::Utc::now().timestamp(),
+                "updated_at": item.updated.as_ref().and_then(|u| u.parse::<i64>().ok()).unwrap_or_else(|| chrono::Utc::now().timestamp()),
+                "valid": true,
+                "user_agent": item.option.as_ref().and_then(|opt| opt.user_agent.as_ref()),
+                "update_interval": item.option.as_ref().and_then(|opt| opt.update_interval)
+            });
+            subscriptions.push(subscription);
+        }
     }
     
     export_obj.insert("subscriptions".to_string(), serde_json::Value::Array(subscriptions));
@@ -691,6 +701,10 @@ async fn export_as_yaml(subscription_uids: Vec<String>, options: &ExportOptions)
 }
 
 async fn export_as_text(subscription_uids: Vec<String>) -> Result<String, String> {
+    let profiles = Config::profiles().await;
+    let profiles_ref = profiles.latest_ref();
+    let items = profiles_ref.items.as_ref().unwrap_or(&Vec::new());
+    
     let mut lines = Vec::new();
     lines.push(format!("# 订阅导出 - {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")));
     lines.push("# 每行一个订阅链接".to_string());
@@ -698,8 +712,14 @@ async fn export_as_text(subscription_uids: Vec<String>) -> Result<String, String
     lines.push("".to_string());
     
     for uid in subscription_uids {
-        // TODO: 从实际配置读取订阅URL
-        lines.push(format!("https://example.com/sub/{}", uid));
+        // 从实际配置读取订阅URL
+        if let Some(item) = items.iter().find(|item| {
+            item.uid.as_ref() == Some(&uid)
+        }) {
+            if let Some(url) = &item.url {
+                lines.push(format!("{}", url));
+            }
+        }
     }
     
     Ok(lines.join("\n"))
