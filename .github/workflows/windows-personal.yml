@@ -74,10 +74,8 @@ jobs:
             "bundle": {
               "windows": {
                 "nsis": {
-                  "displayLanguageSelector": true,
                   "installerIcon": "icons/icon.ico",
                   "installMode": "perMachine",
-                  "allowDowngrade": true,
                   "createDesktopShortcut": true,
                   "createStartMenuShortcut": true
                 }
@@ -111,89 +109,3 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  build-windows-arm64:
-    name: Build Windows (ARM64)
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-pc-windows-msvc
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: pnpm
-
-      - name: Install frontend deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Download sidecar binaries (ARM64)
-        run: pnpm run prebuild aarch64-pc-windows-msvc
-
-      - name: Create Tauri config override (disable updater)
-        shell: pwsh
-        run: |
-          $config = @'
-          {
-            "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-            "plugins": {
-              "updater": {
-                "dialog": false,
-                "endpoints": []
-              }
-            },
-            "bundle": {
-              "windows": {
-                "nsis": {
-                  "displayLanguageSelector": true,
-                  "installerIcon": "icons/icon.ico",
-                  "installMode": "perMachine",
-                  "allowDowngrade": true,
-                  "createDesktopShortcut": true,
-                  "createStartMenuShortcut": true
-                }
-              }
-            }
-          }
-          '@
-          $config | Out-File -FilePath "src-tauri/tauri.personal.conf.json" -Encoding UTF8
-
-      - name: Build app (ARM64 NSIS)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          NODE_OPTIONS: "--max_old_space_size=4096"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tauriScript: pnpm
-          args: --target aarch64-pc-windows-msvc -b nsis --config src-tauri/tauri.personal.conf.json
-
-      - name: List artifacts
-        shell: pwsh
-        run: |
-          Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe", "*.msi" | Select-Object FullName
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: clash-verge-windows-arm64-${{ github.sha }}-${{ github.run_number }}
-          path: |
-            src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
-            src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
-          if-no-files-found: warn
-          retention-days: 7
