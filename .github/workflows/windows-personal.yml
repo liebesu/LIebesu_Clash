@@ -73,12 +73,7 @@ jobs:
             },
             "bundle": {
               "windows": {
-                "nsis": {
-                  "installerIcon": "icons/icon.ico",
-                  "installMode": "perMachine",
-                  "createDesktopShortcut": true,
-                  "createStartMenuShortcut": true
-                }
+                "nsis": {}
               }
             }
           }
