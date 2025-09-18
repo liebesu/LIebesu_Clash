@@ -158,6 +158,8 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
     
+    let total_count = remote_profiles.len(); // 在移动前保存长度
+    
     for (uid, name) in remote_profiles {
         match update_single_subscription(&uid).await {
             Ok(_) => {
@@ -171,7 +173,7 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     }
     
     let result = BatchUpdateResult {
-        total_subscriptions: remote_profiles.len(),
+        total_subscriptions: total_count,
         successful_updates: updated_subscriptions.len(),
         failed_updates: failed_subscriptions.len(),
         updated_subscriptions,
