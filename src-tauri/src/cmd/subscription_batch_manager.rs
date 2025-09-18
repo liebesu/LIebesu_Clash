@@ -76,12 +76,9 @@ pub async fn get_subscription_cleanup_preview(
             // 获取最后更新时间
             let last_updated = profile.updated.clone();
             let last_update_time = if let Some(timestamp_str) = last_updated {
-                if let timestamp = *timestamp_str as i64 {
-                    DateTime::from_timestamp(timestamp, 0)
-                        .map(|dt| dt.with_timezone(&Local))
-                } else {
-                    None
-                }
+                let timestamp = timestamp_str as i64;
+                DateTime::from_timestamp(timestamp, 0)
+                    .map(|dt| dt.with_timezone(&Local))
             } else {
                 None
             };
