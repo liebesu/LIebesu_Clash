@@ -3,8 +3,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::Manager;
-use chrono::{DateTime, Duration, Local, Utc};
-use nanoid::nanoid;
+use chrono::{DateTime, Duration, Local};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCleanupOptions {

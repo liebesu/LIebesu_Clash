@@ -4,7 +4,7 @@ use crate::{
     utils::logging::Type,
     logging,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};

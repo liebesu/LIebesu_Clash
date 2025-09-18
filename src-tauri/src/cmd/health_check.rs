@@ -1,12 +1,10 @@
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem},
-    feat,
     logging,
     utils::logging::Type,
-    wrap_err,
 };
-use reqwest::{Client, Response};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;

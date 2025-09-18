@@ -1,18 +1,15 @@
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem},
-    feat,
     logging,
     utils::logging::Type,
-    wrap_err,
 };
-use reqwest::{Client, Proxy};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::time::{timeout, Duration};
-use url::Url;
 
 /// 测试类型枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -350,7 +347,7 @@ pub async fn get_optimization_suggestions(
 #[tauri::command]
 pub async fn schedule_periodic_test(
     subscription_uids: Vec<String>,
-    test_type: TestType,
+    _test_type: TestType,
     interval_hours: u32,
 ) -> CmdResult<String> {
     logging!(info, Type::Cmd, true, "[定期测试] 设置定期测试: {:?}, 间隔: {}小时", subscription_uids, interval_hours);

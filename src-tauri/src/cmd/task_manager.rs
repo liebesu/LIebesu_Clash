@@ -1,11 +1,8 @@
 use super::CmdResult;
 use crate::{
     config::Config,
-    core::Timer,
-    feat,
     logging,
     utils::logging::Type,
-    wrap_err,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,10 +1,8 @@
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem, PrfOption},
-    feat,
     logging,
     utils::logging::Type,
-    wrap_err,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
