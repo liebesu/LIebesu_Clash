@@ -328,7 +328,7 @@ pub async fn get_auto_cleanup_rules() -> Result<serde_json::Value, String> {
 }
 
 // 辅助函数：更新单个订阅
-async fn update_single_subscription(uid: &str) -> Result<()> {
+async fn update_single_subscription(_uid: &str) -> Result<()> {
     // TODO: 实际实现订阅更新逻辑
     // 这里应该调用现有的订阅更新API
     
@@ -345,10 +345,10 @@ async fn update_single_subscription(uid: &str) -> Result<()> {
 }
 
 // 辅助函数：删除订阅
-async fn delete_subscription(uid: &str) -> Result<()> {
+async fn delete_subscription(_uid: &str) -> Result<()> {
     // TODO: 实际实现订阅删除逻辑
     // 这里应该调用现有的订阅删除API
     
-    log::info!("删除订阅: {}", uid);
+    log::info!("删除订阅: {}", _uid);
     Ok(())
 }

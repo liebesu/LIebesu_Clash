@@ -632,7 +632,7 @@ async fn test_node_speed(node: &NodeInfo, config: &TestConfig) -> Result<(f64, f
 }
 
 /// 测试下载速度
-async fn test_download_speed(client: &reqwest::Client, node: &NodeInfo) -> Result<f64, String> {
+async fn test_download_speed(client: &reqwest::Client, _node: &NodeInfo) -> Result<f64, String> {
     // 使用一个小的测试文件来测试速度
     let test_url = "http://httpbin.org/bytes/102400"; // 100KB测试文件
     
