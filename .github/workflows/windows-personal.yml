@@ -111,8 +111,7 @@ jobs:
             "productName": "Liebesu_Clash",
             "plugins": {
               "updater": {
-                "dialog": false,
-                "endpoints": []
+                "active": false
               },
               "deep-link": {
                 "desktop": {
