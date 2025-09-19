@@ -387,7 +387,6 @@ pub fn run() {
     
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         println!("Windows 子系统: GUI");
         
         // 检查 WebView2 相关环境
@@ -696,7 +695,7 @@ pub fn run() {
                 use std::ffi::CString;
                 use std::ptr;
                 
-                extern "system" {
+                unsafe extern "system" {
                     fn MessageBoxA(hwnd: *mut std::ffi::c_void, text: *const i8, caption: *const i8, utype: u32) -> i32;
                 }
                 

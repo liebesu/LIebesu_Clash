@@ -56,7 +56,7 @@ fn main() {
         #[cfg(windows)]
         {
             use std::ffi::CString;
-            extern "system" {
+            unsafe extern "system" {
                 fn MessageBoxA(hwnd: *mut std::ffi::c_void, text: *const i8, caption: *const i8, utype: u32) -> i32;
             }
             
