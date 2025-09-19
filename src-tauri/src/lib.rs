@@ -371,6 +371,39 @@ mod app_init {
 }
 
 pub fn run() {
+    // 强制启用控制台输出用于诊断启动问题
+    println!("=== Liebesu_Clash 应用启动 ===");
+    println!("时间: {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));
+    println!("版本: {}", env!("CARGO_PKG_VERSION"));
+    println!("目标架构: {}", std::env::consts::ARCH);
+    println!("目标操作系统: {}", std::env::consts::OS);
+    
+    // 检查关键环境变量
+    println!("工作目录: {:?}", std::env::current_dir());
+    println!("可执行文件路径: {:?}", std::env::current_exe());
+    if let Some(path) = std::env::var_os("PATH") {
+        println!("PATH 长度: {}", path.len());
+    }
+    
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        println!("Windows 子系统: GUI");
+        
+        // 检查 WebView2 相关环境
+        if let Ok(temp_dir) = std::env::var("TEMP") {
+            println!("TEMP 目录: {}", temp_dir);
+        }
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            println!("APPDATA 目录: {}", appdata);
+        }
+        if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
+            println!("LOCALAPPDATA 目录: {}", localappdata);
+        }
+    }
+    
+    println!("开始单例检查...");
+    
     // Setup singleton check
     app_init::init_singleton_check();
 
@@ -403,18 +436,27 @@ pub fn run() {
         }
     }
 
+    println!("创建 Tauri 构建器...");
+    
     // Create and configure the Tauri builder
     let builder = app_init::setup_plugins(tauri::Builder::default())
         .setup(|app| {
+            println!("Tauri 应用设置阶段开始...");
             logging!(info, Type::Setup, true, "开始应用初始化...");
 
+            println!("设置自启动插件...");
             // Setup autostart plugin
             if let Err(e) = app_init::setup_autostart(app) {
+                println!("自启动插件设置失败: {}", e);
                 logging!(error, Type::Setup, true, "Failed to setup autostart: {}", e);
+            } else {
+                println!("自启动插件设置成功");
             }
 
+            println!("设置深度链接...");
             // Setup deep links
             if let Err(e) = app_init::setup_deep_links(app) {
+                println!("深度链接设置失败: {}", e);
                 logging!(
                     error,
                     Type::Setup,
@@ -422,10 +464,14 @@ pub fn run() {
                     "Failed to setup deep links: {}",
                     e
                 );
+            } else {
+                println!("深度链接设置成功");
             }
 
+            println!("设置窗口状态管理...");
             // Setup window state management
             if let Err(e) = app_init::setup_window_state(app) {
+                println!("窗口状态设置失败: {}", e);
                 logging!(
                     error,
                     Type::Setup,
@@ -433,16 +479,25 @@ pub fn run() {
                     "Failed to setup window state: {}",
                     e
                 );
+            } else {
+                println!("窗口状态设置成功");
             }
 
             let app_handle = app.handle().clone();
 
+            println!("执行主要设置操作...");
             logging!(info, Type::Setup, true, "执行主要设置操作...");
 
+            println!("设置应用句柄...");
             resolve::resolve_setup_handle(app_handle);
+            
+            println!("设置异步解析器...");
             resolve::resolve_setup_async();
+            
+            println!("设置同步解析器...");
             resolve::resolve_setup_sync();
 
+            println!("Tauri 初始化完成");
             logging!(info, Type::Setup, true, "初始化完成，继续执行");
             Ok(())
         })
@@ -620,10 +675,13 @@ pub fn run() {
         }
     }
 
+    println!("构建 Tauri 应用程序...");
     // Build the application
     let app = builder
         .build(tauri::generate_context!())
         .unwrap_or_else(|e| {
+            println!("❌ 构建 Tauri 应用程序失败: {}", e);
+            eprintln!("❌ 构建 Tauri 应用程序失败: {}", e);
             logging!(
                 error,
                 Type::Setup,
@@ -631,10 +689,42 @@ pub fn run() {
                 "Failed to build Tauri application: {}",
                 e
             );
+            
+            // 在 Windows 上显示错误对话框
+            #[cfg(windows)]
+            {
+                use std::ffi::CString;
+                use std::ptr;
+                
+                extern "system" {
+                    fn MessageBoxA(hwnd: *mut std::ffi::c_void, text: *const i8, caption: *const i8, utype: u32) -> i32;
+                }
+                
+                let error_msg = format!("Liebesu_Clash 启动失败\n\n错误: {}\n\n请检查日志文件获取详细信息。", e);
+                if let (Ok(msg), Ok(title)) = (CString::new(error_msg), CString::new("启动错误")) {
+                    unsafe {
+                        MessageBoxA(ptr::null_mut(), msg.as_ptr(), title.as_ptr(), 0x10 | 0x0);
+                    }
+                }
+            }
+            
             std::process::exit(1);
         });
 
+    println!("✅ Tauri 应用程序构建成功，开始运行事件循环...");
+
     app.run(|app_handle, e| {
+        match e {
+            tauri::RunEvent::Ready => {
+                println!("🚀 应用程序就绪事件");
+            },
+            tauri::RunEvent::Resumed => {
+                println!("🔄 应用程序恢复事件");
+            },
+            _ => {}
+        }
+        
+        // 原有的事件处理
         match e {
             tauri::RunEvent::Ready | tauri::RunEvent::Resumed => {
                 event_handlers::handle_ready_resumed(app_handle);
