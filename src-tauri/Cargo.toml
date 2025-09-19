@@ -1,16 +1,16 @@
 [package]
-name = "clash-verge"
+name = "liebesu-clash"
 version = "2.4.3"
 description = "clash verge"
 authors = ["zzzgydi", "Tunglies", "wonfen", "MystiPanda"]
 license = "GPL-3.0-only"
 repository = "https://github.com/clash-verge-rev/clash-verge-rev.git"
-default-run = "clash-verge"
+default-run = "liebesu-clash"
 edition = "2024"
 build = "build.rs"
 
 [package.metadata.bundle]
-identifier = "io.github.clash-verge-rev.clash-verge-rev"
+identifier = "io.github.liebesu.clash"
 
 [build-dependencies]
 tauri-build = { version = "2.4.1", features = [] }
@@ -151,6 +151,10 @@ strip = false
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "liebesu-clash"
+path = "src/main.rs"
 
 [dev-dependencies]
 criterion = "0.7.0"

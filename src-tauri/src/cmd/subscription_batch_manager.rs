@@ -63,7 +63,7 @@ pub async fn get_subscription_cleanup_preview(
     let mut all_subscriptions = Vec::new();
     let mut expired_subscriptions = Vec::new();
     
-    let threshold_date = Local::now() - Duration::days(options.days_threshold as i64);
+    let _threshold_date = Local::now() - Duration::days(options.days_threshold as i64);
     
     let empty_vec = Vec::new();
     let items = profiles.items.as_ref().unwrap_or(&empty_vec);

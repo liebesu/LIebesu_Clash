@@ -1,31 +1,17 @@
-name: Windows 个人构建
+# GitHub Actions 打包问题修复方案
+# 将此配置应用到您的工作流文件中
+
+# 修复后的 Windows Personal 构建配置
+name: Windows Personal Build (Fixed)
 
 on:
   workflow_dispatch:
   push:
     branches: [dev]
-    paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.mts'
-      - 'tsconfig.json'
-
-permissions: write-all
-
-env:
-  CARGO_INCREMENTAL: 0
-  RUST_BACKTRACE: short
-
-concurrency:
-  group: "windows-personal-${{ github.ref }}"
-  cancel-in-progress: true
 
 jobs:
   build-windows-x64:
-    name: Build Windows (x64)
+    name: Build Windows (x64) - Fixed
     runs-on: windows-latest
 
     steps:
@@ -56,6 +42,7 @@ jobs:
       - name: Install frontend deps
         run: pnpm install --frozen-lockfile
 
+      # 🔧 改进的 prebuild 步骤，增加错误检查
       - name: Download sidecar binaries (x64) with validation
         shell: pwsh
         run: |
@@ -69,7 +56,7 @@ jobs:
             throw
           }
           
-          # Verify critical sidecar files exist
+          # 验证关键文件存在
           Write-Host "Verifying critical sidecar files..." -ForegroundColor Yellow
           $criticalFiles = @(
             "src-tauri/sidecar/verge-mihomo-x86_64-pc-windows-msvc.exe",
@@ -86,22 +73,22 @@ jobs:
             }
           }
           
-          # Verify Windows-specific files
-          $windowsFiles = @(
-            "src-tauri/resources/sysproxy.exe",
-            "src-tauri/resources/clash-verge-service.exe",
-            "src-tauri/resources/enableLoopback.exe"
+          # 验证资源文件
+          $resourceFiles = @(
+            "src-tauri/resources/Country.mmdb",
+            "src-tauri/resources/geosite.dat",
+            "src-tauri/resources/geoip.dat"
           )
           
-          foreach ($file in $windowsFiles) {
+          foreach ($file in $resourceFiles) {
             if (Test-Path $file) {
-              Write-Host "[OK] Windows file: $file" -ForegroundColor Green
+              Write-Host "[OK] Resource file: $file" -ForegroundColor Green
             } else {
-              Write-Host "[WARN] Missing Windows file: $file" -ForegroundColor Yellow
+              Write-Host "[WARN] Missing resource file: $file" -ForegroundColor Yellow
             }
           }
 
-      - name: Create Tauri config override (disable updater)
+      - name: Create Tauri config override (improved)
         shell: pwsh
         run: |
           $config = @'
@@ -113,37 +100,40 @@ jobs:
               "updater": {
                 "dialog": false,
                 "endpoints": []
-              },
-              "deep-link": {
-                "desktop": {
-                  "schemes": ["liebesu-clash"]
-                }
               }
             },
             "bundle": {
               "windows": {
-                "nsis": {}
-              },
-              "macOS": {
-                "signingIdentity": "-",
-                "entitlements": "packages/macos/entitlements.plist"
+                "nsis": {
+                  "displayLanguageSelector": true,
+                  "installerIcon": "icons/icon.ico",
+                  "languages": ["SimpChinese", "English"],
+                  "installMode": "perMachine",
+                  "template": "./packages/windows/installer.nsi"
+                }
               }
             }
           }
           '@
           $config | Out-File -FilePath "src-tauri/tauri.personal.conf.json" -Encoding UTF8
+          Write-Host "Created Tauri personal config with correct identifier" -ForegroundColor Green
 
-      - name: Build app (x64 NSIS)
+      # 🔧 更新到最新的 Tauri Action 版本
+      - name: Build app (x64 NSIS) - Updated Action
         uses: tauri-apps/tauri-action@v0.5
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 🔧 添加调试模式
           RUST_LOG: tauri=debug
         with:
           tauriScript: pnpm
           args: --target x86_64-pc-windows-msvc -b nsis --config src-tauri/tauri.personal.conf.json
+          # 🔧 启用调试输出
+          includeDebug: true
 
-      - name: Verify build artifacts and list files
+      # 🔧 改进的构建产物验证
+      - name: Verify build artifacts
         shell: pwsh
         run: |
           Write-Host "Verifying build artifacts..." -ForegroundColor Yellow
@@ -154,20 +144,18 @@ jobs:
             throw "Target directory not found: $targetDir"
           }
           
-          # Check NSIS installer files
+          # 检查 NSIS 安装包
           $nsisDir = "$targetDir/nsis"
           if (Test-Path $nsisDir) {
             $setupFiles = Get-ChildItem -Path $nsisDir -Filter "*setup*.exe"
-            Write-Host "NSIS setup files found:" -ForegroundColor Green
+            Write-Host "NSIS setup files:" -ForegroundColor Green
             foreach ($file in $setupFiles) {
               $sizeMB = [math]::Round($file.Length / 1MB, 1)
               Write-Host "  - $($file.Name) ($sizeMB MB)" -ForegroundColor Green
               
-              # Check file size is reasonable (at least 20MB for a complete app)
+              # 检查文件大小合理性 (至少 20MB)
               if ($file.Length -lt 20MB) {
-                Write-Host "    [WARN] File size seems small for complete application" -ForegroundColor Yellow
-              } else {
-                Write-Host "    [OK] File size looks reasonable" -ForegroundColor Green
+                Write-Host "    [WARN] File size seems too small for a complete application" -ForegroundColor Yellow
               }
             }
             
@@ -178,29 +166,55 @@ jobs:
             throw "NSIS directory not found: $nsisDir"
           }
           
-          # List all build artifacts for debugging
-          Write-Host "`nAll build artifacts:" -ForegroundColor Cyan
-          Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe", "*.msi" | ForEach-Object {
-            $sizeMB = [math]::Round($_.Length / 1MB, 2)
-            Write-Host "  $($_.FullName) ($sizeMB MB)" -ForegroundColor White
+          # 检查 MSI 文件（如果存在）
+          $msiDir = "$targetDir/msi"
+          if (Test-Path $msiDir) {
+            $msiFiles = Get-ChildItem -Path $msiDir -Filter "*.msi"
+            Write-Host "MSI files:" -ForegroundColor Green
+            foreach ($file in $msiFiles) {
+              Write-Host "  - $($file.Name)" -ForegroundColor Green
+            }
           }
           
-          # Verify the main binary exists
-          $mainBinary = "src-tauri/target/x86_64-pc-windows-msvc/release/liebesu-clash.exe"
-          if (Test-Path $mainBinary) {
-            $sizeMB = [math]::Round((Get-ItemProperty $mainBinary).Length / 1MB, 1)
-            Write-Host "`n[OK] Main binary found: $mainBinary ($sizeMB MB)" -ForegroundColor Green
-          } else {
-            Write-Host "`n[WARN] Main binary not found at expected location: $mainBinary" -ForegroundColor Yellow
+          # 详细列出所有构建产物
+          Write-Host "`nAll build artifacts:" -ForegroundColor Cyan
+          Get-ChildItem -Path $targetDir -Recurse -File | ForEach-Object {
+            $relativePath = $_.FullName.Substring($targetDir.Length + 1)
+            $sizeMB = [math]::Round($_.Length / 1MB, 2)
+            Write-Host "  $relativePath ($sizeMB MB)" -ForegroundColor White
           }
 
-      - name: Upload artifacts
+      # 🔧 改进的文件上传配置
+      - name: Upload artifacts (improved)
         uses: actions/upload-artifact@v4
         with:
-          name: clash-verge-windows-x64-${{ github.sha }}-${{ github.run_number }}
+          name: liebesu-clash-windows-x64-${{ github.sha }}-${{ github.run_number }}
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-          if-no-files-found: warn
+          if-no-files-found: error  # 🔧 改为 error，确保有文件才成功
           retention-days: 7
 
+      # 🔧 新增：构建摘要报告
+      - name: Generate build summary
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "`n=== Build Summary ===" -ForegroundColor Green
+          
+          # 检查构建状态
+          $buildStatus = if (Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe") { "SUCCESS" } else { "FAILED" }
+          Write-Host "Build Status: $buildStatus" -ForegroundColor $(if ($buildStatus -eq "SUCCESS") { "Green" } else { "Red" })
+          
+          # 输出关键信息
+          Write-Host "Commit SHA: $env:GITHUB_SHA"
+          Write-Host "Run Number: $env:GITHUB_RUN_NUMBER"
+          Write-Host "Workflow: $env:GITHUB_WORKFLOW"
+          
+          if ($buildStatus -eq "FAILED") {
+            Write-Host "`nTroubleshooting tips:" -ForegroundColor Yellow
+            Write-Host "1. Check prebuild step for download failures"
+            Write-Host "2. Verify Tauri configuration files"
+            Write-Host "3. Check for Rust compilation errors"
+            Write-Host "4. Ensure all sidecar binaries are present"
+          }

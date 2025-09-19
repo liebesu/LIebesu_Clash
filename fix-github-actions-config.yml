@@ -1,0 +1,142 @@
+# Fixed Windows Personal Build Configuration
+# This file contains the corrected GitHub Actions workflow for Windows builds
+
+name: Windows Personal Build (Fixed)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - '.github/workflows/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'vite.config.mts'
+      - 'tsconfig.json'
+
+permissions: write-all
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+concurrency:
+  group: "windows-personal-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build-windows-x64:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: Install frontend deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Download sidecar binaries (x64)
+        run: pnpm run prebuild x86_64-pc-windows-msvc
+
+      # FIXED: This step now preserves the correct productName and identifier
+      - name: Create Tauri config override (disable updater) - FIXED
+        shell: pwsh
+        run: |
+          $config = @'
+          {
+            "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+            "identifier": "io.github.liebesu.clash",
+            "productName": "Liebesu_Clash",
+            "plugins": {
+              "updater": {
+                "dialog": false,
+                "endpoints": []
+              },
+              "deep-link": {
+                "desktop": {
+                  "schemes": ["liebesu-clash"]
+                }
+              }
+            },
+            "bundle": {
+              "windows": {
+                "nsis": {}
+              },
+              "macOS": {
+                "signingIdentity": "-",
+                "entitlements": "packages/macos/entitlements.plist"
+              }
+            }
+          }
+          '@
+          $config | Out-File -FilePath "src-tauri/tauri.personal.conf.json" -Encoding UTF8
+
+      - name: Verify config file
+        shell: pwsh
+        run: |
+          Write-Host "Generated tauri.personal.conf.json content:"
+          Get-Content "src-tauri/tauri.personal.conf.json"
+
+      - name: Build app (x64 NSIS)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: pnpm
+          args: --target x86_64-pc-windows-msvc -b nsis --config src-tauri/tauri.personal.conf.json
+
+      - name: List artifacts
+        shell: pwsh
+        run: |
+          Write-Host "Listing all built artifacts:"
+          Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe", "*.msi" | Select-Object FullName, Length, LastWriteTime
+          
+          Write-Host "`nChecking executable details:"
+          $exeFiles = Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe" | Where-Object { $_.Name -like "*setup*" -or $_.Name -eq "Liebesu_Clash.exe" }
+          foreach ($exe in $exeFiles) {
+            Write-Host "File: $($exe.FullName)"
+            Write-Host "Size: $([math]::Round($exe.Length/1MB, 2)) MB"
+            try {
+              $version = (Get-ItemProperty $exe.FullName).VersionInfo
+              Write-Host "Product: $($version.ProductName)"
+              Write-Host "Version: $($version.FileVersion)"
+            } catch {
+              Write-Host "Version info not available"
+            }
+            Write-Host "---"
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: liebesu-clash-windows-x64-${{ github.sha }}-${{ github.run_number }}
+          path: |
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+          if-no-files-found: error
+          retention-days: 7
