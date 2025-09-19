@@ -76,7 +76,7 @@ mod app_init {
             .plugin(tauri_plugin_deep_link::init());
 
         // Enable updater plugin only on non-macOS targets to avoid missing config issues
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
         {
             builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
         }
