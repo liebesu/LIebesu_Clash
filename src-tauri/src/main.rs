@@ -6,10 +6,7 @@ fn main() {
     {
         unsafe {
             use winapi::um::consoleapi::AllocConsole;
-            use winapi::um::wincon::{SetConsoleTitleA, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
-            use winapi::um::processenv::GetStdHandle;
-            use winapi::um::fileapi::{CreateFileA, GENERIC_WRITE, OPEN_EXISTING};
-            use winapi::um::winbase::STD_INPUT_HANDLE;
+            use winapi::um::wincon::SetConsoleTitleA;
             use std::ffi::CString;
             
             // 分配控制台
@@ -18,24 +15,6 @@ fn main() {
             // 设置控制台标题
             if let Ok(title) = CString::new("Liebesu_Clash 诊断控制台") {
                 SetConsoleTitleA(title.as_ptr());
-            }
-            
-            // 重定向标准输出到控制台
-            if let Ok(console_out) = CString::new("CONOUT$") {
-                let console_handle = CreateFileA(
-                    console_out.as_ptr(),
-                    GENERIC_WRITE,
-                    0,
-                    std::ptr::null_mut(),
-                    OPEN_EXISTING,
-                    0,
-                    std::ptr::null_mut()
-                );
-                
-                if console_handle != winapi::um::handleapi::INVALID_HANDLE_VALUE {
-                    winapi::um::processenv::SetStdHandle(STD_OUTPUT_HANDLE, console_handle);
-                    winapi::um::processenv::SetStdHandle(STD_ERROR_HANDLE, console_handle);
-                }
             }
         }
     }

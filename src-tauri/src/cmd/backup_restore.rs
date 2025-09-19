@@ -166,6 +166,7 @@ pub struct SyncStatus {
 
 /// 版本管理信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct BackupVersion {
     pub version_id: String,
     pub backup_id: String,
