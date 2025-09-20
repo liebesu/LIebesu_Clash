@@ -48,6 +48,7 @@ import { useTranslation } from "react-i18next";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { readTextFile } from "@tauri-apps/plugin-fs";
+import { showNotice } from "@/services/noticeService";
 import {
   batchImportFromText,
   previewBatchImport,
@@ -205,19 +206,24 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   // 预览导入
   const handlePreview = async () => {
     if (!textContent.trim()) {
+      showNotice("warning", "请先输入订阅链接");
       return;
     }
 
     setLoading(true);
     setProgress(30);
+    showNotice("info", "正在生成预览...", 1200);
 
     try {
       const result = await previewBatchImport(textContent, options);
       setPreviewResult(result);
       setActiveStep(2);
       setProgress(100);
+      showNotice("success", "预览生成成功", 1200);
     } catch (error) {
       console.error("预览失败:", error);
+      const msg = (error as any)?.message || String(error);
+      showNotice("error", `预览失败: ${msg}`, 3000);
     } finally {
       setLoading(false);
       setProgress(0);
@@ -227,11 +233,13 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   // 执行导入
   const handleImport = async () => {
     if (!textContent.trim()) {
+      showNotice("warning", "请先输入订阅链接");
       return;
     }
 
     setLoading(true);
     setProgress(30);
+    showNotice("info", "正在执行导入...", 1200);
 
     try {
       const result = await batchImportFromText(textContent, options);
@@ -244,6 +252,8 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
       }
     } catch (error) {
       console.error("导入失败:", error);
+      const msg = (error as any)?.message || String(error);
+      showNotice("error", `导入失败: ${msg}`, 3000);
     } finally {
       setLoading(false);
       setProgress(0);
