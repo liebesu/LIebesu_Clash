@@ -12,6 +12,25 @@ on:
         - ubuntu-latest
         - windows-latest
         - macos-latest
+  push:
+    branches:
+      - fix/batch-import-preview
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/test-build.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/test-build.yml'
 
 permissions: write-all
 
