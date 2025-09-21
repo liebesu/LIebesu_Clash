@@ -253,10 +253,10 @@ fn parse_subscription_urls(content: &str) -> CmdResult<Vec<String>> {
         return Ok(unique_urls);
     }
 
-    // Fallback: 全文正则提取 http(s) 子串
-    let re = Regex::new(r#"https?://[^\s"']+"#).map_err(|e| format!("正则编译失败: {}", e))?;
+    // Fallback: 全文正则提取 http(s) 子串（大小写不敏感）
+    let re = Regex::new(r#"(?i)https?://[^\s\"']+"#).map_err(|e| format!("正则编译失败: {}", e))?;
     let mut found = HashSet::new();
-    for mat in re.find(content) {
+    for mat in re.find_iter(content) {
         let mut u = mat.as_str().to_string();
         // 去掉结尾的标点
         while let Some(last) = u.chars().last() {
