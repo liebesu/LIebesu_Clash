@@ -116,6 +116,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   const [batchTestResult, setBatchTestResult] = useState<BatchTestResult | null>(null);
   const [qualityRanking, setQualityRanking] = useState<NodeTestResult[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<"quality" | "speed" | "success">("quality");
 
   // 状态图标映射
   const getStatusIcon = (status: string) => {
@@ -282,7 +283,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
     setLoading(true);
     
     try {
-      const ranking = await getNodeQualityRanking(selectedSubscription, 10);
+      const ranking = await getNodeQualityRanking(selectedSubscription, 200);
       setQualityRanking(ranking);
     } catch (error) {
       console.error("获取质量排名失败:", error);
@@ -710,6 +711,21 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   // 渲染质量排名和建议
   const renderAnalysis = () => (
     <Box>
+      {/* 排序与应用 */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+        <FormControl size="small">
+          <InputLabel>排序</InputLabel>
+          <Select
+            value={sortBy}
+            label="排序"
+            onChange={(e) => setSortBy(e.target.value as any)}
+          >
+            <MenuItem value="quality">按质量评分</MenuItem>
+            <MenuItem value="speed">按速度</MenuItem>
+            <MenuItem value="success">按成功率</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
       {/* 质量排名 */}
       {qualityRanking.length > 0 && (
         <Box sx={{ mb: 4 }}>
@@ -729,7 +745,25 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {qualityRanking.map((node, index) => (
+                {([...qualityRanking]
+                  .sort((a, b) => {
+                    if (sortBy === "quality") {
+                      const av = a.stability_score ?? -1;
+                      const bv = b.stability_score ?? -1;
+                      return bv - av;
+                    }
+                    if (sortBy === "speed") {
+                      const av = a.download_speed_mbps ?? 0;
+                      const bv = b.download_speed_mbps ?? 0;
+                      return bv - av;
+                    }
+                    // success: 根据状态排序 Pass>Warning>Fail>Timeout
+                    const rank = (s: string | undefined) => (
+                      s === "Pass" ? 3 : s === "Warning" ? 2 : s === "Fail" ? 1 : 0
+                    );
+                    return rank(b.status as any) - rank(a.status as any);
+                  })
+                ).map((node, index) => (
                   <TableRow key={index}>
                     <TableCell>#{index + 1}</TableCell>
                     <TableCell>{node.node_name}</TableCell>
@@ -750,6 +784,23 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
               </TableBody>
             </Table>
           </TableContainer>
+          <Box sx={{ mt: 2, textAlign: 'right' }}>
+            <Button
+              variant="contained"
+              startIcon={<TrendingUp />}
+              onClick={() => {
+                // 应用排名第一的节点（示例：仅提示，实际切换需结合分组/当前策略）
+                const best = ([...qualityRanking].sort((a, b) => (b.stability_score ?? -1) - (a.stability_score ?? -1)))[0];
+                if (best) {
+                  // 这里可以调用已有的 updateProxy 或者提供一个回调去选择组/节点
+                  // 暂时弹提示，待确认具体切换策略后接入 updateProxyAndSync
+                  alert(`建议切换到节点: ${best.node_name}`);
+                }
+              }}
+            >
+              应用最佳节点
+            </Button>
+          </Box>
         </Box>
       )}
 
