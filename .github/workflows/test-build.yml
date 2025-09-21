@@ -2,16 +2,6 @@ name: 配额超限订阅删除功能 - 测试构建
 
 on:
   workflow_dispatch:
-    inputs:
-      platform:
-        description: '选择构建平台来测试配额删除功能'
-        required: true
-        default: 'ubuntu-latest'
-        type: choice
-        options:
-        - ubuntu-latest
-        - windows-latest
-        - macos-latest
   push:
     branches:
       - fix/batch-import-preview
@@ -41,7 +31,11 @@ env:
 jobs:
   build-quota-feature:
     name: 构建配额删除功能
-    runs-on: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.platform || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     
     steps:
       - name: Checkout repository
@@ -54,12 +48,6 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-
-      - name: Install dependencies (ubuntu only)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libx11-dev libxdo-dev libxcb-shape0-dev libxcb-xfixes0-dev
 
       - name: Install dependencies (macOS only)
         if: runner.os == 'macOS'
