@@ -222,16 +222,20 @@ pub async fn preview_batch_import(
 fn parse_subscription_urls(content: &str) -> CmdResult<Vec<String>> {
     let mut urls = Vec::new();
     
-    // 尝试解析JSON格式
+    // 尝试解析JSON格式（仅当解析出非空结果时返回）
     if let Ok(json_urls) = parse_json_urls(content) {
-        urls.extend(json_urls);
-        return Ok(urls);
+        if !json_urls.is_empty() {
+            urls.extend(json_urls);
+            return Ok(urls);
+        }
     }
     
-    // 尝试解析YAML格式
+    // 尝试解析YAML格式（仅当解析出非空结果时返回）
     if let Ok(yaml_urls) = parse_yaml_urls(content) {
-        urls.extend(yaml_urls);
-        return Ok(urls);
+        if !yaml_urls.is_empty() {
+            urls.extend(yaml_urls);
+            return Ok(urls);
+        }
     }
     
     // 按行解析纯文本
