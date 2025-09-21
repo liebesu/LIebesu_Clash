@@ -548,7 +548,8 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
               overflow: "auto",
               fontFamily: "monospace",
               fontSize: "0.875rem",
-              bgcolor: "grey.50",
+              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+              color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
             }}
           >
             <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
@@ -615,7 +616,8 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           overflow: "auto",
           fontFamily: "monospace",
           fontSize: "0.875rem",
-          bgcolor: "grey.50",
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+          color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
         }}
       >
         <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>

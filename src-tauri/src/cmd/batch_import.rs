@@ -333,9 +333,10 @@ fn extract_url_from_json_object(obj: &serde_json::Value) -> Option<String> {
 
 /// 从单行文本中提取URL
 fn extract_url_from_line(line: &str) -> Option<String> {
-    // 直接是URL的情况
-    if line.starts_with("http://") || line.starts_with("https://") {
-        return Some(line.to_string());
+    // 直接是URL的情况（允许前缀有@这类标记）
+    let trimmed_leading = line.trim_start_matches(|c: char| c == '@' || c == '-' || c == '*' || c == '•');
+    if trimmed_leading.starts_with("http://") || trimmed_leading.starts_with("https://") {
+        return Some(trimmed_leading.to_string());
     }
     
     // 兼容 clash://install-config?url=ENCODED 或包含 url= 的情况
@@ -358,15 +359,15 @@ fn extract_url_from_line(line: &str) -> Option<String> {
     }
 
     // 包含URL的情况（用空格或其他分隔符分隔）
-    for part in line.split_whitespace() {
+    for part in trimmed_leading.split_whitespace() {
         if part.starts_with("http://") || part.starts_with("https://") {
             return Some(part.to_string());
         }
     }
     
     // 兼容百分号编码的 http(s) 片段（如 https%3A%2F%2F...）
-    if let Some(start) = line.find("http%3A").or_else(|| line.find("https%3A")) {
-        let encoded_part = &line[start..];
+    if let Some(start) = trimmed_leading.find("http%3A").or_else(|| trimmed_leading.find("https%3A")) {
+        let encoded_part = &trimmed_leading[start..];
         let decoded = percent_decode_str(encoded_part).decode_utf8_lossy().to_string();
         if decoded.starts_with("http://") || decoded.starts_with("https://") {
             if let Some(space) = decoded.find(' ') {
