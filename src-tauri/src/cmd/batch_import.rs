@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use nanoid::nanoid;
 use url::Url;
 use percent_encoding::percent_decode_str;
+use regex::Regex;
 
 /// 批量导入结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -248,7 +249,22 @@ fn parse_subscription_urls(content: &str) -> CmdResult<Vec<String>> {
     
     // 去重
     let unique_urls: Vec<String> = urls.into_iter().collect::<HashSet<_>>().into_iter().collect();
-    Ok(unique_urls)
+    if !unique_urls.is_empty() {
+        return Ok(unique_urls);
+    }
+
+    // Fallback: 全文正则提取 http(s) 子串
+    let re = Regex::new(r#"https?://[^\s"']+"#).map_err(|e| format!("正则编译失败: {}", e))?;
+    let mut found = HashSet::new();
+    for mat in re.find(content) {
+        let mut u = mat.as_str().to_string();
+        // 去掉结尾的标点
+        while let Some(last) = u.chars().last() {
+            if ",.;)\n\r]".contains(last) { u.pop(); } else { break; }
+        }
+        found.insert(u);
+    }
+    Ok(found.into_iter().collect())
 }
 
 /// 从JSON格式解析URL
