@@ -107,12 +107,8 @@ jobs:
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 默认禁用签名相关，使用 ad-hoc，避免证书导入失败
+          # 使用 ad-hoc 签名，避免证书导入
           APPLE_SIGNING_IDENTITY: "-"
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-          APPLE_CERTIFICATE: ""
-          APPLE_CERTIFICATE_PASSWORD: ""
         with:
           tauriScript: pnpm
           args: --target ${{ matrix.target }} -b ${{ matrix.bundle }}

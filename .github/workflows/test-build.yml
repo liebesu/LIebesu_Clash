@@ -80,11 +80,6 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
           # 使用ad-hoc签名，减少macOS安全阻拦
           APPLE_SIGNING_IDENTITY: "-"
-          # 显式禁用证书导入，防止 CI 中尝试导入无效证书
-          APPLE_CERTIFICATE: ""
-          APPLE_CERTIFICATE_PASSWORD: ""
-          TAURI_SIGNING_PRIVATE_KEY: ""
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
