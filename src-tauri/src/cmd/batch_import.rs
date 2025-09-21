@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use nanoid::nanoid;
 use url::Url;
+use percent_encoding::percent_decode_str;
 
 /// 批量导入结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -292,12 +293,14 @@ fn parse_yaml_urls(content: &str) -> Result<Vec<String>, serde_yaml_ng::Error> {
     if let Some(sequence) = value.as_sequence() {
         for item in sequence {
             if let Some(url_str) = item.as_str() {
-                urls.push(url_str.to_string());
+                let decoded = percent_decode_str(url_str).decode_utf8_lossy().to_string();
+                urls.push(decoded);
             } else if let Some(mapping) = item.as_mapping() {
                 for (key, val) in mapping {
                     if let (Some(key_str), Some(val_str)) = (key.as_str(), val.as_str()) {
                         if key_str.to_lowercase().contains("url") || key_str.to_lowercase().contains("link") {
-                            urls.push(val_str.to_string());
+                            let decoded = percent_decode_str(val_str).decode_utf8_lossy().to_string();
+                            urls.push(decoded);
                         }
                     }
                 }
@@ -316,6 +319,10 @@ fn extract_url_from_json_object(obj: &serde_json::Value) -> Option<String> {
         for field in &url_fields {
             if let Some(url_value) = obj_map.get(*field) {
                 if let Some(url_str) = url_value.as_str() {
+                    let decoded = percent_decode_str(url_str).decode_utf8_lossy().to_string();
+                    if decoded.starts_with("http://") || decoded.starts_with("https://") {
+                        return Some(decoded);
+                    }
                     return Some(url_str.to_string());
                 }
             }
@@ -331,6 +338,25 @@ fn extract_url_from_line(line: &str) -> Option<String> {
         return Some(line.to_string());
     }
     
+    // 兼容 clash://install-config?url=ENCODED 或包含 url= 的情况
+    if let Some(pos) = line.to_lowercase().find("url=") {
+        let val_start = pos + 4;
+        let rest = &line[val_start..];
+        // 截断到下一个分隔符（& 空格 引号）
+        let mut val_end = rest.len();
+        for (i, ch) in rest.char_indices() {
+            if ch == '&' || ch.is_whitespace() || ch == '"' || ch == '\'' {
+                val_end = i;
+                break;
+            }
+        }
+        let encoded = &rest[..val_end];
+        let decoded = percent_decode_str(encoded).decode_utf8_lossy().to_string();
+        if decoded.starts_with("http://") || decoded.starts_with("https://") {
+            return Some(decoded);
+        }
+    }
+
     // 包含URL的情况（用空格或其他分隔符分隔）
     for part in line.split_whitespace() {
         if part.starts_with("http://") || part.starts_with("https://") {
@@ -338,13 +364,15 @@ fn extract_url_from_line(line: &str) -> Option<String> {
         }
     }
     
-    // 使用正则表达式提取URL（简单实现）
-    if let Some(start) = line.find("http") {
-        let url_part = &line[start..];
-        if let Some(end) = url_part.find(' ') {
-            return Some(url_part[..end].to_string());
-        } else {
-            return Some(url_part.to_string());
+    // 兼容百分号编码的 http(s) 片段（如 https%3A%2F%2F...）
+    if let Some(start) = line.find("http%3A").or_else(|| line.find("https%3A")) {
+        let encoded_part = &line[start..];
+        let decoded = percent_decode_str(encoded_part).decode_utf8_lossy().to_string();
+        if decoded.starts_with("http://") || decoded.starts_with("https://") {
+            if let Some(space) = decoded.find(' ') {
+                return Some(decoded[..space].to_string());
+            }
+            return Some(decoded);
         }
     }
     
