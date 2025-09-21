@@ -206,7 +206,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   // 预览导入
   const handlePreview = async () => {
     if (!textContent.trim()) {
-      showNotice("warning", "请先输入订阅链接");
+      showNotice("info", "请先输入订阅链接");
       return;
     }
 
@@ -233,7 +233,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   // 执行导入
   const handleImport = async () => {
     if (!textContent.trim()) {
-      showNotice("warning", "请先输入订阅链接");
+      showNotice("info", "请先输入订阅链接");
       return;
     }
 
