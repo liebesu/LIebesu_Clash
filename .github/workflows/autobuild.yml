@@ -149,8 +149,6 @@ jobs:
             target: aarch64-apple-darwin
           - os: macos-latest
             target: x86_64-apple-darwin
-          - os: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -170,11 +168,12 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/dev' }}
           shared-key: autobuild-shared
 
-      - name: Install dependencies (ubuntu only)
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      # Linux 构建已禁用
+      # - name: Install dependencies (ubuntu only)
+      #   if: matrix.os == 'ubuntu-22.04'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Install x86 OpenSSL (macOS only)
         if: matrix.target == 'x86_64-apple-darwin'
@@ -209,14 +208,12 @@ jobs:
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # 默认禁用签名相关（ad-hoc），避免证书导入失败
+          APPLE_SIGNING_IDENTITY: "-"
+          TAURI_SIGNING_PRIVATE_KEY: ""
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          APPLE_CERTIFICATE: ""
+          APPLE_CERTIFICATE_PASSWORD: ""
         with:
           tagName: ${{ env.TAG_NAME }}
           releaseName: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"
@@ -227,10 +224,11 @@ jobs:
           args: --target ${{ matrix.target }}
           # includeUpdaterJson: true
 
+  # Linux ARM 构建已禁用
   autobuild-arm-linux:
     name: Autobuild ARM Linux
     needs: [check_commit, update_tag]
-    if: ${{ needs.check_commit.outputs.should_run == 'true' }}
+    if: ${{ false }}
     strategy:
       fail-fast: false
       matrix:
@@ -472,7 +470,6 @@ jobs:
       [
         update_tag,
         autobuild-x86-windows-macos-linux,
-        autobuild-arm-linux,
         autobuild-x86-arm-windows_webview2,
       ]
     steps:
