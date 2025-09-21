@@ -917,8 +917,10 @@ export async function batchExportSubscriptions(
   subscriptionUids: string[],
   options: ExportOptions
 ) {
+  // 兼容 snake_case 与 camelCase
   return invoke<string>("batch_export_subscriptions", {
     subscription_uids: subscriptionUids,
+    subscriptionUids: subscriptionUids,
     options,
   });
 }
@@ -931,9 +933,12 @@ export async function exportSubscriptionsToFile(
   filePath: string,
   options: ExportOptions
 ) {
+  // 兼容 snake_case 与 camelCase
   return invoke<void>("export_subscriptions_to_file", {
     subscription_uids: subscriptionUids,
+    subscriptionUids: subscriptionUids,
     file_path: filePath,
+    filePath: filePath,
     options,
   });
 }
@@ -945,8 +950,10 @@ export async function previewExport(
   subscriptionUids: string[],
   options: ExportOptions
 ) {
+  // 兼容 snake_case 与 camelCase
   return invoke<ExportPreview>("preview_export", {
     subscription_uids: subscriptionUids,
+    subscriptionUids: subscriptionUids,
     options,
   });
 }
