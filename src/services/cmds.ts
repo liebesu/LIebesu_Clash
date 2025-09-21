@@ -835,8 +835,10 @@ export async function batchImportFromText(
   textContent: string,
   options?: BatchImportOptions
 ) {
+  // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("batch_import_from_text", {
     text_content: textContent,
+    textContent: textContent,
     options,
   });
 }
@@ -848,8 +850,10 @@ export async function batchImportFromFile(
   filePath: string,
   options?: BatchImportOptions
 ) {
+  // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("batch_import_from_file", {
     file_path: filePath,
+    filePath: filePath,
     options,
   });
 }
@@ -868,8 +872,10 @@ export async function previewBatchImport(
   textContent: string,
   options?: BatchImportOptions
 ) {
+  // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("preview_batch_import", {
     text_content: textContent,
+    textContent: textContent,
     options,
   });
 }
