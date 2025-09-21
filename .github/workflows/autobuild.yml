@@ -210,6 +210,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 使用 ad-hoc 签名，避免证书导入
           APPLE_SIGNING_IDENTITY: "-"
+          VITE_BUILD_VERSION: "${{ github.run_number }}"
         with:
           tagName: ${{ env.TAG_NAME }}
           releaseName: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"

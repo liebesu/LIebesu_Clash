@@ -6,6 +6,7 @@ import legacy from "@vitejs/plugin-legacy";
 import monacoEditorPlugin, {
   type IMonacoEditorOpts,
 } from "vite-plugin-monaco-editor";
+import pkg from "./package.json" assert { type: "json" };
 const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
   options: IMonacoEditorOpts,
 ) => any;
@@ -163,5 +164,7 @@ export default defineConfig({
 
   define: {
     OS_PLATFORM: '"unknown"',
+    APP_VERSION: JSON.stringify(pkg.version),
+    BUILD_VERSION: JSON.stringify(process.env.VITE_BUILD_VERSION || ""),
   },
 });

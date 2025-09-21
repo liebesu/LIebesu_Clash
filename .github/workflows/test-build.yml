@@ -74,7 +74,7 @@ jobs:
         run: pnpm prebuild
 
       - name: Build the app
-        run: pnpm tauri build --ci
+        run: VITE_BUILD_VERSION="${{ github.run_number }}" pnpm tauri build --ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=4096

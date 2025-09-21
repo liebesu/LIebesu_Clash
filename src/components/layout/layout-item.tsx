@@ -63,7 +63,19 @@ export const LayoutItem = (props: Props) => {
             textAlign: "center",
             marginLeft: menu_icon === "disable" ? "" : "-35px",
           }}
-          primary={children}
+          primary={
+            <span>
+              {children}
+              {to === "/" && (
+                <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 6 }}>
+                  {typeof APP_VERSION !== "undefined" ? APP_VERSION : ""}
+                  {typeof BUILD_VERSION !== "undefined" && BUILD_VERSION
+                    ? ` (${BUILD_VERSION})`
+                    : ""}
+                </span>
+              )}
+            </span>
+          }
         />
       </ListItemButton>
     </ListItem>
