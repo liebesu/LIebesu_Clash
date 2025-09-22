@@ -34,7 +34,7 @@ import {
   NetworkCheck,
   Timer,
 } from '@mui/icons-material';
-import { invoke } from '@tauri-apps/api/tauri';
+import { startGlobalSpeedTest, applyBestNode } from '@/services/cmds';
 import { listen } from '@tauri-apps/api/event';
 import { showNotice } from '@/services/noticeService';
 
@@ -129,7 +129,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       setResults([]);
       
       showNotice('info', '开始全局节点测速...', 2000);
-      await invoke('start_global_speed_test');
+      await startGlobalSpeedTest();
     } catch (error: any) {
       console.error('启动全局测速失败:', error);
       showNotice('error', `启动测速失败: ${error.message}`, 3000);
@@ -144,7 +144,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     }
 
     try {
-      await invoke('apply_best_node');
+      await applyBestNode();
       showNotice('success', `已切换到最佳节点: ${summary.best_node.node_name}`, 3000);
     } catch (error: any) {
       console.error('切换节点失败:', error);

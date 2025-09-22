@@ -1,8 +1,19 @@
 import axios from "axios";
 
-const TELEGRAM_BOT_TOKEN = "8426858985:AAFoVEt57PBQjHYhOhOMqL6HyG40Nt6o2XQ";
-
 async function getChatId() {
+  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.log("❌ 错误: 未找到 TELEGRAM_BOT_TOKEN 环境变量");
+    console.log("");
+    console.log("请先设置环境变量:");
+    console.log("export TELEGRAM_BOT_TOKEN='your_bot_token_here'");
+    console.log("");
+    console.log("或者从 GitHub Secrets 获取:");
+    console.log("gh secret get TELEGRAM_BOT_TOKEN --repo liebesu/LIebesu_Clash");
+    return;
+  }
+
   try {
     console.log("🤖 获取 Telegram Chat ID");
     console.log("=====================================");

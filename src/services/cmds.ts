@@ -2198,3 +2198,19 @@ export async function setAutoCleanupRules(enabled: boolean, cleanupOptions: Subs
 export async function getAutoCleanupRules() {
   return invoke<any>("get_auto_cleanup_rules");
 }
+
+// ===== 全局节点测速相关命令 =====
+
+/**
+ * 开始全局节点测速
+ */
+export async function startGlobalSpeedTest(): Promise<string> {
+  return invoke<string>("start_global_speed_test");
+}
+
+/**
+ * 切换到最佳节点
+ */
+export async function applyBestNode(): Promise<string> {
+  return invoke<string>("apply_best_node");
+}
