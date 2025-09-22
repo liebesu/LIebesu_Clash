@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
+use tauri::Emitter;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -50,21 +51,22 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "开始全局节点测速");
     
     let profiles = Config::profiles().await;
-    let profiles = profiles.latest_ref();
-
-    let items = match &profiles.items {
-        Some(items) if !items.is_empty() => items,
-        _ => return Err("没有找到任何订阅配置".to_string()),
+    let profiles_data = {
+        let profiles_ref = profiles.latest_ref();
+        match &profiles_ref.items {
+            Some(items) if !items.is_empty() => items.clone(),
+            _ => return Err("没有找到任何订阅配置".to_string()),
+        }
     };
 
     let mut all_results = Vec::new();
     let mut total_nodes = 0;
     let mut tested_nodes = 0;
-    
+
     let start_time = Instant::now();
-    
+
     // 遍历所有订阅
-    for item in items {
+    for item in &profiles_data {
         if let Some(profile_data) = &item.file_data {
             log::info!(target: "app", "正在测试订阅: {}", item.name.as_deref().unwrap_or("未命名"));
 
@@ -91,7 +93,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                 }
 
                 // 执行测速
-                let result = test_single_node(&node, &item.name.as_deref().unwrap_or("未命名"), &item.uid).await;
+                let result = test_single_node(&node, &item.name.as_deref().unwrap_or("未命名"), &item.uid.as_deref().unwrap_or("unknown")).await;
                 all_results.push(result);
             }
         }
