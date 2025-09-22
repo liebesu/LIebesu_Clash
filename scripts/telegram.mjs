@@ -2,8 +2,10 @@ import axios from "axios";
 import { readFileSync } from "fs";
 import { log_success, log_error, log_info } from "./utils.mjs";
 
-const CHAT_ID_RELEASE = "@clash_verge_re"; // 正式发布频道
-const CHAT_ID_TEST = "@vergetest"; // 测试频道
+// 你可以通过与 @liebesu_clash_bot 对话获取你的 chat_id
+// 发送 /start 给机器人，然后查看日志获取 chat_id
+const CHAT_ID_RELEASE = process.env.TELEGRAM_CHAT_ID || "YOUR_CHAT_ID"; // 正式发布通知
+const CHAT_ID_TEST = process.env.TELEGRAM_CHAT_ID || "YOUR_CHAT_ID"; // 测试通知
 
 async function sendTelegramNotification() {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -19,7 +21,7 @@ async function sendTelegramNotification() {
 
   const downloadUrl =
     process.env.DOWNLOAD_URL ||
-    `https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v${version}`;
+    `https://github.com/liebesu/LIebesu_Clash/releases/download/v${version}`;
 
   const isAutobuild =
     process.env.BUILD_TYPE === "autobuild" || version.includes("autobuild");
@@ -75,7 +77,7 @@ async function sendTelegramNotification() {
 
   const releaseTitle = isAutobuild ? "滚动更新版发布" : "正式发布";
   const encodedVersion = encodeURIComponent(version);
-  const content = `<b>🎉 <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/autobuild">Clash Verge Rev v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
+  const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/autobuild">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
 
   // 发送到 Telegram
   try {
@@ -86,7 +88,7 @@ async function sendTelegramNotification() {
         text: content,
         link_preview_options: {
           is_disabled: false,
-          url: `https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/v${encodedVersion}`,
+          url: `https://github.com/liebesu/LIebesu_Clash/releases/tag/v${encodedVersion}`,
           prefer_large_media: true,
         },
         parse_mode: "HTML",
