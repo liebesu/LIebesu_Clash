@@ -14,14 +14,14 @@ pub struct SpeedTestResult {
     pub node_name: String,
     pub node_type: String,
     pub server: String,
+    pub profile_name: String,
+    pub profile_uid: String,
     pub latency_ms: Option<u64>,
     pub download_speed_mbps: Option<f64>,
     pub upload_speed_mbps: Option<f64>,
-    pub stability_score: Option<f64>,
+    pub stability_score: f64,
+    pub test_duration_ms: u64,
     pub status: String,
-    pub error_message: Option<String>,
-    pub profile_name: String,
-    pub profile_uid: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,7 +79,6 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                 }
                 Err(e) => {
                     log::warn!(target: "app", "解析订阅 '{}' 失败: {}", profile_name, e);
-                    continue;
                 }
             }
         } else {
@@ -188,7 +187,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 跳过非代理节点（如 DIRECT, REJECT 等）
                             let node_type = ["type", "Type", "protocol", "Protocol"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown")
                                 .to_string();
@@ -201,7 +200,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 尝试获取节点名称
                             let node_name = ["name", "Name", "title", "Title", "tag", "Tag"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or(&format!("节点{}", i + 1))
                                 .to_string();
@@ -214,7 +213,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 尝试获取服务器地址
                             let server = ["server", "Server", "hostname", "Hostname", "host", "Host", "address", "Address"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown")
                                 .to_string();
@@ -405,7 +404,7 @@ async fn test_node_latency(server: &str) -> Result<u64> {
     let start = Instant::now();
     
     // 解析服务器地址
-    let addr = match parse_server_address(server).await {
+    let addr = match parse_server_address(server) {
         Ok(addr) => addr,
         Err(e) => {
             log::warn!(target: "app", "无法解析服务器地址 {}: {}", server, e);
@@ -429,7 +428,7 @@ async fn test_node_latency(server: &str) -> Result<u64> {
 }
 
 /// 解析服务器地址
-async fn parse_server_address(server: &str) -> Result<SocketAddr> {
+fn parse_server_address(server: &str) -> Result<SocketAddr> {
     // 如果包含端口，直接解析
     if server.contains(':') {
         match server.to_socket_addrs() {
@@ -535,7 +534,7 @@ async fn test_single_download(client: &reqwest::Client, url: &str) -> Result<f64
 }
 
 /// 模拟上传速度测试（简化版）
-async fn test_upload_speed() -> Result<f64> {
+fn test_upload_speed() -> Result<f64> {
     // 上传测试比较复杂，暂时使用模拟数据
     // 实际实现需要找到支持上传测试的服务器
     Ok(fastrand::f64() * 49.0 + 1.0)
@@ -656,7 +655,7 @@ fn calculate_overall_score(result: &SpeedTestResult) -> f64 {
         0.0
     };
     
-    let stability_score = result.stability_score.unwrap_or(0.0) * 0.2; // 20%权重
+    let stability_score = result.stability_score * 0.2; // 20%权重
     
     latency_score + speed_score + stability_score
 }
