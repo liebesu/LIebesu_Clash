@@ -139,7 +139,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
 
   const handleApplyBestNode = async () => {
     if (!summary?.best_node) {
-      showNotice('warning', '没有找到最佳节点', 2000);
+      showNotice('info', '没有找到最佳节点', 2000);
       return;
     }
 
@@ -288,7 +288,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 </Grid>
                 <Grid item xs={6} md={3}>
                   <Box textAlign="center">
-                    <Typography variant="h4" color="success.main">
+                    <Typography variant="h4" sx={{ color: 'success.main' }}>
                       {summary.successful_tests}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -298,7 +298,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 </Grid>
                 <Grid item xs={6} md={3}>
                   <Box textAlign="center">
-                    <Typography variant="h4" color="error.main">
+                    <Typography variant="h4" sx={{ color: 'error.main' }}>
                       {summary.failed_tests}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -308,7 +308,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 </Grid>
                 <Grid item xs={6} md={3}>
                   <Box textAlign="center">
-                    <Typography variant="h4" color="info.main">
+                    <Typography variant="h4" sx={{ color: 'info.main' }}>
                       {summary.duration_seconds}s
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
