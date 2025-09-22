@@ -197,11 +197,38 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Rust Stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust Stable (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: |
+            # Use dtolnay/rust-toolchain action equivalent commands with retry
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              powershell -Command "
+                try {
+                  Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile 'rustup-init.exe' -UseBasicParsing -TimeoutSec 300
+                  .\rustup-init.exe -y --default-toolchain stable --profile minimal --no-modify-path
+                  echo `"$env:USERPROFILE\.cargo\bin`" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+                } catch {
+                  Write-Error `"Failed to install Rust: $($_.Exception.Message)`"
+                  exit 1
+                }
+              "
+            else
+              curl --retry 3 --retry-delay 5 --retry-max-time 300 --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+              echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            fi
+        shell: bash
 
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
+      - name: Add Rust Target (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: rustup target add ${{ matrix.target }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -355,11 +382,38 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Rust Stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust Stable (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: |
+            # Use dtolnay/rust-toolchain action equivalent commands with retry
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              powershell -Command "
+                try {
+                  Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile 'rustup-init.exe' -UseBasicParsing -TimeoutSec 300
+                  .\rustup-init.exe -y --default-toolchain stable --profile minimal --no-modify-path
+                  echo `"$env:USERPROFILE\.cargo\bin`" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+                } catch {
+                  Write-Error `"Failed to install Rust: $($_.Exception.Message)`"
+                  exit 1
+                }
+              "
+            else
+              curl --retry 3 --retry-delay 5 --retry-max-time 300 --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+              echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            fi
+        shell: bash
 
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
+      - name: Add Rust Target (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: rustup target add ${{ matrix.target }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -490,8 +544,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Add Rust Target
-        run: rustup target add ${{ matrix.target }}
+      - name: Add Rust Target (with retry)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_on: error
+          command: rustup target add ${{ matrix.target }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
