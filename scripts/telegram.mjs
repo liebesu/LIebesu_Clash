@@ -12,6 +12,10 @@ async function sendTelegramNotification() {
     throw new Error("TELEGRAM_BOT_TOKEN is required");
   }
 
+  if (!process.env.TELEGRAM_CHAT_ID) {
+    throw new Error("TELEGRAM_CHAT_ID is required");
+  }
+
   const version =
     process.env.VERSION ||
     (() => {

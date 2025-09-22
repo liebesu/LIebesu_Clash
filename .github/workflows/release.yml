@@ -94,7 +94,7 @@ jobs:
           echo "TAG_NAME=$TAG_REF" >> $GITHUB_ENV
           VERSION=$(echo "$TAG_REF" | sed 's/^v//')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=https://github.com/clash-verge-rev/clash-verge-rev/releases/download/$TAG_REF" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/liebesu/LIebesu_Clash/releases/download/$TAG_REF" >> $GITHUB_ENV
         shell: bash
 
       - run: |
@@ -571,7 +571,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install jq
           echo "VERSION=$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=https://github.com/clash-verge-rev/clash-verge-rev/releases/download/v$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/liebesu/LIebesu_Clash/releases/download/v$(cat package.json | jq '.version' | tr -d '"')" >> $GITHUB_ENV
           echo "BUILDTIME=$(TZ=Asia/Shanghai date)" >> $GITHUB_ENV
 
       - name: Generate release.txt
@@ -617,6 +617,7 @@ jobs:
         run: node scripts/telegram.mjs
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BUILD_TYPE: release
           VERSION: ${{ env.VERSION }}
           DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
