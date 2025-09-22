@@ -291,6 +291,30 @@ jobs:
             chmod +x "$(dirname "$DMG_PATH")/refresh-launchpad.sh"
           fi
 
+      - name: Rename Windows EXE with run number
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*-setup.exe"
+          foreach ($file in $files) {
+            $dir = $file.Directory
+            $baseName = $file.BaseName -replace "-setup$", ""
+            $newName = "${baseName}_${{ github.run_number }}-setup.exe"
+            $newPath = Join-Path $dir $newName
+            Rename-Item $file.FullName $newPath
+            Write-Output "Renamed to: $newPath"
+          }
+          
+          $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*.nsis.zip"
+          foreach ($file in $files) {
+            $dir = $file.Directory
+            $baseName = $file.BaseName -replace "-setup\.nsis$", ""
+            $newName = "${baseName}_${{ github.run_number }}-setup.nsis.zip"
+            $newPath = Join-Path $dir $newName
+            Rename-Item $file.FullName $newPath
+            Write-Output "Renamed to: $newPath"
+          }
+
       - name: Rename macOS DMG with run number
         if: matrix.os == 'macos-latest'
         shell: bash
@@ -516,19 +540,19 @@ jobs:
         run: |
           $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*-setup.exe"
           foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe$", "_fixed_webview2-setup.exe"
+            $newName = $file.Name -replace "-setup\.exe$", "_${{ github.run_number }}_fixed_webview2-setup.exe"
             Rename-Item $file.FullName $newName
           }
 
           $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*.nsis.zip"
           foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.nsis\.zip$", "_fixed_webview2-setup.nsis.zip"
+            $newName = $file.Name -replace "-setup\.nsis\.zip$", "_${{ github.run_number }}_fixed_webview2-setup.nsis.zip"
             Rename-Item $file.FullName $newName
           }
 
           $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*-setup.exe.sig"
           foreach ($file in $files) {
-            $newName = $file.Name -replace "-setup\.exe\.sig$", "_fixed_webview2-setup.exe.sig"
+            $newName = $file.Name -replace "-setup\.exe\.sig$", "_${{ github.run_number }}_fixed_webview2-setup.exe.sig"
             Rename-Item $file.FullName $newName
           }
 

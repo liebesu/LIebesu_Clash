@@ -34,6 +34,7 @@ import {
   Search,
   GetApp,
   ManageAccounts,
+  NetworkCheck,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
 import {
@@ -79,6 +80,7 @@ import BackupRestoreDialog from "@/components/profile/backup-restore-dialog";
 import AdvancedSearchDialog from "@/components/profile/advanced-search-dialog";
 import BatchExportDialog from "@/components/profile/batch-export-dialog";
 import { SubscriptionBatchManagerDialog } from "@/components/profile/subscription-batch-manager-dialog";
+import { GlobalSpeedTestDialog } from "@/components/profile/global-speed-test-dialog";
 import { standardizeUrl } from "@/utils/subscription-utils";
 
 // 记录profile切换状态
@@ -165,6 +167,9 @@ const ProfilePage = () => {
 
   // 订阅批量管理对话框状态
   const [subscriptionBatchManagerDialogOpen, setSubscriptionBatchManagerDialogOpen] = useState(false);
+
+  // 全局测速对话框状态
+  const [globalSpeedTestDialogOpen, setGlobalSpeedTestDialogOpen] = useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -1044,6 +1049,16 @@ const ProfilePage = () => {
             <ManageAccounts />
           </IconButton>
 
+          {/* 全局测速 */}
+          <IconButton
+            size="small"
+            color="inherit"
+            title="全局节点测速"
+            onClick={() => setGlobalSpeedTestDialogOpen(true)}
+          >
+            <NetworkCheck />
+          </IconButton>
+
           <IconButton
             size="small"
             color="inherit"
@@ -1307,6 +1322,11 @@ const ProfilePage = () => {
       <SubscriptionBatchManagerDialog
         open={subscriptionBatchManagerDialogOpen}
         onClose={() => setSubscriptionBatchManagerDialogOpen(false)}
+      />
+
+      <GlobalSpeedTestDialog
+        open={globalSpeedTestDialogOpen}
+        onClose={() => setGlobalSpeedTestDialogOpen(false)}
       />
     </BasePage>
   );

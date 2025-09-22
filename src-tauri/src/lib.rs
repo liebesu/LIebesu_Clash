@@ -243,6 +243,9 @@ mod app_init {
             cmd::get_node_quality_ranking,
             cmd::get_optimization_suggestions,
             cmd::schedule_periodic_test,
+            // Global speed test commands
+            cmd::start_global_speed_test,
+            cmd::apply_best_node,
             // Traffic stats commands
             cmd::record_traffic_usage,
             cmd::get_subscription_traffic_stats,
