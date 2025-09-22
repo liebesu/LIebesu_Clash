@@ -41,16 +41,16 @@ echo "🔄 生成应用程序图标..."
 declare -a sizes=("16" "32" "48" "64" "128" "256" "512" "1024")
 
 for size in "${sizes[@]}"; do
-    echo "  生成 ${size}x${size}.png..."
-    $MAGICK_CMD "$SOURCE_IMAGE" -resize "${size}x${size}" -quality 100 "$ICONS_DIR/${size}x${size}.png"
+    echo "  生成 ${size}x${size}.png (RGBA)..."
+    $MAGICK_CMD "$SOURCE_IMAGE" -resize "${size}x${size}!" -alpha set -background none -quality 100 "$ICONS_DIR/${size}x${size}.png"
 done
 
 # 生成特殊尺寸
-echo "  生成 128x128@2x.png..."
-$MAGICK_CMD "$SOURCE_IMAGE" -resize "256x256" -quality 100 "$ICONS_DIR/128x128@2x.png"
+echo "  生成 128x128@2x.png (RGBA)..."
+$MAGICK_CMD "$SOURCE_IMAGE" -resize "256x256!" -alpha set -background none -quality 100 "$ICONS_DIR/128x128@2x.png"
 
-echo "  生成主图标 icon.png..."
-$MAGICK_CMD "$SOURCE_IMAGE" -resize "512x512" -quality 100 "$ICONS_DIR/icon.png"
+echo "  生成主图标 icon.png (RGBA)..."
+$MAGICK_CMD "$SOURCE_IMAGE" -resize "512x512!" -alpha set -background none -quality 100 "$ICONS_DIR/icon.png"
 
 # 生成 Windows Store 图标
 echo "🪟 生成 Windows Store 图标..."
