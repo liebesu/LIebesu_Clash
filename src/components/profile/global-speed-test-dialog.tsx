@@ -213,7 +213,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Grid container spacing={3} alignItems="center">
-              <Grid item xs={12} md={6} component="div">
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Button
                   variant="contained"
                   startIcon={testing ? <Stop /> : <PlayArrow />}
@@ -225,7 +225,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                   {testing ? '测速进行中...' : '开始全局测速'}
                 </Button>
               </Grid>
-              <Grid item xs={12} md={6} component="div">
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Button
                   variant="outlined"
                   startIcon={<Star />}
@@ -276,7 +276,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 测试结果摘要
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={6} md={3} component="div">
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="primary">
                       {summary.total_nodes}
@@ -286,7 +286,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} md={3} component="div">
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" sx={{ color: 'success.main' }}>
                       {summary.successful_tests}
@@ -296,7 +296,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} md={3} component="div">
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" sx={{ color: 'error.main' }}>
                       {summary.failed_tests}
@@ -306,7 +306,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={6} md={3} component="div">
+                <Grid size={{ xs: 6, md: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" sx={{ color: 'info.main' }}>
                       {summary.duration_seconds}s
