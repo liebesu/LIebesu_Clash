@@ -221,6 +221,49 @@ jobs:
           args: --target ${{ matrix.target }}
           # includeUpdaterJson: true
 
+      - name: Post-process macOS app (remove quarantine and ad-hoc sign)
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -e
+          APP_PATH=$(find src-tauri/target -type d -path "*/release/bundle/*/*.app" | head -1)
+          DMG_PATH=$(find src-tauri/target -type f -path "*/release/bundle/dmg/*.dmg" | head -1)
+          echo "APP_PATH=$APP_PATH"
+          echo "DMG_PATH=$DMG_PATH"
+          if [[ -n "$APP_PATH" ]]; then
+            xattr -cr "$APP_PATH" || true
+            codesign --force --deep --sign - "$APP_PATH" || true
+            codesign --verify --verbose "$APP_PATH" || true
+          fi
+          if [[ -n "$DMG_PATH" ]]; then
+            xattr -cr "$DMG_PATH" || true
+          fi
+          # 附带用户修复脚本
+          if [[ -f "fix-macos-app.sh" && -n "$DMG_PATH" ]]; then
+            cp fix-macos-app.sh "$(dirname "$DMG_PATH")/"
+            chmod +x "$(dirname "$DMG_PATH")/fix-macos-app.sh"
+          fi
+          if [[ -f "refresh-launchpad.sh" && -n "$DMG_PATH" ]]; then
+            cp refresh-launchpad.sh "$(dirname "$DMG_PATH")/"
+            chmod +x "$(dirname "$DMG_PATH")/refresh-launchpad.sh"
+          fi
+
+      - name: Rename macOS DMG with run number
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -e
+          DMG_PATH=$(find src-tauri/target -type f -path "*/release/bundle/dmg/*.dmg" | head -1)
+          if [[ -n "$DMG_PATH" ]]; then
+            DIR=$(dirname "$DMG_PATH")
+            FILE=$(basename "$DMG_PATH")
+            EXT="${FILE##*.}"
+            NAME="${FILE%.*}"
+            NEW_NAME="${NAME}_${GITHUB_RUN_NUMBER}.${EXT}"
+            mv "$DMG_PATH" "$DIR/$NEW_NAME"
+            echo "Renamed to: $DIR/$NEW_NAME"
+          fi
+
   # Linux ARM 构建已禁用
   autobuild-arm-linux:
     name: Autobuild ARM Linux

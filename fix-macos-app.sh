@@ -46,6 +46,22 @@ codesign --verify --verbose "$APP_PATH" 2>/dev/null && {
 echo "🔐 设置应用权限..."
 chmod -R 755 "$APP_PATH"
 
+# 刷新启动台缓存
+echo "🔄 刷新启动台缓存..."
+echo "这可能需要几秒钟时间..."
+defaults write com.apple.dock ResetLaunchPad -bool true
+killall Dock 2>/dev/null || {
+    echo "⚠️  无法重启Dock，请手动重启或注销重新登录"
+}
+
+# 等待Dock重启
+sleep 3
+
+# 触发启动台数据库重建
+echo "🔄 重建启动台数据库..."
+sudo rm -rf /private/var/folders/*/0/com.apple.dock.launchpad/db/db 2>/dev/null || true
+sudo rm -rf ~/Library/Application\ Support/Dock/*.db 2>/dev/null || true
+
 # 尝试启动应用
 echo "🚀 尝试启动应用..."
 open "$APP_PATH" && {
@@ -66,6 +82,15 @@ open "$APP_PATH" && {
     echo "   sudo spctl --add '$APP_PATH'"
     echo "   sudo spctl --enable --label 'LIebesu_Clash'"
 }
+
+echo ""
+echo "📱 启动台问题解决方案："
+echo "如果启动台中仍然看不到应用图标，请尝试："
+echo "1. 等待几分钟让系统完成索引"
+echo "2. 注销并重新登录"
+echo "3. 或者手动运行以下命令："
+echo "   defaults write com.apple.dock ResetLaunchPad -bool true && killall Dock"
+echo "4. 直接从 /Applications 文件夹启动应用"
 
 echo ""
 echo "🔧 修复脚本执行完成"

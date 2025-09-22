@@ -104,6 +104,10 @@ jobs:
             cp fix-macos-app.sh "$(dirname "$DMG_PATH")/"
             chmod +x "$(dirname "$DMG_PATH")/fix-macos-app.sh"
           fi
+          if [[ -f "refresh-launchpad.sh" && -n "$DMG_PATH" ]]; then
+            cp refresh-launchpad.sh "$(dirname "$DMG_PATH")/"
+            chmod +x "$(dirname "$DMG_PATH")/refresh-launchpad.sh"
+          fi
 
       - name: Rename macOS DMG with run number
         if: runner.os == 'macOS'
