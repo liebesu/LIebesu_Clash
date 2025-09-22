@@ -49,18 +49,35 @@ chmod -R 755 "$APP_PATH"
 # 刷新启动台缓存
 echo "🔄 刷新启动台缓存..."
 echo "这可能需要几秒钟时间..."
+
+# 方法1：重置启动台
 defaults write com.apple.dock ResetLaunchPad -bool true
+
+# 方法2：清理启动台数据库
+echo "🗑️  清理启动台数据库..."
+rm -rf ~/Library/Application\ Support/Dock/*.db 2>/dev/null || true
+sudo rm -rf /private/var/folders/*/0/com.apple.dock.launchpad/db/db 2>/dev/null || true
+
+# 方法3：重新注册应用程序
+echo "📝 重新注册应用程序..."
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH"
+
+# 方法4：触发系统重新扫描应用程序
+echo "🔍 触发系统重新扫描..."
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user
+
+# 重启Dock
+echo "🔄 重启Dock..."
 killall Dock 2>/dev/null || {
     echo "⚠️  无法重启Dock，请手动重启或注销重新登录"
 }
 
 # 等待Dock重启
-sleep 3
+sleep 5
 
-# 触发启动台数据库重建
-echo "🔄 重建启动台数据库..."
-sudo rm -rf /private/var/folders/*/0/com.apple.dock.launchpad/db/db 2>/dev/null || true
-sudo rm -rf ~/Library/Application\ Support/Dock/*.db 2>/dev/null || true
+# 强制刷新启动台
+echo "💨 强制刷新启动台..."
+osascript -e 'tell application "System Events" to tell process "Dock" to keystroke "f1" using {fn down, command down}' 2>/dev/null || true
 
 # 尝试启动应用
 echo "🚀 尝试启动应用..."
