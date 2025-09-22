@@ -3,7 +3,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "bundle": {
     "active": true,
-    "longDescription": "Clash Verge Rev",
+    "longDescription": "LIebesu_Clash - Independent Clash Client",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -12,11 +12,11 @@
       "icons/icon.ico"
     ],
     "resources": ["resources", "resources/locales/*"],
-    "publisher": "Clash Verge Rev",
+    "publisher": "LIebesu",
     "externalBin": ["sidecar/verge-mihomo", "sidecar/verge-mihomo-alpha"],
     "copyright": "GNU General Public License v3.0",
     "category": "DeveloperTool",
-    "shortDescription": "Clash Verge Rev",
+    "shortDescription": "LIebesu_Clash - Independent Clash Client",
     "createUpdaterArtifacts": false
   },
   "build": {
