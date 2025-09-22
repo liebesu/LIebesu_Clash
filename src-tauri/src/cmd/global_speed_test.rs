@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::{Duration, Instant};
-use tauri::State;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -52,10 +51,11 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     let profiles = Config::profiles().await;
     let profiles = profiles.latest_ref();
-    
-    if profiles.items.is_empty() {
-        return Err("没有找到任何订阅配置".to_string());
-    }
+
+    let items = match &profiles.items {
+        Some(items) if !items.is_empty() => items,
+        _ => return Err("没有找到任何订阅配置".to_string()),
+    };
 
     let mut all_results = Vec::new();
     let mut total_nodes = 0;
@@ -64,18 +64,18 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     let start_time = Instant::now();
     
     // 遍历所有订阅
-    for item in &profiles.items {
+    for item in items {
         if let Some(profile_data) = &item.file_data {
             log::info!(target: "app", "正在测试订阅: {}", item.name.as_deref().unwrap_or("未命名"));
-            
+
             // 解析配置文件获取节点信息
             let nodes = parse_profile_nodes(profile_data)?;
             total_nodes += nodes.len();
-            
+
             // 测试每个节点
             for node in nodes {
                 tested_nodes += 1;
-                
+
                 // 发送进度更新
                 let progress = GlobalSpeedTestProgress {
                     current_node: node.node_name.clone(),
@@ -84,12 +84,12 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                     percentage: (tested_nodes as f64 / total_nodes as f64) * 100.0,
                     current_profile: item.name.as_deref().unwrap_or("未命名").to_string(),
                 };
-                
+
                 // 发送进度事件
                 if let Some(app_handle) = handle::Handle::global().app_handle() {
-                    let _ = app_handle.emit_all("global-speed-test-progress", &progress);
+                    let _ = app_handle.emit("global-speed-test-progress", &progress);
                 }
-                
+
                 // 执行测速
                 let result = test_single_node(&node, &item.name.as_deref().unwrap_or("未命名"), &item.uid).await;
                 all_results.push(result);
@@ -104,7 +104,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     // 发送完成事件
     if let Some(app_handle) = handle::Handle::global().app_handle() {
-        let _ = app_handle.emit_all("global-speed-test-complete", &summary);
+        let _ = app_handle.emit("global-speed-test-complete", &summary);
     }
     
     log::info!(target: "app", "全局测速完成，共测试 {} 个节点", tested_nodes);
@@ -135,20 +135,20 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
     let mut nodes = Vec::new();
     
     // 尝试解析 YAML 格式
-    if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(profile_data) {
+    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(profile_data) {
         if let Some(proxies) = yaml_value.get("proxies").and_then(|p| p.as_sequence()) {
             for proxy in proxies {
                 if let Some(proxy_map) = proxy.as_mapping() {
                     let node = NodeInfo {
-                        node_name: proxy_map.get(&serde_yaml::Value::String("name".to_string()))
+                        node_name: proxy_map.get(&serde_yaml_ng::Value::String("name".to_string()))
                             .and_then(|v| v.as_str())
                             .unwrap_or("未知节点")
                             .to_string(),
-                        node_type: proxy_map.get(&serde_yaml::Value::String("type".to_string()))
+                        node_type: proxy_map.get(&serde_yaml_ng::Value::String("type".to_string()))
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown")
                             .to_string(),
-                        server: proxy_map.get(&serde_yaml::Value::String("server".to_string()))
+                        server: proxy_map.get(&serde_yaml_ng::Value::String("server".to_string()))
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown")
                             .to_string(),
@@ -168,7 +168,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
 
 /// 测试单个节点
 async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str) -> SpeedTestResult {
-    let start_time = Instant::now();
+    let _start_time = Instant::now();
     
     // 模拟延迟测试
     let latency = match test_node_latency(&node.server).await {
@@ -334,7 +334,7 @@ async fn test_upload_speed() -> Result<f64> {
 /// 计算稳定性评分
 fn calculate_stability_score(latency_ms: u64) -> f64 {
     // 基于延迟计算稳定性评分 (0-100)
-    let score = if latency_ms < 50 {
+    let score: f64 = if latency_ms < 50 {
         95.0 + fastrand::f64() * 5.0
     } else if latency_ms < 100 {
         85.0 + fastrand::f64() * 10.0
