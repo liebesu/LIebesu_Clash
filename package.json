@@ -8,7 +8,7 @@
     "dev:trace": "cross-env RUST_BACKTRACE=1 RUSTFLAGS=\"--cfg tokio_unstable\" tauri dev -f verge-dev tokio-trace",
     "build": "cross-env NODE_OPTIONS='--max-old-space-size=4096' tauri build",
     "build:fast": "cross-env NODE_OPTIONS='--max-old-space-size=4096' tauri build -- --profile fast-release",
-    "postbuild": "if [ \"$(uname)\" = \"Darwin\" ]; then chmod +x scripts/post-build-macos.sh && ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos; fi",
+    "postbuild": "node -e \"if (process.platform === 'darwin') { const { execSync } = require('child_process'); execSync('chmod +x scripts/post-build-macos.sh && ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos', { stdio: 'inherit' }); }\"",
     "tauri": "tauri",
     "web:dev": "vite",
     "web:build": "tsc --noEmit && vite build",
