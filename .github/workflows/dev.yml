@@ -1,4 +1,4 @@
-name: Development Test
+name: LIebesu_Clash - Development Test
 
 on:
   workflow_dispatch:

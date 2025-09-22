@@ -1,112 +1,150 @@
-<h1 align="center">
-  <img src="./src-tauri/icons/icon.png" alt="Clash" width="128" />
-  <br>
-  Continuation of <a href="https://github.com/zzzgydi/clash-verge">Clash Verge</a>
-  <br>
-</h1>
+# LIebesu_Clash
 
-<h3 align="center">
-A Clash Meta GUI based on <a href="https://github.com/tauri-apps/tauri">Tauri</a>.
-</h3>
+<div align="center">
 
-## Preview
+![LIebesu_Clash](./icons94.png)
 
-| Dark                             | Light                             |
-| -------------------------------- | --------------------------------- |
-| ![预览](./docs/preview_dark.png) | ![预览](./docs/preview_light.png) |
+**LIebesu_Clash - Independent Clash Client**
 
-## Install
+基于 Clash Verge Rev 的独立 Clash 客户端，完全独立运行，可与原版共存。
 
-请到发布页面下载对应的安装包：[Release page](https://github.com/clash-verge-rev/clash-verge-rev/releases)<br>
-Go to the [Release page](https://github.com/clash-verge-rev/clash-verge-rev/releases) to download the corresponding installation package<br>
-Supports Windows (x64/x86), Linux (x64/arm64) and macOS 10.15+ (intel/apple).
+[下载](#-下载) • [功能](#-功能特性) • [安装](#-安装说明) • [文档](#-文档)
 
-#### 我应当怎样选择发行版
+[![GitHub release](https://img.shields.io/github/v/release/liebesu/LIebesu_Clash?style=flat-square)](https://github.com/liebesu/LIebesu_Clash/releases)
+[![GitHub downloads](https://img.shields.io/github/downloads/liebesu/LIebesu_Clash/total?style=flat-square)](https://github.com/liebesu/LIebesu_Clash/releases)
+[![License](https://img.shields.io/github/license/liebesu/LIebesu_Clash?style=flat-square)](LICENSE)
 
-| 版本        | 特征                                     | 链接                                                                                   |
-| :---------- | :--------------------------------------- | :------------------------------------------------------------------------------------- |
-| Stable      | 正式版，高可靠性，适合日常使用。         | [Release](https://github.com/clash-verge-rev/clash-verge-rev/releases)                 |
-| Alpha(废弃) | 测试发布流程。                           | [Alpha](https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/alpha)         |
-| AutoBuild   | 滚动更新版，适合测试反馈，可能存在缺陷。 | [AutoBuild](https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/autobuild) |
+</div>
 
-#### 安装说明和常见问题，请到 [文档页](https://clash-verge-rev.github.io/) 查看
+## 🎯 项目特色
+
+**LIebesu_Clash** 是一个完全独立的 Clash 客户端，基于优秀的 Clash Verge Rev 项目开发，但进行了全面的独立化改造：
+
+### 🔥 核心优势
+- **完全独立**: 与原版 Clash Verge 完全隔离，可同时安装使用
+- **无冲突共存**: 独立的配置目录、进程通信、系统注册
+- **全新标识**: 专属的应用图标、名称和标识符
+- **增强功能**: 新增批量导入/导出、订阅测试等实用功能
+- **持续更新**: 独立的开发和发布周期
+
+### ✨ 功能特性
+
+#### 🚀 新增功能
+- **批量订阅管理**: 支持批量导入/导出订阅链接，支持多种格式
+- **订阅测试工具**: 全量节点测速、稳定性分析、质量排序
+- **智能预览**: 导入前预览，避免重复和错误
+- **版本显示**: 界面显示应用版本和构建号
+
+#### 📊 核心功能
+- **Clash 内核**: 支持 Clash Premium 和 Clash.Meta
+- **规则管理**: 支持规则集订阅和自定义规则
+- **代理管理**: 完整的代理配置和策略管理
+- **系统代理**: 智能系统代理切换
+- **流量统计**: 实时流量监控和统计
+- **日志查看**: 详细的连接日志和调试信息
+
+## 📦 下载
+
+### 最新版本
+
+前往 [Releases](https://github.com/liebesu/LIebesu_Clash/releases) 页面下载最新版本。
+
+### 平台支持
+
+| 平台 | 架构 | 状态 |
+|------|------|------|
+| Windows | x64 / ARM64 | ✅ 支持 |
+| macOS | Intel / Apple Silicon | ✅ 支持 |
+| Linux | x64 / ARM64 / ARMv7 | ❌ 暂不支持 |
+
+### 自动构建
+
+每日自动构建版本包含最新功能和修复，可在 [Actions](https://github.com/liebesu/LIebesu_Clash/actions) 页面下载。
+
+## 🛠️ 安装说明
+
+### Windows
+1. 下载 `LIebesu_Clash_x.x.x_x64-setup.exe`
+2. 运行安装程序
+3. 首次启动会自动创建独立配置目录
+
+### macOS
+1. 下载 `LIebesu_Clash_x.x.x_aarch64.dmg` (Apple Silicon) 或 `LIebesu_Clash_x.x.x_x64.dmg` (Intel)
+2. 打开 DMG 文件，将应用拖拽到 Applications 文件夹
+3. 如遇到安装问题，运行 DMG 中的 `fix-macos-app.sh` 脚本
+4. 如启动台不显示图标，运行 `refresh-launchpad.sh` 脚本
+
+## 🔧 与原版的区别
+
+| 项目 | 原版 Clash Verge | LIebesu_Clash |
+|------|------------------|---------------|
+| 应用名称 | Clash Verge Rev | LIebesu_Clash |
+| 配置目录 | clash-verge-rev | liebesu-clash |
+| 应用标识 | clash-verge-rev | liebesu-clash |
+| 深度链接 | clash-verge:// | liebesu-clash:// |
+| 自启动名 | Clash Verge.lnk | LIebesu_Clash.lnk |
+
+## 📚 文档
+
+- [安装指南](./LIEBESU_CLASH_README.md) - 详细的安装和配置说明
+- [功能说明](#-功能特性) - 各功能的使用方法
+- [故障排除](#-故障排除) - 常见问题解决方案
+
+## 🐛 故障排除
+
+### macOS 相关问题
+
+#### 应用无法打开/提示已损坏
+```bash
+# 运行修复脚本（包含在 DMG 中）
+./fix-macos-app.sh
+```
+
+#### 启动台不显示图标
+```bash
+# 运行启动台刷新脚本（包含在 DMG 中）
+./refresh-launchpad.sh
+```
+
+### Windows 相关问题
+
+#### 杀毒软件误报
+- 添加应用目录到杀毒软件白名单
+- 下载官方签名版本
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+### 开发环境
+```bash
+# 克隆仓库
+git clone https://github.com/liebesu/LIebesu_Clash.git
+
+# 安装依赖
+pnpm install
+
+# 开发模式
+pnpm dev
+
+# 构建
+pnpm build
+```
+
+## 📄 许可证
+
+本项目基于 [GPL-3.0](LICENSE) 许可证开源。
+
+## 🙏 致谢
+
+感谢 [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev) 项目提供的优秀基础。
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=liebesu/LIebesu_Clash&type=Date)](https://star-history.com/#liebesu/LIebesu_Clash&Date)
 
 ---
 
-### TG 频道: [@clash_verge_rev](https://t.me/clash_verge_re)
-
-## Promotion
-
-#### [狗狗加速 —— 技术流机场 Doggygo VPN](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-- 高性能海外机场，免费试用，优惠套餐，解锁流媒体，全球首家支持 Hysteria 协议。
-- 使用 Clash Verge 专属邀请链接注册送 3 天，每天 1G 流量免费试用：[点此注册](https://verge.dginv.click/#/register?code=oaxsAGo6)
-- Clash Verge 专属 8 折优惠码: verge20 (仅有 500 份)
-- 优惠套餐每月仅需 15.8 元，160G 流量，年付 8 折
-- 海外团队，无跑路风险，高达 50% 返佣
-- 集群负载均衡设计，高速专线(兼容老客户端)，极低延迟，无视晚高峰，4K 秒开
-- 全球首家 Hysteria 协议机场，现已上线更快的 `Hysteria2` 协议(Clash Verge 客户端最佳搭配)
-- 解锁流媒体及 ChatGPT
-- 官网：[https://狗狗加速.com](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-#### 本项目的构建与发布环境由 [YXVM](https://yxvm.com/aff.php?aff=827) 独立服务器全力支持，
-
-感谢提供 独享资源、高性能、高速网络 的强大后端环境。如果你觉得下载够快、使用够爽，那是因为我们用了好服务器！
-
-🧩 YXVM 独立服务器优势：
-
-- 🌎 优质网络，回程优化，下载快到飞起
-- 🔧 物理机独享资源，非VPS可比，性能拉满
-- 🧠 适合跑代理、搭建 WEB 站 CDN 站 、搞 CI/CD 或任何高负载应用
-- 💡 支持即开即用，多机房选择，CN2 / IEPL 可选
-- 📦 本项目使用配置已在售，欢迎同款入手！
-- 🎯 想要同款构建体验？[立即下单 YXVM 独立服务器！](https://yxvm.com/aff.php?aff=827)
-
-## Features
-
-- 基于性能强劲的 Rust 和 Tauri 2 框架
-- 内置[Clash.Meta(mihomo)](https://github.com/MetaCubeX/mihomo)内核，并支持切换 `Alpha` 版本内核。
-- 简洁美观的用户界面，支持自定义主题颜色、代理组/托盘图标以及 `CSS Injection`。
-- 配置文件管理和增强（Merge 和 Script），配置文件语法提示。
-- 系统代理和守卫、`TUN(虚拟网卡)` 模式。
-- 可视化节点和规则编辑
-- WebDav 配置备份和同步
-
-### FAQ
-
-Refer to [Doc FAQ Page](https://clash-verge-rev.github.io/faq/windows.html)
-
-### Donation
-
-[捐助Clash Verge Rev的开发](https://github.com/sponsors/clash-verge-rev)
-
-## Development
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
-
-To run the development server, execute the following commands after all prerequisites for **Tauri** are installed:
-
-```shell
-pnpm i
-pnpm run prebuild
-pnpm dev
-```
-
-## Contributions
-
-Issue and PR welcome!
-
-## Acknowledgement
-
-Clash Verge rev was based on or inspired by these projects and so on:
-
-- [zzzgydi/clash-verge](https://github.com/zzzgydi/clash-verge): A Clash GUI based on tauri. Supports Windows, macOS and Linux.
-- [tauri-apps/tauri](https://github.com/tauri-apps/tauri): Build smaller, faster, and more secure desktop applications with a web frontend.
-- [Dreamacro/clash](https://github.com/Dreamacro/clash): A rule-based tunnel in Go.
-- [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo): A rule-based tunnel in Go.
-- [Fndroid/clash_for_windows_pkg](https://github.com/Fndroid/clash_for_windows_pkg): A Windows/macOS GUI based on Clash.
-- [vitejs/vite](https://github.com/vitejs/vite): Next generation frontend tooling. It's fast!
-
-## License
-
-GPL-3.0 License. See [License here](./LICENSE) for details.
+<div align="center">
+Made with ❤️ by LIebesu
+</div>

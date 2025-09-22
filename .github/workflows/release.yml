@@ -1,4 +1,4 @@
-name: Release Build
+name: LIebesu_Clash - Release Build
 
 on:
   # ! 为了避免重复发布版本，应当通过独特 git tag 触发。

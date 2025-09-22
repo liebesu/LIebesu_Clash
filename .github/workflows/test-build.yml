@@ -1,4 +1,4 @@
-name: 配额超限订阅删除功能 - 测试构建
+name: LIebesu_Clash - 测试构建
 
 on:
   workflow_dispatch:

@@ -18,10 +18,37 @@ concurrency:
 jobs:
   check_commit:
     name: Check Commit Needs Build
-    uses: clash-verge-rev/clash-verge-rev/.github/workflows/check-commit-needs-build.yml@dev
-    with:
-      tag_name: autobuild
-      force_build: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check if build needed
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "Force build triggered"
+          else
+            # Check if there are commits since last autobuild tag
+            if git rev-list --count autobuild..HEAD > /dev/null 2>&1; then
+              COMMIT_COUNT=$(git rev-list --count autobuild..HEAD)
+              if [ "$COMMIT_COUNT" -gt 0 ]; then
+                echo "should_run=true" >> $GITHUB_OUTPUT
+                echo "Found $COMMIT_COUNT new commits"
+              else
+                echo "should_run=false" >> $GITHUB_OUTPUT
+                echo "No new commits"
+              fi
+            else
+              echo "should_run=true" >> $GITHUB_OUTPUT
+              echo "No autobuild tag found, building"
+            fi
+          fi
 
   update_tag:
     name: Update tag
@@ -89,20 +116,20 @@ jobs:
 
           ### Windows (不再支持Win7)
           #### 正常版本(推荐)
-          - [64位(常用)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(不常用)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
+          - [64位(常用)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64-setup.exe) | [ARM64(不常用)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64-setup.exe)
 
           #### 内置Webview2版(体积较大，仅在企业版系统或无法安装webview2时使用)
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
 
           ### macOS
-          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
+          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
 
           ### Linux
           #### DEB包(Debian系) 使用 apt ./路径 安装
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_armhf.deb)
 
           #### RPM包(Redhat系) 使用 dnf ./路径 安装
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhfp.rpm)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_amd64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_armhfp.rpm)
 
           ### FAQ
           - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
@@ -117,7 +144,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"
+          name: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
           body_path: release.txt
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -127,11 +154,27 @@ jobs:
     name: Clean Old Release Assets
     needs: [check_commit, update_tag]
     if: ${{ needs.check_commit.outputs.should_run == 'true' && needs.update_tag.result == 'success' }}
-
-    uses: clash-verge-rev/clash-verge-rev/.github/workflows/clean-old-assets.yml@dev
-    with:
-      tag_name: autobuild
-      dry_run: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Clean old assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning old release assets for autobuild tag"
+          # Get release by tag
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/autobuild --jq '.id' 2>/dev/null || echo "")
+          if [ -n "$RELEASE_ID" ]; then
+            # Get assets older than 7 days
+            gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets --jq '.[] | select(.created_at < (now - 7*24*3600 | strftime("%Y-%m-%dT%H:%M:%SZ"))) | .id' | while read asset_id; do
+              if [ -n "$asset_id" ]; then
+                echo "Deleting asset $asset_id"
+                gh api --method DELETE repos/${{ github.repository }}/releases/assets/$asset_id || true
+              fi
+            done
+          fi
 
   autobuild-x86-windows-macos-linux:
     name: Autobuild x86 Windows, MacOS and Linux
@@ -213,7 +256,7 @@ jobs:
           VITE_BUILD_VERSION: "${{ github.run_number }}"
         with:
           tagName: ${{ env.TAG_NAME }}
-          releaseName: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"
+          releaseName: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
           releaseBody: "More new features are now supported."
           releaseDraft: false
           prerelease: true
@@ -393,7 +436,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"
+          name: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
@@ -493,7 +536,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: "Clash Verge Rev ${{ env.TAG_CHANNEL }}"
+          name: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
           prerelease: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*setup*
@@ -574,20 +617,20 @@ jobs:
 
           ### Windows (不再支持Win7)
           #### 正常版本(推荐)
-          - [64位(常用)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64-setup.exe) | [ARM64(不常用)](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64-setup.exe)
+          - [64位(常用)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64-setup.exe) | [ARM64(不常用)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64-setup.exe)
 
           #### 内置Webview2版(体积较大，仅在企业版系统或无法安装webview2时使用)
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
 
           ### macOS
-          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_x64.dmg)
+          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
 
           ### Linux
           #### DEB包(Debian系) 使用 apt ./路径 安装
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhf.deb)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_amd64.deb) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64.deb) | [ARMv7](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_armhf.deb)
 
           #### RPM包(Redhat系) 使用 dnf ./路径 安装
-          - [64位](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_amd64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/Clash.Verge_${{ env.VERSION }}_armhfp.rpm)
+          - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_amd64.rpm) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.rpm) | [ARMv7](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_armhfp.rpm)
 
           ### FAQ
           - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
