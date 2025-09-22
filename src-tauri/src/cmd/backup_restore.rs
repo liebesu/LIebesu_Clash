@@ -179,15 +179,31 @@ pub struct BackupVersion {
 
 /// 获取备份目录
 fn get_backup_dir() -> Result<PathBuf> {
-    let app_dir = crate::utils::dirs::verge_path()
+    let app_dir = crate::utils::dirs::app_home_dir()
         .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
+    
+    log::info!(target: "app", "App data directory: {:?}", app_dir);
+    
     let backup_dir = app_dir.join("backups");
     
     if !backup_dir.exists() {
+        log::info!(target: "app", "Creating backup directory: {:?}", backup_dir);
         fs::create_dir_all(&backup_dir)
-            .context("Failed to create backup directory")?;
+            .with_context(|| format!("Failed to create backup directory: {:?}", backup_dir))?;
     }
     
+    // 验证目录是否可写
+    if !backup_dir.is_dir() {
+        return Err(anyhow::anyhow!("Backup path exists but is not a directory: {:?}", backup_dir));
+    }
+    
+    // 测试写入权限
+    let test_file = backup_dir.join(".write_test");
+    fs::write(&test_file, "test")
+        .with_context(|| format!("Backup directory is not writable: {:?}", backup_dir))?;
+    let _ = fs::remove_file(&test_file); // 忽略删除错误
+    
+    log::info!(target: "app", "Backup directory ready: {:?}", backup_dir);
     Ok(backup_dir)
 }
 

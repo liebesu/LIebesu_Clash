@@ -103,7 +103,7 @@ pub fn app_home_dir() -> Result<PathBuf> {
         Ok(dir) => Ok(dir.join(APP_ID)),
         Err(e) => {
             log::error!(target: "app", "Failed to get the app home directory: {e}");
-            Err(anyhow::anyhow!("Failed to get the app homedirectory"))
+            Err(anyhow::anyhow!("Failed to get the app home directory"))
         }
     }
 }
