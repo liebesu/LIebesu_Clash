@@ -113,12 +113,20 @@ async function sendTelegramNotification() {
 
   // 读取发布说明和下载地址
   let releaseContent = "";
-  try {
-    releaseContent = readFileSync("release.txt", "utf-8");
-    log_info("成功读取 release.txt 文件");
-  } catch (error) {
-    log_error("无法读取 release.txt，生成基于实际资产的发布说明", error);
+  
+  // 优先使用动态生成的内容，如果有资产的话
+  if (releaseAssets.length > 0) {
+    log_info("使用动态检测的资产生成发布内容");
     releaseContent = generateReleaseContent(releaseAssets, releaseTag, version);
+  } else {
+    // 如果没有检测到资产，尝试读取静态文件
+    try {
+      releaseContent = readFileSync("release.txt", "utf-8");
+      log_info("未检测到资产，使用 release.txt 文件");
+    } catch (error) {
+      log_error("无法读取 release.txt，使用默认发布说明", error);
+      releaseContent = generateReleaseContent([], releaseTag, version);
+    }
   }
 
   // Markdown 转换为 HTML
