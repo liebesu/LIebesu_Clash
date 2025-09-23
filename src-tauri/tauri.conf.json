@@ -14,8 +14,8 @@
     "resources": ["resources", "resources/locales/*"],
     "publisher": "LIebesu",
     "externalBin": ["sidecar/verge-mihomo", "sidecar/verge-mihomo-alpha"],
-    "copyright": "GNU General Public License v3.0",
-    "category": "DeveloperTool",
+    "copyright": "Copyright (c) 2024 LIebesu Team",
+    "category": "Productivity",
     "shortDescription": "LIebesu_Clash - Independent Clash Client",
     "createUpdaterArtifacts": false,
     "macOS": {
@@ -24,9 +24,6 @@
       "signingIdentity": "-",
       "entitlements": "packages/macos/entitlements.plist",
       "frameworks": [],
-      "license": "",
-      "category": "Productivity",
-      "copyright": "Copyright (c) 2024 LIebesu Team",
       "dmg": {
         "background": "images/background.png",
         "appPosition": {
