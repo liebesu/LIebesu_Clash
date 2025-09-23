@@ -94,10 +94,12 @@ async function sendTelegramNotification() {
     process.env.BUILD_TYPE === "autobuild" || version.includes("autobuild");
   const chatId = isAutobuild ? CHAT_ID_TEST : CHAT_ID_RELEASE;
   const buildType = isAutobuild ? "滚动更新版" : "正式版";
+  const releaseTag = isAutobuild ? "autobuild" : `v${version}`;
 
   log_info(`Preparing Telegram notification for ${buildType} ${version}`);
   log_info(`Target channel: ${chatId}`);
   log_info(`Download URL: ${downloadUrl}`);
+  log_info(`Release tag: ${releaseTag}`);
 
   // 获取实际的release资产
   let releaseAssets = [];
@@ -154,7 +156,6 @@ async function sendTelegramNotification() {
 
   const releaseTitle = isAutobuild ? "滚动更新版发布" : "正式发布";
   const encodedVersion = encodeURIComponent(version);
-  const releaseTag = isAutobuild ? "autobuild" : `v${version}`;
   const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag}">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
 
   // 发送到 Telegram
