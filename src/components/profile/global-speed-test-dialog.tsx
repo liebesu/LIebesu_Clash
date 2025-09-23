@@ -122,7 +122,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
           setTesting(false);
           setCancelling(false);
           setProgress(null);
-          showNotice('测速已取消', 'info');
+          showNotice('info', '测速已取消', 2000);
         }
       );
 
