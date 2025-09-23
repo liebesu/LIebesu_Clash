@@ -12,13 +12,13 @@
 
 **Windows (不再支持Win7)**
 正常版本(推荐)
-- [64位(常用)](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.1da3c21_x64_36-setup.exe)
+- [64位(常用)](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.0276d07_x64_38-setup.exe)
 
 内置Webview2版(体积较大，仅在企业版系统或无法安装webview2时使用)  
-- [64位](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.1da3c21_x64_36_fixed_webview2-setup.exe)
+- [64位](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.0276d07_x64_38_fixed_webview2-setup.exe)
 
 **macOS**
-- [Apple M芯片](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.1da3c21_aarch64_36.dmg) | [App包](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_36.app.tar.gz)
+- [Apple M芯片](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.0276d07_aarch64_38.dmg) | [App包](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_38.app.tar.gz)
 
 **Linux**
 ⚠️ 此版本暂不提供Linux构建
