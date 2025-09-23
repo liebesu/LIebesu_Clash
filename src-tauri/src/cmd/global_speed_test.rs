@@ -14,14 +14,29 @@ pub struct SpeedTestResult {
     pub node_name: String,
     pub node_type: String,
     pub server: String,
+    pub port: u16,
     pub profile_name: String,
     pub profile_uid: String,
+    pub profile_type: String,
+    pub subscription_url: Option<String>,
     pub latency_ms: Option<u64>,
     pub download_speed_mbps: Option<f64>,
     pub upload_speed_mbps: Option<f64>,
     pub stability_score: f64,
     pub test_duration_ms: u64,
     pub status: String,
+    pub region: Option<String>,
+    pub traffic_info: Option<TrafficInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrafficInfo {
+    pub total: Option<u64>,          // 总流量 (字节)
+    pub used: Option<u64>,           // 已用流量 (字节)
+    pub remaining: Option<u64>,      // 剩余流量 (字节)
+    pub remaining_percentage: Option<f64>, // 剩余流量百分比
+    pub expire_time: Option<i64>,    // 到期时间 (时间戳)
+    pub expire_days: Option<i64>,    // 剩余天数
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,8 +93,16 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         // 安全地获取订阅信息
         let profile_name = item.name.as_deref().unwrap_or("未命名");
         let profile_uid = item.uid.as_deref().unwrap_or("unknown");
+        let profile_type = item.itype.as_deref().unwrap_or("unknown");
+        let subscription_url = item.url.clone();
         
-        log::info!(target: "app", "处理订阅: {} (UID: {})", profile_name, profile_uid);
+        // 跳过系统配置项
+        if matches!(profile_type.to_lowercase().as_str(), "script" | "merge") {
+            log::debug!(target: "app", "跳过系统配置项: {} (类型: {})", profile_name, profile_type);
+            continue;
+        }
+        
+        log::info!(target: "app", "处理订阅: {} (UID: {}, 类型: {})", profile_name, profile_uid, profile_type);
         
         if let Some(profile_data) = &item.file_data {
             if profile_data.trim().is_empty() {
@@ -89,7 +112,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             
             log::info!(target: "app", "解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
             
-            match parse_profile_nodes(profile_data) {
+            match parse_profile_nodes(profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
                 Ok(nodes) => {
                     if nodes.is_empty() {
                         log::warn!(target: "app", "订阅 '{}' 未发现有效节点", profile_name);
@@ -97,7 +120,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                         log::info!(target: "app", "订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
                         
                         for node in nodes {
-                            all_nodes_with_profile.push((node, profile_name.to_string(), profile_uid.to_string()));
+                            all_nodes_with_profile.push(node);
                         }
                     }
                 }
@@ -154,13 +177,11 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         }
 
         // 并发测试当前批次的所有节点
-        let batch_futures: Vec<_> = batch.iter().map(|(node, profile_name, profile_uid)| {
+        let batch_futures: Vec<_> = batch.iter().map(|node| {
             let node = node.clone();
-            let profile_name = profile_name.clone();
-            let profile_uid = profile_uid.clone();
             
             async move {
-                test_single_node(&node, &profile_name, &profile_uid).await
+                test_single_node(&node).await
             }
         }).collect();
 
@@ -171,19 +192,24 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             Err(_) => {
                 log::warn!(target: "app", "第 {} 批测速超时，跳过剩余节点", batch_num);
                 // 创建失败结果填充
-                batch.iter().map(|(node, profile_name, profile_uid)| {
+                batch.iter().map(|node| {
                     SpeedTestResult {
                         node_name: node.node_name.clone(),
                         node_type: node.node_type.clone(),
                         server: node.server.clone(),
-                        profile_name: profile_name.clone(),
-                        profile_uid: profile_uid.clone(),
+                        port: node.port,
+                        profile_name: node.profile_name.clone(),
+                        profile_uid: node.profile_uid.clone(),
+                        profile_type: node.profile_type.clone(),
+                        subscription_url: node.subscription_url.clone(),
                         latency_ms: None,
                         download_speed_mbps: None,
                         upload_speed_mbps: None,
                         stability_score: 0.0,
                         test_duration_ms: batch_timeout.as_millis() as u64,
                         status: "timeout".to_string(),
+                        region: None,
+                        traffic_info: None,
                     }
                 }).collect()
             }
@@ -266,7 +292,13 @@ pub async fn apply_best_node() -> Result<String, String> {
 }
 
 /// 解析订阅配置获取节点信息
-fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
+fn parse_profile_nodes(
+    profile_data: &str, 
+    profile_name: &str, 
+    profile_uid: &str, 
+    profile_type: &str, 
+    subscription_url: &Option<String>
+) -> Result<Vec<NodeInfo>, String> {
     let mut nodes = Vec::new();
     
     if profile_data.trim().is_empty() {
@@ -332,10 +364,22 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                                 continue;
                             }
                             
+                            // 获取端口信息
+                            let port = ["port", "Port"]
+                                .iter()
+                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
+                                    .and_then(|v| v.as_u64()))
+                                .unwrap_or(443) as u16;
+                            
                             let node = NodeInfo {
                                 node_name: node_name.clone(),
                                 node_type: node_type.clone(),
                                 server: server.clone(),
+                                port,
+                                profile_name: profile_name.to_string(),
+                                profile_uid: profile_uid.to_string(),
+                                profile_type: profile_type.to_string(),
+                                subscription_url: subscription_url.clone(),
                             };
                             
                             log::debug!(target: "app", "解析节点 {}: {} ({}) - {}", nodes.len() + 1, node_name, node_type, server);
@@ -403,10 +447,20 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                                         continue;
                                     }
                                     
+                                    // 获取端口信息
+                                    let port = proxy_obj.get("port")
+                                        .and_then(|v| v.as_u64())
+                                        .unwrap_or(443) as u16;
+                                    
                                     let node = NodeInfo {
                                         node_name,
                                         node_type,
                                         server,
+                                        port,
+                                        profile_name: profile_name.to_string(),
+                                        profile_uid: profile_uid.to_string(),
+                                        profile_type: profile_type.to_string(),
+                                        subscription_url: subscription_url.clone(),
                                     };
                                     
                                     nodes.push(node);
@@ -439,8 +493,8 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
 }
 
 /// 测试单个节点
-async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str) -> SpeedTestResult {
-    log::info!(target: "app", "开始测试节点: {} ({}) 来自订阅: {}", node.node_name, node.server, profile_name);
+async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
+    log::info!(target: "app", "开始测试节点: {} ({}:{}) 来自订阅: {}", node.node_name, node.server, node.port, node.profile_name);
     
     let test_start = Instant::now();
     
@@ -451,21 +505,26 @@ async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str
             node_name: if node.node_name.is_empty() { "无名节点".to_string() } else { node.node_name.clone() },
             node_type: node.node_type.clone(),
             server: node.server.clone(),
-            profile_name: profile_name.to_string(),
-            profile_uid: profile_uid.to_string(),
+            port: node.port,
+            profile_name: node.profile_name.clone(),
+            profile_uid: node.profile_uid.clone(),
+            profile_type: node.profile_type.clone(),
+            subscription_url: node.subscription_url.clone(),
             latency_ms: None,
             download_speed_mbps: None,
             upload_speed_mbps: None,
             stability_score: 0.0,
             test_duration_ms: test_start.elapsed().as_millis() as u64,
             status: "failed".to_string(),
+            region: None,
+            traffic_info: None,
         };
     }
     
     // 延迟测试 - 测试多次取平均值
     let mut latencies = Vec::new();
     for i in 1..=3 {
-        match test_node_latency(&node.server).await {
+        match test_node_latency(&node.server, node.port).await {
             Ok(latency) => {
                 latencies.push(latency);
                 log::debug!(target: "app", "节点 {} 第{}次延迟测试: {}ms", node.node_name, i, latency);
@@ -514,48 +573,76 @@ async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str
     
     let test_duration = test_start.elapsed();
     
+    // 添加地域识别
+    let region = identify_region(&node.server);
+    
     SpeedTestResult {
         node_name: node.node_name.clone(),
         node_type: node.node_type.clone(),
         server: node.server.clone(),
-        profile_name: profile_name.to_string(),
-        profile_uid: profile_uid.to_string(),
+        port: node.port,
+        profile_name: node.profile_name.clone(),
+        profile_uid: node.profile_uid.clone(),
+        profile_type: node.profile_type.clone(),
+        subscription_url: node.subscription_url.clone(),
         latency_ms: average_latency,
         download_speed_mbps: download_speed,
         upload_speed_mbps: upload_speed,
         stability_score,
         test_duration_ms: test_duration.as_millis() as u64,
         status: if average_latency.is_some() { "success".to_string() } else { "failed".to_string() },
+        region,
+        traffic_info: None, // 流量信息将在第二阶段实现
     }
 }
 
-/// 测试节点延迟
-async fn test_node_latency(server: &str) -> Result<u64> {
+/// 测试节点延迟 - 直连测试
+async fn test_node_latency(server: &str, port: u16) -> Result<u64> {
     let start = Instant::now();
     
-    // 解析服务器地址
-    let addr = match parse_server_address(server) {
+    // 直接构造服务器地址，不使用parse_server_address
+    let addr_str = format!("{}:{}", server, port);
+    let addr = match addr_str.parse::<std::net::SocketAddr>() {
         Ok(addr) => addr,
-        Err(e) => {
-            log::warn!(target: "app", "无法解析服务器地址 {}: {}", server, e);
-            return Err(anyhow::anyhow!("地址解析失败: {}", e));
+        Err(_) => {
+            // 如果解析失败，尝试DNS解析
+            match tokio::net::lookup_host(&addr_str).await {
+                Ok(mut addrs) => {
+                    if let Some(addr) = addrs.next() {
+                        addr
+                    } else {
+                        return Err(anyhow::anyhow!("DNS解析失败"));
+                    }
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!("DNS解析失败: {}", e));
+                }
+            }
         }
     };
     
-    // TCP 连接测试
-    let result = timeout(Duration::from_secs(5), async {
-        TcpStream::connect(addr).await
-    }).await;
+    log::debug!(target: "app", "直连测试: {} -> {}", addr_str, addr);
+    
+    // 直接TCP连接测试（不通过代理）
+    let connect_timeout = Duration::from_secs(10);
+    let result = timeout(connect_timeout, TcpStream::connect(&addr)).await;
     
     match result {
         Ok(Ok(stream)) => {
             let latency = start.elapsed().as_millis() as u64;
             // 显式关闭连接，避免资源泄漏
             drop(stream);
+            log::debug!(target: "app", "直连成功: {} - {}ms", addr, latency);
             Ok(latency)
         }
-        Ok(Err(e)) => Err(anyhow::anyhow!("连接失败: {}", e)),
-        Err(_) => Err(anyhow::anyhow!("连接超时")),
+        Ok(Err(e)) => {
+            log::debug!(target: "app", "直连失败: {} - {}", addr, e);
+            Err(anyhow::anyhow!("连接失败: {}", e))
+        },
+        Err(_) => {
+            log::debug!(target: "app", "直连超时: {}", addr);
+            Err(anyhow::anyhow!("连接超时"))
+        },
     }
 }
 
@@ -585,6 +672,37 @@ fn parse_server_address(server: &str) -> Result<SocketAddr> {
     }
     
     Err(anyhow::anyhow!("无法解析地址"))
+}
+
+/// 识别节点地域
+fn identify_region(server: &str) -> Option<String> {
+    let server_lower = server.to_lowercase();
+    
+    if server_lower.contains("hk") || server_lower.contains("hongkong") || server_lower.contains("香港") {
+        Some("香港".to_string())
+    } else if server_lower.contains("tw") || server_lower.contains("taiwan") || server_lower.contains("台湾") {
+        Some("台湾".to_string())
+    } else if server_lower.contains("sg") || server_lower.contains("singapore") || server_lower.contains("新加坡") {
+        Some("新加坡".to_string())
+    } else if server_lower.contains("jp") || server_lower.contains("japan") || server_lower.contains("日本") {
+        Some("日本".to_string())
+    } else if server_lower.contains("us") || server_lower.contains("america") || server_lower.contains("美国") {
+        Some("美国".to_string())
+    } else if server_lower.contains("uk") || server_lower.contains("britain") || server_lower.contains("英国") {
+        Some("英国".to_string())
+    } else if server_lower.contains("kr") || server_lower.contains("korea") || server_lower.contains("韩国") {
+        Some("韩国".to_string())
+    } else if server_lower.contains("de") || server_lower.contains("germany") || server_lower.contains("德国") {
+        Some("德国".to_string())
+    } else if server_lower.contains("fr") || server_lower.contains("france") || server_lower.contains("法国") {
+        Some("法国".to_string())
+    } else if server_lower.contains("ca") || server_lower.contains("canada") || server_lower.contains("加拿大") {
+        Some("加拿大".to_string())
+    } else if server_lower.contains("au") || server_lower.contains("australia") || server_lower.contains("澳洲") {
+        Some("澳洲".to_string())
+    } else {
+        None
+    }
 }
 
 /// 测试下载速度
@@ -803,4 +921,9 @@ struct NodeInfo {
     node_name: String,
     node_type: String,
     server: String,
+    port: u16,
+    profile_name: String,
+    profile_uid: String,
+    profile_type: String,
+    subscription_url: Option<String>,
 }

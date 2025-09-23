@@ -38,18 +38,32 @@ import { startGlobalSpeedTest, applyBestNode } from '@/services/cmds';
 import { listen } from '@tauri-apps/api/event';
 import { showNotice } from '@/services/noticeService';
 
+interface TrafficInfo {
+  total?: number;
+  used?: number;
+  remaining?: number;
+  remaining_percentage?: number;
+  expire_time?: number;
+  expire_days?: number;
+}
+
 interface SpeedTestResult {
   node_name: string;
   node_type: string;
   server: string;
+  port: number;
+  profile_name: string;
+  profile_uid: string;
+  profile_type: string;
+  subscription_url?: string;
   latency_ms?: number;
   download_speed_mbps?: number;
   upload_speed_mbps?: number;
   stability_score: number;
   test_duration_ms: number;
   status: string;
-  profile_name: string;
-  profile_uid: string;
+  region?: string;
+  traffic_info?: TrafficInfo;
 }
 
 interface GlobalSpeedTestProgress {
@@ -413,7 +427,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                       {summary.best_node.node_name}
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      服务器: {summary.best_node.server} | 订阅: {summary.best_node.profile_name}
+                      服务器: {summary.best_node.server}:{summary.best_node.port} | 订阅: {summary.best_node.profile_name}
+                      {summary.best_node.region && ` | 地区: ${summary.best_node.region}`}
                     </Typography>
                     <Typography variant="body2">
                       <span style={{ color: getLatencyColor(summary.best_node.latency_ms), fontWeight: 'bold' }}>
@@ -547,10 +562,12 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                       <TableCell>服务器地址</TableCell>
                       <TableCell>类型</TableCell>
                       <TableCell>订阅</TableCell>
+                      <TableCell>地区</TableCell>
                       <TableCell>延迟</TableCell>
                       <TableCell>下载速度</TableCell>
                       <TableCell>上传速度</TableCell>
                       <TableCell>稳定性</TableCell>
+                      <TableCell>剩余流量</TableCell>
                       <TableCell>状态</TableCell>
                     </TableRow>
                   </TableHead>
@@ -580,6 +597,13 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                           <Typography variant="body2" noWrap>
                             {result.profile_name}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
+                          {result.region ? (
+                            <Chip label={result.region} size="small" variant="outlined" />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">-</Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Typography 
@@ -627,6 +651,29 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                             />
                             {result.stability_score.toFixed(1)}
                           </Box>
+                        </TableCell>
+                        <TableCell>
+                          {result.traffic_info?.remaining_percentage ? (
+                            <Box display="flex" alignItems="center">
+                              <Typography variant="body2" sx={{ mr: 1 }}>
+                                {result.traffic_info.remaining_percentage.toFixed(0)}%
+                              </Typography>
+                              <LinearProgress 
+                                variant="determinate" 
+                                value={result.traffic_info.remaining_percentage} 
+                                sx={{ 
+                                  width: 40, 
+                                  height: 6,
+                                  '& .MuiLinearProgress-bar': {
+                                    bgcolor: result.traffic_info.remaining_percentage > 50 ? 'success.main' : 
+                                             result.traffic_info.remaining_percentage > 20 ? 'warning.main' : 'error.main'
+                                  }
+                                }} 
+                              />
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">-</Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Chip 
