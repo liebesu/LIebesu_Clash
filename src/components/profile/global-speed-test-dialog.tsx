@@ -263,8 +263,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         {/* 控制面板 */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 12, md: 6 }}>
+            <Box display="flex" gap={2} flexDirection={{ xs: 'column', md: 'row' }}>
+              <Box flex={1}>
                 <Button
                   variant="contained"
                   startIcon={testing ? <Stop /> : <PlayArrow />}
@@ -275,8 +275,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 >
                   {testing ? '测速进行中...' : '开始全局测速'}
                 </Button>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
+              </Box>
+              <Box flex={1}>
                 <Button
                   variant="outlined"
                   startIcon={<Star />}
@@ -287,8 +287,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 >
                   切换到最佳节点
                 </Button>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
 
@@ -373,48 +373,40 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
               <Typography variant="h6" gutterBottom>
                 测试结果摘要
               </Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Box textAlign="center">
-                    <Typography variant="h4" color="primary">
-                      {summary.total_nodes}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      总节点数
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Box textAlign="center">
-                    <Typography variant="h4" sx={{ color: 'success.main' }}>
-                      {summary.successful_tests}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      成功测试
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Box textAlign="center">
-                    <Typography variant="h4" sx={{ color: 'error.main' }}>
-                      {summary.failed_tests}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      失败测试
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 6, md: 3 }}>
-                  <Box textAlign="center">
-                    <Typography variant="h4" sx={{ color: 'info.main' }}>
-                      {summary.duration_seconds}s
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      总耗时
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
+              <Box display="flex" gap={2} flexWrap="wrap">
+                <Box flex={1} minWidth="120px" textAlign="center">
+                  <Typography variant="h4" color="primary">
+                    {summary.total_nodes}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    总节点数
+                  </Typography>
+                </Box>
+                <Box flex={1} minWidth="120px" textAlign="center">
+                  <Typography variant="h4" sx={{ color: 'success.main' }}>
+                    {summary.successful_tests}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    成功测试
+                  </Typography>
+                </Box>
+                <Box flex={1} minWidth="120px" textAlign="center">
+                  <Typography variant="h4" sx={{ color: 'error.main' }}>
+                    {summary.failed_tests}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    失败测试
+                  </Typography>
+                </Box>
+                <Box flex={1} minWidth="120px" textAlign="center">
+                  <Typography variant="h4" sx={{ color: 'info.main' }}>
+                    {summary.duration_seconds}s
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    总耗时
+                  </Typography>
+                </Box>
+              </Box>
               
               {summary.best_node && (
                 <>
@@ -473,9 +465,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 <Typography variant="subtitle2" gutterBottom>
                   📊 性能指标颜色说明
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Typography variant="caption" display="block">
+                <Box display="flex" gap={2} flexWrap="wrap">
+                  <Box flex={1} minWidth="200px">
+                    <Typography variant="caption" display="block" gutterBottom>
                       <strong>延迟等级:</strong>
                     </Typography>
                     <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
@@ -500,9 +492,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                         <Typography variant="caption">&gt;500ms</Typography>
                       </Box>
                     </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Typography variant="caption" display="block">
+                  </Box>
+                  <Box flex={1} minWidth="200px">
+                    <Typography variant="caption" display="block" gutterBottom>
                       <strong>速度等级:</strong>
                     </Typography>
                     <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
@@ -527,9 +519,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                         <Typography variant="caption">&lt;5M</Typography>
                       </Box>
                     </Box>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Typography variant="caption" display="block">
+                  </Box>
+                  <Box flex={1} minWidth="200px">
+                    <Typography variant="caption" display="block" gutterBottom>
                       <strong>稳定性评分:</strong>
                     </Typography>
                     <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
@@ -550,8 +542,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                         <Typography variant="caption">&lt;50分</Typography>
                       </Box>
                     </Box>
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </Box>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">

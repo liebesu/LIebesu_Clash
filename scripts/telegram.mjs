@@ -26,7 +26,7 @@ function generateReleaseContent(assets, releaseTag, version) {
   if (windowsAssets.length > 0) {
     content += `**Windows (不再支持Win7)**\n`;
     windowsAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
       if (asset.includes('webview2')) {
         content += `- [内置WebView2版 64位](${url})\n`;
       } else {
@@ -41,12 +41,12 @@ function generateReleaseContent(assets, releaseTag, version) {
   if (macosAssets.length > 0) {
     content += `**macOS**\n`;
     macosAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
       if (asset.includes('aarch64')) {
         content += `- [Apple M芯片 DMG](${url})\n`;
       } else if (asset.includes('.app.tar.gz')) {
         content += `- [App包](${url})\n`;
-      } else {
+      } else if (asset.includes('.dmg')) {
         content += `- [Intel芯片 DMG](${url})\n`;
       }
     });
@@ -54,11 +54,11 @@ function generateReleaseContent(assets, releaseTag, version) {
   }
   
   // Linux 资产
-  const linuxAssets = assets.filter(name => name.includes('.deb') || name.includes('.rpm'));
+  const linuxAssets = assets.filter(name => name.includes('.deb') || name.includes('.rpm') || name.includes('AppImage'));
   if (linuxAssets.length > 0) {
     content += `**Linux**\n`;
     linuxAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
       content += `- [${asset}](${url})\n`;
     });
   } else {
@@ -104,9 +104,27 @@ async function sendTelegramNotification() {
   // 获取实际的release资产
   let releaseAssets = [];
   try {
-    const assetsOutput = execSync(`gh api repos/liebesu/LIebesu_Clash/releases/tags/${releaseTag} --jq '.assets[].name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
-    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0 && name !== '');
+    // 使用更可靠的方式获取资产信息，包括完整的文件名
+    const assetsOutput = execSync(`gh api repos/liebesu/LIebesu_Clash/releases/tags/${releaseTag} --jq '.assets[] | .name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
+    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0 && name !== '' && !name.includes('null'));
+    
+    // 如果没有获取到资产，尝试其他方法
+    if (releaseAssets.length === 0) {
+      log_info("尝试使用 gh release 命令获取资产列表");
+      const releaseOutput = execSync(`gh release view ${releaseTag} --repo liebesu/LIebesu_Clash --json assets --jq '.assets[].name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
+      releaseAssets = releaseOutput.trim().split('\n').filter(name => name.length > 0 && name !== '' && !name.includes('null'));
+    }
+    
     log_info(`发现 ${releaseAssets.length} 个资产: ${releaseAssets.join(', ')}`);
+    
+    // 调试信息：显示实际的文件名
+    if (releaseAssets.length > 0) {
+      log_info("实际的资产文件名:");
+      releaseAssets.forEach((asset, index) => {
+        log_info(`  ${index + 1}. ${asset}`);
+      });
+    }
+    
   } catch (error) {
     log_error("获取release资产失败", error);
   }

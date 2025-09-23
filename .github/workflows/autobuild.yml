@@ -775,11 +775,36 @@ jobs:
           Created at ${{ env.BUILDTIME }}.
           EOF
 
+      - name: Setup GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+          
+      - name: Debug Release Info
+        run: |
+          echo "=== 调试信息 ==="
+          echo "TAG_NAME: $TAG_NAME"
+          echo "VERSION: $VERSION"
+          echo "DOWNLOAD_URL: $DOWNLOAD_URL"
+          echo ""
+          echo "=== 检查 GitHub Release ==="
+          gh release view $TAG_NAME --repo liebesu/LIebesu_Clash || echo "Release 不存在"
+          echo ""
+          echo "=== 获取 Assets 列表 ==="
+          gh api repos/liebesu/LIebesu_Clash/releases/tags/$TAG_NAME --jq '.assets[] | .name' || echo "无法获取 assets"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ env.TAG_NAME }}
+          VERSION: ${{ env.VERSION }}
+          DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
+
       - name: Send Telegram Notification
         run: node scripts/telegram.mjs
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BUILD_TYPE: autobuild
           VERSION: ${{ env.VERSION }}
           DOWNLOAD_URL: ${{ env.DOWNLOAD_URL }}
+          TAG_NAME: ${{ env.TAG_NAME }}
