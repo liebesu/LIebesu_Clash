@@ -11,7 +11,7 @@
     "postbuild": "node -e \"if (process.platform === 'darwin') { const { execSync } = require('child_process'); execSync('chmod +x scripts/post-build-macos.sh && ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos', { stdio: 'inherit' }); }\"",
     "tauri": "tauri",
     "web:dev": "vite",
-    "web:build": "tsc --noEmit && vite build",
+    "web:build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit && cross-env NODE_OPTIONS='--max-old-space-size=8192' vite build",
     "web:serve": "vite preview",
     "prebuild": "node scripts/prebuild.mjs",
     "updater": "node scripts/updater.mjs",

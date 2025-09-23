@@ -8,6 +8,7 @@ import { List, Paper, ThemeProvider, SvgIcon } from "@mui/material";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { routers } from "./_routers";
 import { getAxios } from "@/services/api";
+import { getVersion } from "@tauri-apps/api/app";
 import { forceRefreshClashConfig } from "@/services/cmds";
 import { useVerge } from "@/hooks/use-verge";
 import { useI18n } from "@/hooks/use-i18n";
@@ -18,6 +19,7 @@ import { useThemeMode, useEnableLog } from "@/services/states";
 import { LayoutItem } from "@/components/layout/layout-item";
 import { LayoutTraffic } from "@/components/layout/layout-traffic";
 import { UpdateButton } from "@/components/layout/update-button";
+import { ServiceControl } from "@/components/layout/service-control";
 import { useCustomTheme } from "@/components/layout/use-custom-theme";
 import getSystem from "@/utils/get-system";
 import "dayjs/locale/ru";
@@ -439,6 +441,22 @@ const Layout = () => {
     }
   }, [start_page]);
 
+  // 设置窗口标题包含版本号
+  useEffect(() => {
+    const setWindowTitle = async () => {
+      try {
+        const version = await getVersion();
+        const title = `LIebesu_Clash v${version}`;
+        await appWindow.setTitle(title);
+        console.log(`[Layout] 窗口标题已设置为: ${title}`);
+      } catch (error) {
+        console.error("[Layout] 设置窗口标题失败:", error);
+      }
+    };
+
+    setWindowTitle();
+  }, []);
+
   if (!themeReady) {
     return (
       <div
@@ -570,6 +588,10 @@ const Layout = () => {
                 </LayoutItem>
               ))}
             </List>
+
+            <div className="the-service">
+              <ServiceControl />
+            </div>
 
             <div className="the-traffic">
               <LayoutTraffic />
