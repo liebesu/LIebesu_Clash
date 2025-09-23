@@ -4,10 +4,18 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tauri::Emitter;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
+use once_cell::sync::Lazy;
+
+// 全局取消标志和测速结果存储
+static CANCEL_FLAG: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
+static LATEST_RESULTS: Lazy<parking_lot::Mutex<Option<GlobalSpeedTestSummary>>> = 
+    Lazy::new(|| parking_lot::Mutex::new(None));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeedTestResult {
@@ -65,6 +73,11 @@ pub struct GlobalSpeedTestSummary {
 #[tauri::command]
 pub async fn start_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "开始全局节点测速");
+    
+    // 重置取消标志
+    CANCEL_FLAG.store(false, Ordering::SeqCst);
+    
+    let start_time = Instant::now();
     
     // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
@@ -185,6 +198,12 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             }
         }).collect();
 
+        // 检查取消标志
+        if CANCEL_FLAG.load(Ordering::SeqCst) {
+            log::info!(target: "app", "检测到取消信号，停止测速");
+            return Err("测速已被用户取消".to_string());
+        }
+        
         // 等待当前批次所有测试完成，设置批次超时
         let batch_timeout = Duration::from_secs(60); // 每批最多60秒
         let batch_results = match tokio::time::timeout(batch_timeout, futures::future::join_all(batch_futures)).await {
@@ -259,6 +278,12 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         log::warn!(target: "app", "无法获取应用句柄");
     }
     
+    // 保存最新的测速结果到全局状态
+    {
+        let mut latest_results = LATEST_RESULTS.lock();
+        *latest_results = Some(summary.clone());
+    }
+    
     log::info!(target: "app", "全局测速完成，共测试 {} 个节点，耗时 {:?}", total_nodes, duration);
     
     Ok(format!("全局测速完成，共测试 {} 个节点，耗时 {:.1} 秒", total_nodes, duration.as_secs_f64()))
@@ -268,27 +293,128 @@ pub async fn start_global_speed_test() -> Result<String, String> {
 #[tauri::command]
 pub async fn cancel_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "用户请求取消全局测速");
-    // 设置取消标志 - 这里应该与测速过程中的标志配合
-    // 实际实现中可以使用全局状态管理
-    Ok("测速取消请求已发送".to_string())
+    
+    // 设置取消标志
+    CANCEL_FLAG.store(true, Ordering::SeqCst);
+    
+    // 发送取消事件通知前端
+    if let Some(app_handle) = handle::Handle::global().app_handle() {
+        if let Err(e) = app_handle.emit("global-speed-test-cancelled", ()) {
+            log::warn!(target: "app", "发送取消事件失败: {}", e);
+        }
+    }
+    
+    Ok("测速已取消".to_string())
 }
 
 /// 获取最佳节点并切换
 #[tauri::command]
 pub async fn apply_best_node() -> Result<String, String> {
+    use crate::core::ipc::IpcManager;
+    
     log::info!(target: "app", "准备切换到最佳节点");
     
-    // 注意：这个功能需要与现有的代理管理系统集成
-    // 目前返回一个提示信息，实际切换逻辑需要根据应用的代理管理架构来实现
+    // 1. 获取最近测速结果中的最佳节点
+    // 由于没有持久化存储，这里使用模拟逻辑
+    // 在实际应用中，可以将测速结果存储到全局状态中
     
-    // TODO: 实现以下步骤：
-    // 1. 获取当前最佳节点信息（从最近的测速结果中）
-    // 2. 找到对应的配置文件和节点
-    // 3. 调用现有的切换代理命令
-    // 4. 更新当前选中的代理
+    // 2. 获取当前代理列表
+    let proxies_result = match IpcManager::global().get_proxies().await {
+        Ok(proxies) => proxies,
+        Err(e) => {
+            let error_msg = format!("获取代理列表失败: {}", e);
+            log::error!(target: "app", "{}", error_msg);
+            return Err(error_msg);
+        }
+    };
     
-    log::warn!(target: "app", "apply_best_node 功能需要与代理管理系统集成");
-    Ok("最佳节点切换功能正在开发中，请手动选择测速结果中的最佳节点".to_string())
+    // 3. 查找主要的代理组（通常是 GLOBAL 或者第一个选择器组）
+    let proxy_groups = proxies_result.get("proxies")
+        .and_then(|p| p.as_object())
+        .ok_or_else(|| "代理数据格式错误".to_string())?;
+    
+    // 寻找可用的选择器组
+    let mut target_group = None;
+    let mut available_proxies = Vec::new();
+    
+    for (group_name, group_data) in proxy_groups {
+        if let Some(group_obj) = group_data.as_object() {
+            if let Some(group_type) = group_obj.get("type").and_then(|t| t.as_str()) {
+                // 查找选择器类型的代理组
+                if matches!(group_type, "Selector" | "URLTest" | "LoadBalance") {
+                    if let Some(all_proxies) = group_obj.get("all").and_then(|a| a.as_array()) {
+                        target_group = Some(group_name.clone());
+                        available_proxies = all_proxies.iter()
+                            .filter_map(|p| p.as_str().map(|s| s.to_string()))
+                            .collect();
+                        
+                        // 优先选择 GLOBAL 组
+                        if group_name.to_uppercase() == "GLOBAL" {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    let group_name = target_group.ok_or_else(|| "未找到可用的代理组".to_string())?;
+    
+    if available_proxies.is_empty() {
+        return Err("代理组中没有可用的代理节点".to_string());
+    }
+    
+    // 4. 从最近的测速结果中选择最佳代理节点
+    let best_proxy = {
+        let latest_results = LATEST_RESULTS.lock();
+        if let Some(ref results) = *latest_results {
+            if let Some(ref best_node) = results.best_node {
+                // 尝试找到匹配的代理节点名称
+                available_proxies.iter()
+                    .find(|proxy| {
+                        // 精确匹配或包含匹配
+                        proxy.as_str() == best_node.node_name.as_str() ||
+                        proxy.contains(&best_node.node_name) ||
+                        best_node.node_name.contains(proxy)
+                    })
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        // 如果没找到匹配的，选择第一个非系统节点
+                        available_proxies.iter()
+                            .find(|proxy| !matches!(proxy.to_uppercase().as_str(), "DIRECT" | "REJECT"))
+                            .cloned()
+                            .unwrap_or_else(|| available_proxies[0].clone())
+                    })
+            } else {
+                available_proxies.iter()
+                    .find(|proxy| !matches!(proxy.to_uppercase().as_str(), "DIRECT" | "REJECT"))
+                    .cloned()
+                    .unwrap_or_else(|| available_proxies[0].clone())
+            }
+        } else {
+            return Err("没有找到测速结果，请先进行全局测速".to_string());
+        }
+    };
+    
+    // 5. 执行代理切换
+    match IpcManager::global().update_proxy(&group_name, &best_proxy).await {
+        Ok(_) => {
+            let success_msg = format!("成功切换到节点: {} (组: {})", best_proxy, group_name);
+            log::info!(target: "app", "{}", success_msg);
+            
+            // 刷新代理缓存
+            let cache = crate::state::proxy::ProxyRequestCache::global();
+            let key = crate::state::proxy::ProxyRequestCache::make_key("proxies", "default");
+            cache.map.remove(&key);
+            
+            Ok(success_msg)
+        }
+        Err(e) => {
+            let error_msg = format!("切换代理失败: {}", e);
+            log::error!(target: "app", "{}", error_msg);
+            Err(error_msg)
+        }
+    }
 }
 
 /// 解析订阅配置获取节点信息

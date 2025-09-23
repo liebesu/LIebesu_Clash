@@ -2214,3 +2214,7 @@ export async function startGlobalSpeedTest(): Promise<string> {
 export async function applyBestNode(): Promise<string> {
   return invoke<string>("apply_best_node");
 }
+
+export async function cancelGlobalSpeedTest(): Promise<string> {
+  return invoke<string>("cancel_global_speed_test");
+}

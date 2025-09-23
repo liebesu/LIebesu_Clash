@@ -34,7 +34,7 @@ import {
   NetworkCheck,
   Timer,
 } from '@mui/icons-material';
-import { startGlobalSpeedTest, applyBestNode } from '@/services/cmds';
+import { startGlobalSpeedTest, applyBestNode, cancelGlobalSpeedTest } from '@/services/cmds';
 import { listen } from '@tauri-apps/api/event';
 import { showNotice } from '@/services/noticeService';
 
@@ -96,6 +96,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   onClose,
 }) => {
   const [testing, setTesting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [progress, setProgress] = useState<GlobalSpeedTestProgress | null>(null);
   const [summary, setSummary] = useState<GlobalSpeedTestSummary | null>(null);
   const [results, setResults] = useState<SpeedTestResult[]>([]);
@@ -111,6 +112,17 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         'global-speed-test-progress',
         (event) => {
           setProgress(event.payload);
+        }
+      );
+
+      // 监听取消事件
+      const cancelUnlisten = await listen(
+        'global-speed-test-cancelled',
+        () => {
+          setTesting(false);
+          setCancelling(false);
+          setProgress(null);
+          showNotice('测速已取消', 'info');
         }
       );
 
@@ -152,6 +164,18 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       console.error('启动全局测速失败:', error);
       showNotice('error', `启动测速失败: ${error.message}`, 3000);
       setTesting(false);
+    }
+  };
+
+  const handleCancelTest = async () => {
+    try {
+      setCancelling(true);
+      await cancelGlobalSpeedTest();
+      showNotice('info', '正在取消测速...', 2000);
+    } catch (error: any) {
+      console.error('取消测速失败:', error);
+      showNotice('error', `取消测速失败: ${error.message}`, 3000);
+      setCancelling(false);
     }
   };
 
@@ -219,6 +243,29 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     return '#f44336';                   // 红色 - 差
   };
 
+  const formatBytes = (bytes?: number) => {
+    if (!bytes) return 'N/A';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = bytes;
+    let unitIndex = 0;
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    
+    return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  };
+
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp * 1000).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const getSpeedColor = (speed?: number) => {
     if (!speed) return '#666';
     if (speed >= 100) return '#4caf50';  // 绿色 - 最优 (100+ Mbps)
@@ -268,12 +315,12 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 <Button
                   variant="contained"
                   startIcon={testing ? <Stop /> : <PlayArrow />}
-                  onClick={handleStartTest}
-                  disabled={testing}
+                  onClick={testing ? handleCancelTest : handleStartTest}
+                  disabled={cancelling}
                   size="large"
                   fullWidth
                 >
-                  {testing ? '测速进行中...' : '开始全局测速'}
+                  {cancelling ? '取消中...' : testing ? '停止测速' : '开始全局测速'}
                 </Button>
               </Box>
               <Box flex={1}>
