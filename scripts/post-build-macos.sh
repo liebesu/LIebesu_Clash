@@ -16,8 +16,29 @@ echo "🍎 macOS 构建后处理开始..."
 echo "Bundle 目录: $BUNDLE_DIR"
 
 # 查找应用程序包和 DMG 文件
-APP_PATH=$(find "$BUNDLE_DIR" -name "*.app" -type d | head -1)
-DMG_PATH=$(find "$(dirname "$BUNDLE_DIR")" -name "*.dmg" -type f | head -1)
+# 修复路径查找逻辑，支持不同的构建目标架构
+if [ -d "$BUNDLE_DIR" ]; then
+    APP_PATH=$(find "$BUNDLE_DIR" -name "*.app" -type d | head -1)
+else
+    # 如果传入的目录不存在，尝试查找所有可能的目标架构路径
+    for arch in "x86_64-apple-darwin" "aarch64-apple-darwin"; do
+        ARCH_BUNDLE_DIR="src-tauri/target/$arch/release/bundle/macos"
+        if [ -d "$ARCH_BUNDLE_DIR" ]; then
+            APP_PATH=$(find "$ARCH_BUNDLE_DIR" -name "*.app" -type d | head -1)
+            BUNDLE_DIR="$ARCH_BUNDLE_DIR"
+            break
+        fi
+    done
+fi
+
+# 查找 DMG 文件
+if [ -n "$APP_PATH" ]; then
+    DMG_PATH=$(find "$(dirname "$BUNDLE_DIR")/dmg" -name "*.dmg" -type f 2>/dev/null | head -1)
+    if [ -z "$DMG_PATH" ]; then
+        # 如果在 dmg 子目录中没找到，在父目录中查找
+        DMG_PATH=$(find "$(dirname "$BUNDLE_DIR")" -name "*.dmg" -type f 2>/dev/null | head -1)
+    fi
+fi
 
 echo "应用程序路径: $APP_PATH"
 echo "DMG 路径: $DMG_PATH"

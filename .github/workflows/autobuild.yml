@@ -294,6 +294,8 @@ jobs:
           prerelease: true
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          # 禁用自动上传，我们将在重命名后手动上传
+          uploadAssets: false
           # includeUpdaterJson: true
 
       - name: Post-process macOS app (remove quarantine and ad-hoc sign)
@@ -351,11 +353,12 @@ jobs:
             Write-Output "Renamed to: $newPath"
           }
 
-      - name: Rename macOS DMG with run number
+      - name: Rename macOS DMG and APP with run number
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           set -e
+          # 重命名 DMG 文件
           DMG_PATH=$(find src-tauri/target -type f -path "*/release/bundle/dmg/*.dmg" | head -1)
           if [[ -n "$DMG_PATH" ]]; then
             DIR=$(dirname "$DMG_PATH")
@@ -364,8 +367,32 @@ jobs:
             NAME="${FILE%.*}"
             NEW_NAME="${NAME}_${GITHUB_RUN_NUMBER}.${EXT}"
             mv "$DMG_PATH" "$DIR/$NEW_NAME"
-            echo "Renamed to: $DIR/$NEW_NAME"
+            echo "Renamed DMG to: $DIR/$NEW_NAME"
           fi
+          
+          # 重命名 APP.tar.gz 文件
+          APP_PATH=$(find src-tauri/target -type f -path "*/release/bundle/macos/*.app.tar.gz" | head -1)
+          if [[ -n "$APP_PATH" ]]; then
+            DIR=$(dirname "$APP_PATH")
+            FILE=$(basename "$APP_PATH")
+            NAME="${FILE%.app.tar.gz}"
+            NEW_NAME="${NAME}_${GITHUB_RUN_NUMBER}.app.tar.gz"
+            mv "$APP_PATH" "$DIR/$NEW_NAME"
+            echo "Renamed APP to: $DIR/$NEW_NAME"
+          fi
+
+      - name: Upload renamed assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*_${{ github.run_number }}-setup.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*_${{ github.run_number }}-setup.nsis.zip
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*_${{ github.run_number }}.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*_${{ github.run_number }}.app.tar.gz
 
   # Linux ARM 构建已禁用
   autobuild-arm-linux:
@@ -606,6 +633,8 @@ jobs:
         with:
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
+          # 禁用自动上传，我们将在重命名后手动上传
+          uploadAssets: false
           # includeUpdaterJson: true
 
       - name: Rename
