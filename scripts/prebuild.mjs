@@ -91,13 +91,16 @@ async function getLatestAlphaVersion() {
     const response = await fetch(META_ALPHA_VERSION_URL, {
       ...options,
       method: "GET",
+      timeout: 10000, // 10 seconds timeout
     });
     let v = await response.text();
     META_ALPHA_VERSION = v.trim(); // Trim to remove extra whitespaces
     log_info(`Latest alpha version: ${META_ALPHA_VERSION}`);
   } catch (error) {
     log_error("Error fetching latest alpha version:", error.message);
-    process.exit(1);
+    // 使用备用版本而不是退出
+    META_ALPHA_VERSION = "alpha-20241020";
+    log_info(`Using fallback alpha version: ${META_ALPHA_VERSION}`);
   }
 }
 
@@ -138,13 +141,16 @@ async function getLatestReleaseVersion() {
     const response = await fetch(META_VERSION_URL, {
       ...options,
       method: "GET",
+      timeout: 10000, // 10 seconds timeout
     });
     let v = await response.text();
     META_VERSION = v.trim(); // Trim to remove extra whitespaces
     log_info(`Latest release version: ${META_VERSION}`);
   } catch (error) {
     log_error("Error fetching latest release version:", error.message);
-    process.exit(1);
+    // 使用备用版本而不是退出
+    META_VERSION = "v1.19.13";
+    log_info(`Using fallback release version: ${META_VERSION}`);
   }
 }
 
