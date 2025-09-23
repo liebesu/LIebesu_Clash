@@ -1,11 +1,74 @@
 import axios from "axios";
 import { readFileSync } from "fs";
 import { log_success, log_error, log_info } from "./utils.mjs";
+import { execSync } from "child_process";
 
 // 你可以通过与 @liebesu_clash_bot 对话获取你的 chat_id
 // 发送 /start 给机器人，然后查看日志获取 chat_id
 const CHAT_ID_RELEASE = process.env.TELEGRAM_CHAT_ID || "YOUR_CHAT_ID"; // 正式发布通知
 const CHAT_ID_TEST = process.env.TELEGRAM_CHAT_ID || "YOUR_CHAT_ID"; // 测试通知
+
+// 根据实际资产生成发布内容
+function generateReleaseContent(assets, releaseTag, version) {
+  let content = `**v${version}**\n\n`;
+  content += `**🐞 修复问题**\n\n`;
+  content += `- ✅ 修复全局节点测速功能 (批量并发 + 异步安全)\n`;
+  content += `- ✅ 增强进度条UI显示和颜色标注系统\n`;
+  content += `- ✅ 修复 macOS DMG 安装后 Launchpad 图标显示\n`;
+  content += `- ✅ 添加服务启动停止控制按钮\n`;
+  content += `- ✅ 完善错误处理和超时保护机制\n`;
+  content += `- ✅ 优化前端构建内存配置 (4GB→8GB)\n\n`;
+  
+  content += `**下载地址**\n\n`;
+  
+  // Windows 资产
+  const windowsAssets = assets.filter(name => name.includes('setup.exe'));
+  if (windowsAssets.length > 0) {
+    content += `**Windows (不再支持Win7)**\n`;
+    windowsAssets.forEach(asset => {
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      if (asset.includes('webview2')) {
+        content += `- [内置WebView2版 64位](${url})\n`;
+      } else {
+        content += `- [正常版 64位](${url})\n`;
+      }
+    });
+    content += `\n`;
+  }
+  
+  // macOS 资产  
+  const macosAssets = assets.filter(name => name.includes('.dmg') || name.includes('.app.tar.gz'));
+  if (macosAssets.length > 0) {
+    content += `**macOS**\n`;
+    macosAssets.forEach(asset => {
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      if (asset.includes('aarch64')) {
+        content += `- [Apple M芯片 DMG](${url})\n`;
+      } else if (asset.includes('.app.tar.gz')) {
+        content += `- [App包](${url})\n`;
+      } else {
+        content += `- [Intel芯片 DMG](${url})\n`;
+      }
+    });
+    content += `\n`;
+  }
+  
+  // Linux 资产
+  const linuxAssets = assets.filter(name => name.includes('.deb') || name.includes('.rpm'));
+  if (linuxAssets.length > 0) {
+    content += `**Linux**\n`;
+    linuxAssets.forEach(asset => {
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${asset}`;
+      content += `- [${asset}](${url})\n`;
+    });
+  } else {
+    content += `**Linux**\n⚠️ 此版本暂不提供Linux构建\n`;
+  }
+  
+  content += `\n**FAQ**\n- [常见问题](https://github.com/liebesu/LIebesu_Clash/wiki/FAQ)`;
+  
+  return content;
+}
 
 async function sendTelegramNotification() {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -36,14 +99,24 @@ async function sendTelegramNotification() {
   log_info(`Target channel: ${chatId}`);
   log_info(`Download URL: ${downloadUrl}`);
 
+  // 获取实际的release资产
+  let releaseAssets = [];
+  try {
+    const assetsOutput = execSync(`gh release view ${releaseTag} --json assets --jq '.assets[].name'`, { encoding: 'utf-8' });
+    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0);
+    log_info(`发现 ${releaseAssets.length} 个资产: ${releaseAssets.join(', ')}`);
+  } catch (error) {
+    log_error("获取release资产失败", error);
+  }
+
   // 读取发布说明和下载地址
   let releaseContent = "";
   try {
     releaseContent = readFileSync("release.txt", "utf-8");
     log_info("成功读取 release.txt 文件");
   } catch (error) {
-    log_error("无法读取 release.txt，使用默认发布说明", error);
-    releaseContent = "更多新功能现已支持，详细更新日志请查看发布页面。";
+    log_error("无法读取 release.txt，生成基于实际资产的发布说明", error);
+    releaseContent = generateReleaseContent(releaseAssets, releaseTag, version);
   }
 
   // Markdown 转换为 HTML
@@ -81,7 +154,8 @@ async function sendTelegramNotification() {
 
   const releaseTitle = isAutobuild ? "滚动更新版发布" : "正式发布";
   const encodedVersion = encodeURIComponent(version);
-  const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/autobuild">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
+  const releaseTag = isAutobuild ? "autobuild" : `v${version}`;
+  const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag}">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
 
   // 发送到 Telegram
   try {
@@ -92,7 +166,7 @@ async function sendTelegramNotification() {
         text: content,
         link_preview_options: {
           is_disabled: false,
-          url: `https://github.com/liebesu/LIebesu_Clash/releases/tag/v${encodedVersion}`,
+          url: `https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag}`,
           prefer_large_media: true,
         },
         parse_mode: "HTML",

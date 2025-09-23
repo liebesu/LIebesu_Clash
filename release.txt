@@ -1,0 +1,29 @@
+**v2.4.3**
+
+**🐞 修复问题**
+
+- ✅ 修复全局节点测速功能 (批量并发 + 异步安全)
+- ✅ 增强进度条UI显示和颜色标注系统  
+- ✅ 修复 macOS DMG 安装后 Launchpad 图标显示
+- ✅ 添加服务启动停止控制按钮
+- ✅ 完善错误处理和超时保护机制
+- ✅ 优化前端构建内存配置 (4GB→8GB)
+- ⚠️ 暂不支持 Linux 版本
+
+**下载地址**
+
+**Windows (不再支持Win7)**
+正常版本(推荐)
+- [64位(常用)](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.369d04f_x64_35-setup.exe)
+
+内置Webview2版(体积较大，仅在企业版系统或无法安装webview2时使用)  
+- [64位](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.369d04f_x64_35_fixed_webview2-setup.exe)
+
+**macOS**
+- [Apple M芯片](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_2.4.3+autobuild.0923.369d04f_aarch64_35.dmg) | [App包](https://github.com/liebesu/LIebesu_Clash/releases/download/autobuild/LIebesu_Clash_35.app.tar.gz)
+
+**Linux**
+⚠️ 此版本暂不提供Linux构建
+
+**FAQ**
+- [常见问题](https://github.com/liebesu/LIebesu_Clash/wiki/FAQ)
