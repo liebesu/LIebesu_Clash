@@ -104,8 +104,8 @@ async function sendTelegramNotification() {
   // 获取实际的release资产
   let releaseAssets = [];
   try {
-    const assetsOutput = execSync(`gh release view ${releaseTag} --json assets --jq '.assets[].name'`, { encoding: 'utf-8' });
-    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0);
+    const assetsOutput = execSync(`gh api repos/liebesu/LIebesu_Clash/releases/tags/${releaseTag} --jq '.assets[].name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
+    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0 && name !== '');
     log_info(`发现 ${releaseAssets.length} 个资产: ${releaseAssets.join(', ')}`);
   } catch (error) {
     log_error("获取release资产失败", error);
