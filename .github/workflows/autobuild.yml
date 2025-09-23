@@ -1,6 +1,8 @@
 name: Auto Build
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
   schedule:
     # 每天一次：UTC 04:00（北京 12:00）
