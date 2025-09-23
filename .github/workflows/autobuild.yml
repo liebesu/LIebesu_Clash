@@ -278,24 +278,42 @@ jobs:
       - name: Release ${{ env.TAG_CHANNEL }} Version
         run: pnpm release-version autobuild-latest
 
+      - name: Create or update release
+        if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
+        run: |
+          # 只在第一个作业中创建GitHub Release
+          if gh release view ${{ env.TAG_NAME }} >/dev/null 2>&1; then
+            echo "Release ${{ env.TAG_NAME }} already exists"
+            # 删除已存在的release以避免冲突
+            gh release delete ${{ env.TAG_NAME }} --yes || true
+            sleep 5  # 等待删除完成
+          fi
+          # 创建新的release
+          gh release create ${{ env.TAG_NAME }} \
+            --title "LIebesu_Clash ${{ env.TAG_CHANNEL }}" \
+            --notes "More new features are now supported." \
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Tauri build for Windows-macOS-Linux
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 移除GITHUB_TOKEN，禁用所有GitHub相关操作
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 使用 ad-hoc 签名，避免证书导入
           APPLE_SIGNING_IDENTITY: "-"
           VITE_BUILD_VERSION: "${{ github.run_number }}"
         with:
-          tagName: ${{ env.TAG_NAME }}
-          releaseName: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
-          releaseBody: "More new features are now supported."
-          releaseDraft: false
-          prerelease: true
+          # 完全移除release相关配置，只进行构建
+          # tagName: ${{ env.TAG_NAME }}
+          # releaseName: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
+          # releaseBody: "More new features are now supported."
+          # releaseDraft: false
+          # prerelease: true
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
-          # 禁用自动上传，我们将在重命名后手动上传
-          uploadAssets: false
           # includeUpdaterJson: true
 
       - name: Post-process macOS app (remove quarantine and ad-hoc sign)
@@ -627,14 +645,13 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 移除GITHUB_TOKEN，禁用GitHub相关操作
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
-          # 禁用自动上传，我们将在重命名后手动上传
-          uploadAssets: false
           # includeUpdaterJson: true
 
       - name: Rename
