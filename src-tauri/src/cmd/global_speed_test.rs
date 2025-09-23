@@ -77,7 +77,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     
-    let start_time = Instant::now();
+    let _start_time = Instant::now();
     
     // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
@@ -310,7 +310,7 @@ pub async fn cancel_global_speed_test() -> Result<String, String> {
 /// 获取最佳节点并切换
 #[tauri::command]
 pub async fn apply_best_node() -> Result<String, String> {
-    use crate::core::ipc::IpcManager;
+    use crate::ipc::IpcManager;
     
     log::info!(target: "app", "准备切换到最佳节点");
     
@@ -335,7 +335,7 @@ pub async fn apply_best_node() -> Result<String, String> {
     
     // 寻找可用的选择器组
     let mut target_group = None;
-    let mut available_proxies = Vec::new();
+    let mut available_proxies: Vec<String> = Vec::new();
     
     for (group_name, group_data) in proxy_groups {
         if let Some(group_obj) = group_data.as_object() {
@@ -375,7 +375,7 @@ pub async fn apply_best_node() -> Result<String, String> {
                         // 精确匹配或包含匹配
                         proxy.as_str() == best_node.node_name.as_str() ||
                         proxy.contains(&best_node.node_name) ||
-                        best_node.node_name.contains(proxy)
+                        best_node.node_name.contains(proxy.as_str())
                     })
                     .cloned()
                     .unwrap_or_else(|| {
