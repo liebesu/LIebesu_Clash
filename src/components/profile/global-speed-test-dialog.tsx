@@ -130,6 +130,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       setProgress(null);
       setSummary(null);
       setResults([]);
+      setShowAllResults(false); // 重置显示模式
       
       showNotice('info', '开始全局节点测速...', 2000);
       await startGlobalSpeedTest();
@@ -189,6 +190,8 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         return 'success';
       case 'failed':
         return 'error';
+      case 'timeout':
+        return 'warning';
       default:
         return 'default';
     }

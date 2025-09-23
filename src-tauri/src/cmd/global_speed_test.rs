@@ -160,12 +160,34 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             }
         }).collect();
 
-        // 等待当前批次所有测试完成
-        let batch_results = futures::future::join_all(batch_futures).await;
+        // 等待当前批次所有测试完成，设置批次超时
+        let batch_timeout = Duration::from_secs(60); // 每批最多60秒
+        let batch_results = match tokio::time::timeout(batch_timeout, futures::future::join_all(batch_futures)).await {
+            Ok(results) => results,
+            Err(_) => {
+                log::warn!(target: "app", "第 {} 批测速超时，跳过剩余节点", batch_num);
+                // 创建失败结果填充
+                batch.iter().map(|(node, profile_name, profile_uid)| {
+                    SpeedTestResult {
+                        node_name: node.node_name.clone(),
+                        node_type: node.node_type.clone(),
+                        server: node.server.clone(),
+                        profile_name: profile_name.clone(),
+                        profile_uid: profile_uid.clone(),
+                        latency_ms: None,
+                        download_speed_mbps: None,
+                        upload_speed_mbps: None,
+                        stability_score: 0.0,
+                        test_duration_ms: batch_timeout.as_millis() as u64,
+                        status: "timeout".to_string(),
+                    }
+                }).collect()
+            }
+        };
         all_results.extend(batch_results);
         
         let batch_duration = batch_start_time.elapsed();
-        let completed_nodes = (batch_index + 1) * BATCH_SIZE.min(total_nodes - batch_index * BATCH_SIZE);
+        let completed_nodes = std::cmp::min((batch_index + 1) * BATCH_SIZE, total_nodes);
         
         log::info!(target: "app", "第 {} 批测速完成，耗时 {:?}，已完成 {}/{} 个节点", 
                   batch_num, batch_duration, completed_nodes, total_nodes);
@@ -265,7 +287,9 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                                 .to_string();
                             
                             // 跳过系统内置节点
-                            if matches!(node_type.to_lowercase().as_str(), "direct" | "reject" | "dns" | "select" | "url-test" | "fallback" | "load-balance") {
+                            if matches!(node_type.to_lowercase().as_str(), 
+                                "direct" | "reject" | "dns" | "select" | "url-test" | "fallback" | "load-balance" |
+                                "relay" | "urltest" | "loadbalance" | "manual" | "auto" | "pass") {
                                 continue;
                             }
                             
@@ -338,7 +362,9 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                                         .to_string();
                                     
                                     // 跳过系统内置节点
-                                    if matches!(node_type.to_lowercase().as_str(), "direct" | "reject" | "dns" | "select" | "url-test" | "fallback" | "load-balance") {
+                                    if matches!(node_type.to_lowercase().as_str(), 
+                                        "direct" | "reject" | "dns" | "select" | "url-test" | "fallback" | "load-balance" |
+                                        "relay" | "urltest" | "loadbalance" | "manual" | "auto" | "pass") {
                                         continue;
                                     }
                                     
@@ -436,9 +462,10 @@ async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str
             }
         }
         
-        // 测试间隔，避免过于频繁
+        // 测试间隔，避免过于频繁，在并发环境中增加随机延迟
         if i < 3 {
-            tokio::time::sleep(Duration::from_millis(200)).await;
+            let delay = 100 + fastrand::u64(0..100); // 100-200ms随机延迟
+            tokio::time::sleep(Duration::from_millis(delay)).await;
         }
     }
     
@@ -508,8 +535,10 @@ async fn test_node_latency(server: &str) -> Result<u64> {
     }).await;
     
     match result {
-        Ok(Ok(_)) => {
+        Ok(Ok(stream)) => {
             let latency = start.elapsed().as_millis() as u64;
+            // 显式关闭连接，避免资源泄漏
+            drop(stream);
             Ok(latency)
         }
         Ok(Err(e)) => Err(anyhow::anyhow!("连接失败: {}", e)),
