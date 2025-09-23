@@ -96,9 +96,8 @@ pub async fn start_core() -> CmdResult {
 #[tauri::command]
 pub async fn stop_core() -> CmdResult {
     let result = wrap_err!(CoreManager::global().stop_core().await);
-    if result.is_ok() {
-        handle::Handle::refresh_clash();
-    }
+    // 停止服务时不立即刷新clash状态，避免假死
+    // 前端会通过定时器自动检测状态变化
     result
 }
 

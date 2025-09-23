@@ -294,7 +294,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 跳过非代理节点（如 DIRECT, REJECT 等）
                             let node_type = ["type", "Type", "protocol", "Protocol"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown")
                                 .to_string();
@@ -309,7 +309,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 尝试获取节点名称
                             let node_name = ["name", "Name", "title", "Title", "tag", "Tag"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or(&format!("节点{}", i + 1))
                                 .to_string();
@@ -322,7 +322,7 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
                             // 尝试获取服务器地址
                             let server = ["server", "Server", "hostname", "Hostname", "host", "Host", "address", "Address"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(serde_yaml_ng::Value::String(k.to_string()))
+                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
                                     .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown")
                                 .to_string();
