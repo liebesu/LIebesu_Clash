@@ -41,6 +41,7 @@ pub struct GlobalSpeedTestSummary {
     pub failed_tests: usize,
     pub best_node: Option<SpeedTestResult>,
     pub top_10_nodes: Vec<SpeedTestResult>,
+    pub all_results: Vec<SpeedTestResult>,  // 所有节点结果（按评分排序）
     pub results_by_profile: HashMap<String, Vec<SpeedTestResult>>,
     pub duration_seconds: u64,
 }
@@ -116,36 +117,78 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     let mut all_results = Vec::new();
     let start_time = Instant::now();
 
-    // 第二步：对所有节点进行测速
-    for (index, (node, profile_name, profile_uid)) in all_nodes_with_profile.iter().enumerate() {
-        let tested_nodes = index + 1;
+    // 第二步：批量并发测速策略
+    const BATCH_SIZE: usize = 8; // 每批测试8个节点，平衡性能和资源
+    let batches: Vec<_> = all_nodes_with_profile.chunks(BATCH_SIZE).collect();
+    let total_batches = batches.len();
+    
+    log::info!(target: "app", "开始批量测速：{} 个节点，分 {} 批，每批 {} 个", 
+              total_nodes, total_batches, BATCH_SIZE);
+
+    for (batch_index, batch) in batches.iter().enumerate() {
+        let batch_start_time = Instant::now();
+        let batch_num = batch_index + 1;
         
-        // 发送进度更新
-        let progress = GlobalSpeedTestProgress {
-            current_node: node.node_name.clone(),
-            completed: tested_nodes,
+        log::info!(target: "app", "开始第 {}/{} 批测速，包含 {} 个节点", 
+                  batch_num, total_batches, batch.len());
+
+        // 发送批次开始进度更新
+        let batch_progress = GlobalSpeedTestProgress {
+            current_node: format!("批次 {}/{} - {} 个节点并发测试中...", 
+                                batch_num, total_batches, batch.len()),
+            completed: batch_index * BATCH_SIZE,
             total: total_nodes,
-            percentage: (tested_nodes as f64 / total_nodes as f64) * 100.0,
-            current_profile: profile_name.clone(),
+            percentage: (batch_index as f64 / total_batches as f64) * 100.0,
+            current_profile: "所有订阅".to_string(),
         };
 
         // 发送进度事件
         if let Some(app_handle) = handle::Handle::global().app_handle() {
-            if let Err(e) = app_handle.emit("global-speed-test-progress", &progress) {
+            if let Err(e) = app_handle.emit("global-speed-test-progress", &batch_progress) {
                 log::warn!(target: "app", "发送进度事件失败: {}", e);
             }
-        } else {
-            log::warn!(target: "app", "无法获取应用句柄");
         }
 
-        log::info!(target: "app", "测试节点 {}/{}: {} (来自 {})", tested_nodes, total_nodes, node.node_name, profile_name);
+        // 并发测试当前批次的所有节点
+        let batch_futures: Vec<_> = batch.iter().map(|(node, profile_name, profile_uid)| {
+            let node = node.clone();
+            let profile_name = profile_name.clone();
+            let profile_uid = profile_uid.clone();
+            
+            async move {
+                test_single_node(&node, &profile_name, &profile_uid).await
+            }
+        }).collect();
 
-        // 执行测速
-        let result = test_single_node(node, profile_name, profile_uid).await;
-        all_results.push(result);
+        // 等待当前批次所有测试完成
+        let batch_results = futures::future::join_all(batch_futures).await;
+        all_results.extend(batch_results);
         
-        // 添加小延迟避免过于频繁的请求
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        let batch_duration = batch_start_time.elapsed();
+        let completed_nodes = (batch_index + 1) * BATCH_SIZE.min(total_nodes - batch_index * BATCH_SIZE);
+        
+        log::info!(target: "app", "第 {} 批测速完成，耗时 {:?}，已完成 {}/{} 个节点", 
+                  batch_num, batch_duration, completed_nodes, total_nodes);
+
+        // 发送批次完成进度更新
+        let completed_progress = GlobalSpeedTestProgress {
+            current_node: format!("第 {} 批完成 - 准备下一批...", batch_num),
+            completed: completed_nodes,
+            total: total_nodes,
+            percentage: (completed_nodes as f64 / total_nodes as f64) * 100.0,
+            current_profile: format!("已完成 {} 批", batch_num),
+        };
+
+        if let Some(app_handle) = handle::Handle::global().app_handle() {
+            if let Err(e) = app_handle.emit("global-speed-test-progress", &completed_progress) {
+                log::warn!(target: "app", "发送进度事件失败: {}", e);
+            }
+        }
+
+        // 批次间短暂休息，避免网络拥塞
+        if batch_index < batches.len() - 1 {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
     }
     
     let duration = start_time.elapsed();
@@ -650,20 +693,21 @@ fn analyze_speed_test_results(
         })
         .cloned();
     
-    // 获取前10名节点
-    let mut top_nodes = results
+    // 获取所有成功的节点并按综合评分排序（降序）
+    let mut all_successful_nodes = results
         .iter()
         .filter(|r| r.status == "success")
         .cloned()
         .collect::<Vec<_>>();
     
-    top_nodes.sort_by(|a, b| {
+    all_successful_nodes.sort_by(|a, b| {
         let score_a = calculate_overall_score(a);
         let score_b = calculate_overall_score(b);
         score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
     });
     
-    let top_10_nodes = top_nodes.into_iter().take(10).collect();
+    // 前端可以决定显示多少个，这里返回所有排序后的节点
+    let top_10_nodes = all_successful_nodes.iter().take(10).cloned().collect();
     
     // 按订阅分组
     let mut results_by_profile = HashMap::new();
@@ -681,6 +725,7 @@ fn analyze_speed_test_results(
         failed_tests,
         best_node,
         top_10_nodes,
+        all_results: all_successful_nodes,  // 返回所有排序后的成功节点
         results_by_profile,
         duration_seconds: duration.as_secs(),
     }

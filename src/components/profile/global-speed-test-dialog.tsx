@@ -67,6 +67,7 @@ interface GlobalSpeedTestSummary {
   failed_tests: number;
   best_node?: SpeedTestResult;
   top_10_nodes: SpeedTestResult[];
+  all_results: SpeedTestResult[];  // 所有节点结果（按评分排序）
   results_by_profile: Record<string, SpeedTestResult[]>;
   duration_seconds: number;
 }
@@ -84,6 +85,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const [progress, setProgress] = useState<GlobalSpeedTestProgress | null>(null);
   const [summary, setSummary] = useState<GlobalSpeedTestSummary | null>(null);
   const [results, setResults] = useState<SpeedTestResult[]>([]);
+  const [showAllResults, setShowAllResults] = useState(false);
 
   useEffect(() => {
     let progressUnlisten: (() => void) | null = null;
@@ -103,6 +105,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         'global-speed-test-complete',
         (event) => {
           setSummary(event.payload);
+          // 默认显示前10名，但可以切换显示所有结果
           setResults(event.payload.top_10_nodes);
           setTesting(false);
           setProgress(null);
@@ -152,6 +155,18 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     }
   };
 
+  const handleToggleResults = () => {
+    if (!summary) return;
+    
+    if (showAllResults) {
+      setResults(summary.top_10_nodes);
+      setShowAllResults(false);
+    } else {
+      setResults(summary.all_results);
+      setShowAllResults(true);
+    }
+  };
+
   const handleClose = () => {
     if (!testing) {
       onClose();
@@ -181,9 +196,28 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
 
   const getQualityColor = (score?: number) => {
     if (!score) return '#666';
-    if (score >= 90) return '#4caf50';
-    if (score >= 70) return '#ff9800';
-    return '#f44336';
+    if (score >= 90) return '#4caf50';  // 绿色 - 优秀
+    if (score >= 70) return '#ff9800';  // 橙色 - 良好
+    if (score >= 50) return '#ffeb3b';  // 黄色 - 一般
+    return '#f44336';                   // 红色 - 差
+  };
+
+  const getSpeedColor = (speed?: number) => {
+    if (!speed) return '#666';
+    if (speed >= 100) return '#4caf50';  // 绿色 - 最优 (100+ Mbps)
+    if (speed >= 50) return '#8bc34a';   // 浅绿色 - 优秀 (50+ Mbps)
+    if (speed >= 20) return '#ff9800';   // 橙色 - 良好 (20+ Mbps)
+    if (speed >= 5) return '#ffeb3b';    // 黄色 - 一般 (5+ Mbps)
+    return '#f44336';                    // 红色 - 差 (<5 Mbps)
+  };
+
+  const getLatencyColor = (latency?: number) => {
+    if (!latency) return '#666';
+    if (latency <= 50) return '#4caf50';   // 绿色 - 最优 (<=50ms)
+    if (latency <= 100) return '#8bc34a';  // 浅绿色 - 优秀 (<=100ms)
+    if (latency <= 200) return '#ff9800';  // 橙色 - 良好 (<=200ms)
+    if (latency <= 500) return '#ffeb3b';  // 黄色 - 一般 (<=500ms)
+    return '#f44336';                      // 红色 - 差 (>500ms)
   };
 
   return (
@@ -246,24 +280,65 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
           <Card sx={{ mb: 3 }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                测速进度
+                📊 测速进度
               </Typography>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  当前订阅: {progress.current_profile}
+                <Typography variant="body1" color="primary" fontWeight="bold">
+                  {progress.current_node}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  状态: {progress.current_profile}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  当前节点: {progress.current_node}
+                  已完成: {progress.completed} / {progress.total} 个节点 ({progress.percentage.toFixed(1)}%)
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  进度: {progress.completed} / {progress.total} ({progress.percentage.toFixed(1)}%)
+                
+                {/* 预估剩余时间 */}
+                {progress.completed > 0 && (
+                  <Typography variant="caption" color="text.disabled">
+                    预估剩余时间: {
+                      (() => {
+                        const avgTimePerNode = 3; // 假设每个节点3秒
+                        const remaining = progress.total - progress.completed;
+                        const estimatedSeconds = Math.ceil(remaining * avgTimePerNode / 8); // 考虑并发
+                        return estimatedSeconds > 60 ? 
+                          `${Math.ceil(estimatedSeconds / 60)} 分钟` : 
+                          `${estimatedSeconds} 秒`;
+                      })()
+                    }
+                  </Typography>
+                )}
+              </Box>
+              
+              {/* 主进度条 */}
+              <Box sx={{ mb: 1 }}>
+                <LinearProgress 
+                  variant="determinate" 
+                  value={progress.percentage} 
+                  sx={{ 
+                    height: 12, 
+                    borderRadius: 6,
+                    bgcolor: 'grey.200',
+                    '& .MuiLinearProgress-bar': {
+                      borderRadius: 6,
+                      background: 'linear-gradient(45deg, #4caf50 30%, #8bc34a 90%)',
+                    }
+                  }}
+                />
+              </Box>
+              
+              {/* 节点计数器 */}
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="caption" color="text.secondary">
+                  0
+                </Typography>
+                <Typography variant="caption" color="primary" fontWeight="bold">
+                  {progress.completed} 完成
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {progress.total}
                 </Typography>
               </Box>
-              <LinearProgress 
-                variant="determinate" 
-                value={progress.percentage} 
-                sx={{ height: 8, borderRadius: 4 }}
-              />
             </CardContent>
           </Card>
         )}
@@ -325,13 +400,22 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     🏆 最佳节点
                   </Typography>
                   <Box sx={{ p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
-                    <Typography variant="body1" fontWeight="bold">
+                    <Typography variant="body1" fontWeight="bold" sx={{ color: '#2e7d32' }}>
                       {summary.best_node.node_name}
                     </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      服务器: {summary.best_node.server} | 订阅: {summary.best_node.profile_name}
+                    </Typography>
                     <Typography variant="body2">
-                      延迟: {formatLatency(summary.best_node.latency_ms)} | 
-                      下载: {formatSpeed(summary.best_node.download_speed_mbps)} | 
-                      稳定性: {summary.best_node.stability_score.toFixed(1)}分
+                      <span style={{ color: getLatencyColor(summary.best_node.latency_ms), fontWeight: 'bold' }}>
+                        延迟: {formatLatency(summary.best_node.latency_ms)}
+                      </span> | 
+                      <span style={{ color: getSpeedColor(summary.best_node.download_speed_mbps), fontWeight: 'bold' }}>
+                        下载: {formatSpeed(summary.best_node.download_speed_mbps)}
+                      </span> | 
+                      <span style={{ color: getQualityColor(summary.best_node.stability_score), fontWeight: 'bold' }}>
+                        稳定性: {summary.best_node.stability_score.toFixed(1)}分
+                      </span>
                     </Typography>
                   </Box>
                 </>
@@ -344,15 +428,114 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         {results.length > 0 && (
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Top 10 节点排名
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="h6">
+                  {showAllResults ? `所有节点排名 (${results.length}个)` : 'Top 10 节点排名'}
+                </Typography>
+                {summary && summary.all_results.length > 10 && (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleToggleResults}
+                    startIcon={showAllResults ? <Star /> : <TrendingUp />}
+                  >
+                    {showAllResults ? '显示前10名' : `显示所有 ${summary.all_results.length} 个节点`}
+                  </Button>
+                )}
+              </Box>
+              
+              {/* 颜色图例 */}
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  📊 性能指标颜色说明
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Typography variant="caption" display="block">
+                      <strong>延迟等级:</strong>
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#4caf50', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≤50ms</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#8bc34a', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≤100ms</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ff9800', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≤200ms</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ffeb3b', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≤500ms</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#f44336', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">&gt;500ms</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Typography variant="caption" display="block">
+                      <strong>速度等级:</strong>
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#4caf50', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≥100M</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#8bc34a', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≥50M</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ff9800', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≥20M</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ffeb3b', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">≥5M</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#f44336', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">&lt;5M</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Typography variant="caption" display="block">
+                      <strong>稳定性评分:</strong>
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#4caf50', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">90+分</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ff9800', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">70+分</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#ffeb3b', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">50+分</Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center">
+                        <Box sx={{ width: 12, height: 12, bgcolor: '#f44336', borderRadius: '50%', mr: 0.5 }} />
+                        <Typography variant="caption">&lt;50分</Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </Box>
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
                     <TableRow>
                       <TableCell>排名</TableCell>
                       <TableCell>节点名称</TableCell>
+                      <TableCell>服务器地址</TableCell>
                       <TableCell>类型</TableCell>
                       <TableCell>订阅</TableCell>
                       <TableCell>延迟</TableCell>
@@ -377,6 +560,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                           </Typography>
                         </TableCell>
                         <TableCell>
+                          <Typography variant="body2" noWrap sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                            {result.server}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
                           <Chip label={result.node_type} size="small" />
                         </TableCell>
                         <TableCell>
@@ -384,9 +572,39 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                             {result.profile_name}
                           </Typography>
                         </TableCell>
-                        <TableCell>{formatLatency(result.latency_ms)}</TableCell>
-                        <TableCell>{formatSpeed(result.download_speed_mbps)}</TableCell>
-                        <TableCell>{formatSpeed(result.upload_speed_mbps)}</TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              color: getLatencyColor(result.latency_ms),
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {formatLatency(result.latency_ms)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              color: getSpeedColor(result.download_speed_mbps),
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {formatSpeed(result.download_speed_mbps)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            sx={{ 
+                              color: getSpeedColor(result.upload_speed_mbps),
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {formatSpeed(result.upload_speed_mbps)}
+                          </Typography>
+                        </TableCell>
                         <TableCell>
                           <Box display="flex" alignItems="center">
                             <Box
