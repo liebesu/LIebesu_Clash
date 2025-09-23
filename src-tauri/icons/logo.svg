@@ -2,11 +2,13 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
-      .logo-bg { fill: #4CAF50; }
+      .logo-bg { fill: #2196F3; }
       .logo-text { fill: white; font-family: Arial, sans-serif; font-weight: bold; }
+      .logo-accent { fill: #FFC107; }
     </style>
   </defs>
   <rect class="logo-bg" width="512" height="512" rx="64"/>
-  <text class="logo-text" x="256" y="280" text-anchor="middle" font-size="120">LC</text>
-  <text class="logo-text" x="256" y="350" text-anchor="middle" font-size="32">LIebesu Clash</text>
+  <circle class="logo-accent" cx="256" cy="200" r="80"/>
+  <text class="logo-text" x="256" y="340" text-anchor="middle" font-size="48">LIebesu</text>
+  <text class="logo-text" x="256" y="390" text-anchor="middle" font-size="36">Clash</text>
 </svg>

@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
-      .logo-bg { fill: #4CAF50; }
-      .logo-text { fill: white; font-family: Arial, sans-serif; font-weight: bold; }
+      .logo-bg { fill: #1976D2; }
+      .logo-circle { fill: #2196F3; }
+      .logo-accent { fill: #FFC107; }
+      .logo-text { fill: white; font-family: 'Arial', sans-serif; font-weight: bold; }
     </style>
   </defs>
-  <rect class="logo-bg" width="512" height="512" rx="64"/>
-  <text class="logo-text" x="256" y="280" text-anchor="middle" font-size="120">LC</text>
-  <text class="logo-text" x="256" y="350" text-anchor="middle" font-size="32">LIebesu Clash</text>
+  <!-- 主背景 -->
+  <rect class="logo-bg" width="64" height="64" rx="8"/>
+  <!-- 装饰圆圈 -->
+  <circle class="logo-circle" cx="32" cy="20" r="12" opacity="0.8"/>
+  <!-- 强调点 -->
+  <circle class="logo-accent" cx="32" cy="20" r="6"/>
+  <!-- 文字 LC -->
+  <text class="logo-text" x="32" y="45" text-anchor="middle" font-size="16">LC</text>
 </svg>

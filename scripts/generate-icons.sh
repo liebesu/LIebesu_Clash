@@ -21,7 +21,7 @@ if ! command -v magick &> /dev/null; then
     MAGICK_CMD="convert"
 fi
 
-SOURCE_IMAGE="green.png"
+SOURCE_IMAGE="paidaxing.png"
 ICONS_DIR="src-tauri/icons"
 ASSETS_DIR="src/assets/image"
 
@@ -141,20 +141,22 @@ fi
 # 生成前端资源图标
 echo "🌐 生成前端资源图标..."
 
-# 生成 logo.svg (简单的 SVG 包装)
+# 生成 logo.svg (基于 paidaxing.png 的设计)
 echo "  生成 logo.svg..."
 cat > "$ICONS_DIR/logo.svg" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <style>
-      .logo-bg { fill: #4CAF50; }
+      .logo-bg { fill: #2196F3; }
       .logo-text { fill: white; font-family: Arial, sans-serif; font-weight: bold; }
+      .logo-accent { fill: #FFC107; }
     </style>
   </defs>
   <rect class="logo-bg" width="512" height="512" rx="64"/>
-  <text class="logo-text" x="256" y="280" text-anchor="middle" font-size="120">LC</text>
-  <text class="logo-text" x="256" y="350" text-anchor="middle" font-size="32">LIebesu Clash</text>
+  <circle class="logo-accent" cx="256" cy="200" r="80"/>
+  <text class="logo-text" x="256" y="340" text-anchor="middle" font-size="48">LIebesu</text>
+  <text class="logo-text" x="256" y="390" text-anchor="middle" font-size="36">Clash</text>
 </svg>
 EOF
 
