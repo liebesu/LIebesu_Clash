@@ -6,7 +6,7 @@ import legacy from "@vitejs/plugin-legacy";
 import monacoEditorPlugin, {
   type IMonacoEditorOpts,
 } from "vite-plugin-monaco-editor";
-import pkg from "./package.json" assert { type: "json" };
+import pkg from "./package.json" with { type: "json" };
 const monacoEditorPluginDefault = (monacoEditorPlugin as any).default as (
   options: IMonacoEditorOpts,
 ) => any;
