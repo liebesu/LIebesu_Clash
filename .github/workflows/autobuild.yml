@@ -274,6 +274,7 @@ jobs:
 
       - name: Create or update release
         if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
+        shell: bash  # 明确指定使用bash shell
         run: |
           # 只在第一个作业中创建GitHub Release
           if gh release view ${{ env.TAG_NAME }} >/dev/null 2>&1; then
