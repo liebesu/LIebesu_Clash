@@ -130,8 +130,14 @@ jobs:
           ### FAQ
           - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
 
-          ### 稳定机场VPN推荐
-          - [狗狗加速](https://verge.dginv.click/#/register?code=oaxsAGo6)
+          ### 更新内容
+          - ✅ 修复全局节点测速功能异常退出问题
+          - ✅ 增强错误处理和调试日志输出
+          - ✅ 修复前后端状态字符串不匹配
+          - ✅ 优化节点解析和测速逻辑
+          - ✅ 修复 macOS Launchpad 图标显示问题
+          - ✅ 更新应用图标为绿色主题
+          - ⚠️ 暂不支持 Linux 版本 (开发中)
           Created at ${{ env.BUILDTIME }}.
           EOF
 
@@ -608,8 +614,14 @@ jobs:
           ### FAQ
           - [常见问题](https://clash-verge-rev.github.io/faq/windows.html)
 
-          ### 稳定机场VPN推荐
-          - [狗狗加速](https://verge.dginv.click/#/register?code=oaxsAGo6)
+          ### 更新内容
+          - ✅ 修复全局节点测速功能异常退出问题
+          - ✅ 增强错误处理和调试日志输出
+          - ✅ 修复前后端状态字符串不匹配
+          - ✅ 优化节点解析和测速逻辑
+          - ✅ 修复 macOS Launchpad 图标显示问题
+          - ✅ 更新应用图标为绿色主题
+          - ⚠️ 暂不支持 Linux 版本 (开发中)
           Created at ${{ env.BUILDTIME }}.
           EOF
 

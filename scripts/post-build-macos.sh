@@ -41,6 +41,18 @@ if [ -n "$APP_PATH" ]; then
     echo "注册到 Launch Services..."
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" || true
     
+    # 强制重建 Launch Services 数据库
+    echo "重建 Launch Services 数据库..."
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user || true
+    
+    # 更新应用程序修改时间
+    echo "更新应用程序时间戳..."
+    touch "$APP_PATH" || true
+    
+    # 设置正确的文件权限
+    echo "设置文件权限..."
+    chmod -R 755 "$APP_PATH" || true
+    
     echo "✅ 应用程序处理完成"
 else
     echo "⚠️  未找到应用程序包"

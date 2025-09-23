@@ -45,9 +45,9 @@ interface SpeedTestResult {
   latency_ms?: number;
   download_speed_mbps?: number;
   upload_speed_mbps?: number;
-  stability_score?: number;
+  stability_score: number;
+  test_duration_ms: number;
   status: string;
-  error_message?: string;
   profile_name: string;
   profile_uid: string;
 }
@@ -170,9 +170,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Pass':
+      case 'success':
         return 'success';
-      case 'Failed':
+      case 'failed':
         return 'error';
       default:
         return 'default';
@@ -331,7 +331,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     <Typography variant="body2">
                       延迟: {formatLatency(summary.best_node.latency_ms)} | 
                       下载: {formatSpeed(summary.best_node.download_speed_mbps)} | 
-                      稳定性: {summary.best_node.stability_score?.toFixed(1)}分
+                      稳定性: {summary.best_node.stability_score.toFixed(1)}分
                     </Typography>
                   </Box>
                 </>
@@ -398,7 +398,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                                 mr: 1,
                               }}
                             />
-                            {result.stability_score?.toFixed(1) || 'N/A'}
+                            {result.stability_score.toFixed(1)}
                           </Box>
                         </TableCell>
                         <TableCell>

@@ -50,31 +50,50 @@ pub struct GlobalSpeedTestSummary {
 pub async fn start_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "开始全局节点测速");
     
-    let profiles = Config::profiles().await;
-    let profiles_data = {
-        let profiles_ref = profiles.latest_ref();
-        match &profiles_ref.items {
-            Some(items) if !items.is_empty() => items.clone(),
-            _ => return Err("没有找到任何订阅配置".to_string()),
+    // 安全地获取配置文件
+    let profiles = match Config::profiles().await.latest_ref().items.clone() {
+        Some(items) if !items.is_empty() => {
+            log::info!(target: "app", "找到 {} 个订阅配置", items.len());
+            items
+        },
+        Some(_) => {
+            log::warn!(target: "app", "订阅配置列表为空");
+            return Err("订阅配置列表为空，请先添加订阅".to_string());
+        },
+        None => {
+            log::warn!(target: "app", "没有找到订阅配置");
+            return Err("没有找到任何订阅配置，请先添加订阅".to_string());
         }
     };
 
     // 第一步：预解析所有订阅，收集所有节点信息
     let mut all_nodes_with_profile = Vec::new();
     
-    for item in &profiles_data {
+    for item in &profiles {
+        // 安全地获取订阅信息
+        let profile_name = item.name.as_deref().unwrap_or("未命名");
+        let profile_uid = item.uid.as_deref().unwrap_or("unknown");
+        
+        log::info!(target: "app", "处理订阅: {} (UID: {})", profile_name, profile_uid);
+        
         if let Some(profile_data) = &item.file_data {
-            let profile_name = item.name.as_deref().unwrap_or("未命名");
-            let profile_uid = item.uid.as_deref().unwrap_or("unknown");
+            if profile_data.trim().is_empty() {
+                log::warn!(target: "app", "订阅 '{}' 配置数据为空", profile_name);
+                continue;
+            }
             
-            log::info!(target: "app", "解析订阅: {}", profile_name);
+            log::info!(target: "app", "解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
             
             match parse_profile_nodes(profile_data) {
                 Ok(nodes) => {
-                    log::info!(target: "app", "订阅 '{}' 包含 {} 个节点", profile_name, nodes.len());
-                    
-                    for node in nodes {
-                        all_nodes_with_profile.push((node, profile_name.to_string(), profile_uid.to_string()));
+                    if nodes.is_empty() {
+                        log::warn!(target: "app", "订阅 '{}' 未发现有效节点", profile_name);
+                    } else {
+                        log::info!(target: "app", "订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                        
+                        for node in nodes {
+                            all_nodes_with_profile.push((node, profile_name.to_string(), profile_uid.to_string()));
+                        }
                     }
                 }
                 Err(e) => {
@@ -82,7 +101,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                 }
             }
         } else {
-            log::warn!(target: "app", "订阅 '{}' 没有配置数据", item.name.as_deref().unwrap_or("未命名"));
+            log::warn!(target: "app", "订阅 '{}' 没有配置数据", profile_name);
         }
     }
 
@@ -112,7 +131,11 @@ pub async fn start_global_speed_test() -> Result<String, String> {
 
         // 发送进度事件
         if let Some(app_handle) = handle::Handle::global().app_handle() {
-            let _ = app_handle.emit("global-speed-test-progress", &progress);
+            if let Err(e) = app_handle.emit("global-speed-test-progress", &progress) {
+                log::warn!(target: "app", "发送进度事件失败: {}", e);
+            }
+        } else {
+            log::warn!(target: "app", "无法获取应用句柄");
         }
 
         log::info!(target: "app", "测试节点 {}/{}: {} (来自 {})", tested_nodes, total_nodes, node.node_name, profile_name);
@@ -132,7 +155,13 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     // 发送完成事件
     if let Some(app_handle) = handle::Handle::global().app_handle() {
-        let _ = app_handle.emit("global-speed-test-complete", &summary);
+        if let Err(e) = app_handle.emit("global-speed-test-complete", &summary) {
+            log::warn!(target: "app", "发送完成事件失败: {}", e);
+        } else {
+            log::info!(target: "app", "成功发送测速完成事件");
+        }
+    } else {
+        log::warn!(target: "app", "无法获取应用句柄");
     }
     
     log::info!(target: "app", "全局测速完成，共测试 {} 个节点，耗时 {:?}", total_nodes, duration);
@@ -329,9 +358,27 @@ fn parse_profile_nodes(profile_data: &str) -> Result<Vec<NodeInfo>, String> {
 
 /// 测试单个节点
 async fn test_single_node(node: &NodeInfo, profile_name: &str, profile_uid: &str) -> SpeedTestResult {
-    log::info!(target: "app", "开始测试节点: {} ({})", node.node_name, node.server);
+    log::info!(target: "app", "开始测试节点: {} ({}) 来自订阅: {}", node.node_name, node.server, profile_name);
     
     let test_start = Instant::now();
+    
+    // 验证节点信息完整性
+    if node.node_name.is_empty() || node.server.is_empty() {
+        log::warn!(target: "app", "节点信息不完整: 名称='{}'，服务器='{}'", node.node_name, node.server);
+        return SpeedTestResult {
+            node_name: if node.node_name.is_empty() { "无名节点".to_string() } else { node.node_name.clone() },
+            node_type: node.node_type.clone(),
+            server: node.server.clone(),
+            profile_name: profile_name.to_string(),
+            profile_uid: profile_uid.to_string(),
+            latency_ms: None,
+            download_speed_mbps: None,
+            upload_speed_mbps: None,
+            stability_score: 0.0,
+            test_duration_ms: test_start.elapsed().as_millis() as u64,
+            status: "failed".to_string(),
+        };
+    }
     
     // 延迟测试 - 测试多次取平均值
     let mut latencies = Vec::new();
@@ -589,13 +636,13 @@ fn analyze_speed_test_results(
     duration: Duration,
 ) -> GlobalSpeedTestSummary {
     let total_nodes = results.len();
-    let successful_tests = results.iter().filter(|r| r.status == "Pass").count();
+    let successful_tests = results.iter().filter(|r| r.status == "success").count();
     let failed_tests = total_nodes - successful_tests;
     
     // 找到最佳节点（综合评分最高）
     let best_node = results
         .iter()
-        .filter(|r| r.status == "Pass")
+        .filter(|r| r.status == "success")
         .max_by(|a, b| {
             let score_a = calculate_overall_score(a);
             let score_b = calculate_overall_score(b);
@@ -606,7 +653,7 @@ fn analyze_speed_test_results(
     // 获取前10名节点
     let mut top_nodes = results
         .iter()
-        .filter(|r| r.status == "Pass")
+        .filter(|r| r.status == "success")
         .cloned()
         .collect::<Vec<_>>();
     
