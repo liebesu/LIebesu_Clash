@@ -26,7 +26,10 @@ function generateReleaseContent(assets, releaseTag, version) {
   if (windowsAssets.length > 0) {
     content += `**Windows (不再支持Win7)**\n`;
     windowsAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
+      // 检查文件名是否已经URL编码，如果已编码就不要再编码
+      const isAlreadyEncoded = asset.includes('%');
+      const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
       if (asset.includes('webview2')) {
         content += `- [内置WebView2版 64位](${url})\n`;
       } else {
@@ -41,7 +44,10 @@ function generateReleaseContent(assets, releaseTag, version) {
   if (macosAssets.length > 0) {
     content += `**macOS**\n`;
     macosAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
+      // 检查文件名是否已经URL编码，如果已编码就不要再编码
+      const isAlreadyEncoded = asset.includes('%');
+      const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
       if (asset.includes('aarch64')) {
         content += `- [Apple M芯片 DMG](${url})\n`;
       } else if (asset.includes('.app.tar.gz')) {
@@ -58,7 +64,10 @@ function generateReleaseContent(assets, releaseTag, version) {
   if (linuxAssets.length > 0) {
     content += `**Linux**\n`;
     linuxAssets.forEach(asset => {
-      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodeURIComponent(asset)}`;
+      // 检查文件名是否已经URL编码，如果已编码就不要再编码
+      const isAlreadyEncoded = asset.includes('%');
+      const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
+      const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
       content += `- [${asset}](${url})\n`;
     });
   } else {
@@ -164,7 +173,9 @@ async function sendTelegramNotification() {
           let processedLine = line.replace(
             /\[([^\]]+)\]\(([^)]+)\)/g,
             (match, text, url) => {
-              const encodedUrl = encodeURI(url);
+              // 检查URL是否已经编码，避免双重编码
+              const isAlreadyEncoded = url.includes('%');
+              const encodedUrl = isAlreadyEncoded ? url : encodeURI(url);
               return `<a href="${encodedUrl}">${text}</a>`;
             },
           );
