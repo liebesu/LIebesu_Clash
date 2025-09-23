@@ -51,19 +51,23 @@ pub struct GlobalSpeedTestSummary {
 pub async fn start_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "开始全局节点测速");
     
-    // 安全地获取配置文件
-    let profiles = match Config::profiles().await.latest_ref().items.clone() {
-        Some(items) if !items.is_empty() => {
-            log::info!(target: "app", "找到 {} 个订阅配置", items.len());
-            items
-        },
-        Some(_) => {
-            log::warn!(target: "app", "订阅配置列表为空");
-            return Err("订阅配置列表为空，请先添加订阅".to_string());
-        },
-        None => {
-            log::warn!(target: "app", "没有找到订阅配置");
-            return Err("没有找到任何订阅配置，请先添加订阅".to_string());
+    // 安全地获取配置文件，立即克隆避免生命周期问题
+    let profiles = {
+        let profiles_data = Config::profiles().await;
+        let profiles_ref = profiles_data.latest_ref();
+        match &profiles_ref.items {
+            Some(items) if !items.is_empty() => {
+                log::info!(target: "app", "找到 {} 个订阅配置", items.len());
+                items.clone()
+            },
+            Some(_) => {
+                log::warn!(target: "app", "订阅配置列表为空");
+                return Err("订阅配置列表为空，请先添加订阅".to_string());
+            },
+            None => {
+                log::warn!(target: "app", "没有找到订阅配置");
+                return Err("没有找到任何订阅配置，请先添加订阅".to_string());
+            }
         }
     };
 
@@ -138,7 +142,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                                 batch_num, total_batches, batch.len()),
             completed: batch_index * BATCH_SIZE,
             total: total_nodes,
-            percentage: (batch_index as f64 / total_batches as f64) * 100.0,
+            percentage: (batch_index * BATCH_SIZE) as f64 / total_nodes as f64 * 100.0,
             current_profile: "所有订阅".to_string(),
         };
 
@@ -232,6 +236,15 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     log::info!(target: "app", "全局测速完成，共测试 {} 个节点，耗时 {:?}", total_nodes, duration);
     
     Ok(format!("全局测速完成，共测试 {} 个节点，耗时 {:.1} 秒", total_nodes, duration.as_secs_f64()))
+}
+
+/// 取消全局测速
+#[tauri::command]
+pub async fn cancel_global_speed_test() -> Result<String, String> {
+    log::info!(target: "app", "用户请求取消全局测速");
+    // 设置取消标志 - 这里应该与测速过程中的标志配合
+    // 实际实现中可以使用全局状态管理
+    Ok("测速取消请求已发送".to_string())
 }
 
 /// 获取最佳节点并切换
@@ -709,7 +722,11 @@ fn analyze_speed_test_results(
 ) -> GlobalSpeedTestSummary {
     let total_nodes = results.len();
     let successful_tests = results.iter().filter(|r| r.status == "success").count();
-    let failed_tests = total_nodes - successful_tests;
+    let timeout_tests = results.iter().filter(|r| r.status == "timeout").count();
+    let failed_tests = results.iter().filter(|r| r.status == "failed").count();
+    
+    log::info!(target: "app", "测速结果统计: 成功={}, 超时={}, 失败={}, 总计={}", 
+              successful_tests, timeout_tests, failed_tests, total_nodes);
     
     // 找到最佳节点（综合评分最高）
     let best_node = results

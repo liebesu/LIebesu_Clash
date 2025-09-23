@@ -301,12 +301,18 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                   <Typography variant="caption" color="text.disabled">
                     预估剩余时间: {
                       (() => {
-                        const avgTimePerNode = 3; // 假设每个节点3秒
                         const remaining = progress.total - progress.completed;
-                        const estimatedSeconds = Math.ceil(remaining * avgTimePerNode / 8); // 考虑并发
-                        return estimatedSeconds > 60 ? 
-                          `${Math.ceil(estimatedSeconds / 60)} 分钟` : 
-                          `${estimatedSeconds} 秒`;
+                        const BATCH_SIZE = 8;
+                        const remainingBatches = Math.ceil(remaining / BATCH_SIZE);
+                        // 每批预估15秒（包含网络延迟和处理时间）
+                        const estimatedSeconds = remainingBatches * 15;
+                        
+                        if (estimatedSeconds > 60) {
+                          const minutes = Math.ceil(estimatedSeconds / 60);
+                          return `约 ${minutes} 分钟`;
+                        } else {
+                          return `约 ${estimatedSeconds} 秒`;
+                        }
                       })()
                     }
                   </Typography>
