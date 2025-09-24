@@ -1,6 +1,7 @@
 use crate::{
     config::Config,
     ipc::IpcManager,
+    utils::dirs,
 };
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -126,20 +127,30 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             continue;
         }
         
-        // 读取配置文件内容 - 优先使用 file_data，如果没有则从文件路径读取
+        // 读取配置文件内容 - 优先使用 file_data，如果没有则从完整文件路径读取
         let profile_data = if let Some(file_data) = &item.file_data {
             log::info!(target: "app", "📄 使用内存中的配置数据 '{}' (长度: {} 字符)", profile_name, file_data.len());
             file_data.clone()
-        } else if let Some(file_path) = &item.file {
-            log::info!(target: "app", "📂 从文件读取配置 '{}': {}", profile_name, file_path);
-            match tokio::fs::read_to_string(file_path).await {
+        } else if let Some(file_name) = &item.file {
+            log::info!(target: "app", "📂 从文件读取配置 '{}': {}", profile_name, file_name);
+            
+            // 构建完整的文件路径
+            let full_path = match dirs::app_profiles_dir() {
+                Ok(profile_dir) => profile_dir.join(file_name),
+                Err(e) => {
+                    log::error!(target: "app", "❌ 获取配置目录失败: {}", e);
+                    continue;
+                }
+            };
+            
+            match tokio::fs::read_to_string(&full_path).await {
                 Ok(data) => {
                     log::info!(target: "app", "✅ 成功读取配置文件 '{}' (长度: {} 字符)", profile_name, data.len());
                     data
                 }
                 Err(e) => {
                     log::error!(target: "app", "❌ 读取订阅文件 '{}' 失败: {}", profile_name, e);
-                    log::error!(target: "app", "   文件路径: {}", file_path);
+                    log::error!(target: "app", "   文件路径: {:?}", full_path);
                     continue;
                 }
             }
