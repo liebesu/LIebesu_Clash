@@ -247,6 +247,7 @@ fn encrypt_data(data: &[u8], password: &str) -> Result<Vec<u8>> {
 }
 
 /// 解密数据
+#[allow(dead_code)] // 保留用于未来加密功能
 fn decrypt_data(data: &[u8], password: &str) -> Result<Vec<u8>> {
     // XOR解密（与加密相同）
     encrypt_data(data, password)

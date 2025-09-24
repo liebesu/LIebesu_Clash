@@ -47,6 +47,7 @@ pub struct TrafficInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)] // 保留用于未来功能扩展
 pub struct GlobalSpeedTestProgress {
     pub current_node: String,
     pub completed: usize,
@@ -338,6 +339,7 @@ struct NodeInfo {
     port: u16,
     profile_name: String,
     profile_uid: String,
+    #[allow(dead_code)] // 保留用于调试和日志记录
     profile_type: String,
     subscription_url: Option<String>,
     traffic_info: Option<TrafficInfo>,
