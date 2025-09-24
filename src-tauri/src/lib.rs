@@ -246,6 +246,7 @@ mod app_init {
             // Global speed test commands
             cmd::start_global_speed_test,
             cmd::cancel_global_speed_test,
+            cmd::switch_to_node,
             cmd::apply_best_node,
             // Traffic stats commands
             cmd::record_traffic_usage,

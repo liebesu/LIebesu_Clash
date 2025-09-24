@@ -47,13 +47,29 @@ pub struct TrafficInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)] // 保留用于未来功能扩展
 pub struct GlobalSpeedTestProgress {
     pub current_node: String,
     pub completed: usize,
     pub total: usize,
     pub percentage: f64,
     pub current_profile: String,
+    pub tested_nodes: usize,
+    pub successful_tests: usize,
+    pub failed_tests: usize,
+    pub current_batch: usize,
+    pub total_batches: usize,
+    pub estimated_remaining_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NodeTestUpdate {
+    pub node_name: String,
+    pub profile_name: String,
+    pub status: String, // "testing", "success", "failed", "timeout"
+    pub latency_ms: Option<u64>,
+    pub error_message: Option<String>,
+    pub completed: usize,
+    pub total: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +87,7 @@ pub struct GlobalSpeedTestSummary {
 
 /// 全局节点测速
 #[tauri::command]
-pub async fn start_global_speed_test() -> Result<String, String> {
+pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<String, String> {
     log::info!(target: "app", "🚀 开始全局节点测速");
     
     // 重置取消标志
@@ -79,7 +95,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     let _start_time = Instant::now();
     
-    // 安全地获取配置文件，立即克隆避免生命周期问题  
+    // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
         log::info!(target: "app", "📋 正在获取订阅配置...");
         let profiles_data = Config::profiles().await;
@@ -160,25 +176,25 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             continue;
         };
         
-        if profile_data.trim().is_empty() {
+            if profile_data.trim().is_empty() {
             log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
-            continue;
-        }
-        
+                continue;
+            }
+            
         log::info!(target: "app", "🔍 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
-        
+            
         match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
-            Ok(nodes) => {
-                if nodes.is_empty() {
+                Ok(nodes) => {
+                    if nodes.is_empty() {
                     log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
-                } else {
+                    } else {
                     log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
-                    for node in nodes {
-                        all_nodes_with_profile.push(node);
+                        for node in nodes {
+                            all_nodes_with_profile.push(node);
+                        }
                     }
                 }
-            }
-            Err(e) => {
+                Err(e) => {
                 log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
                 log::error!(target: "app", "   订阅数据预览: {}", 
                           if profile_data.len() > 200 { 
@@ -213,9 +229,13 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     let mut all_results = Vec::new();
     let start_time = Instant::now();
-    
+
     // 第二步：批量测试所有节点
-    let batch_size = 10;
+    let batch_size = 8; // 减少批次大小以提高响应性
+    let total_batches = (total_nodes + batch_size - 1) / batch_size;
+    let mut successful_tests = 0;
+    let mut failed_tests = 0;
+    
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
         if CANCEL_FLAG.load(Ordering::SeqCst) {
             log::info!(target: "app", "🛑 测速已被取消");
@@ -223,15 +243,42 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         }
         
         log::info!(target: "app", "📦 处理批次 {}/{} (包含 {} 个节点)", 
-                  batch_index + 1, 
-                  (total_nodes + batch_size - 1) / batch_size, 
-                  chunk.len());
+                  batch_index + 1, total_batches, chunk.len());
+        
+        // 发送批次开始事件
+        let progress = GlobalSpeedTestProgress {
+            current_node: format!("批次 {}/{}", batch_index + 1, total_batches),
+            completed: all_results.len(),
+            total: total_nodes,
+            percentage: (all_results.len() as f64 / total_nodes as f64) * 100.0,
+            current_profile: "批量测试中".to_string(),
+            tested_nodes: all_results.len(),
+            successful_tests,
+            failed_tests,
+            current_batch: batch_index + 1,
+            total_batches,
+            estimated_remaining_seconds: ((total_batches - batch_index) * 15).max(1),
+        };
+        let _ = app_handle.emit("global-speed-test-progress", progress);
         
         // 并发测试当前批次的节点
         let mut batch_tasks = Vec::new();
         for node in chunk {
             let node_clone = node.clone();
+            let app_handle_clone = app_handle.clone();
             let task = tokio::spawn(async move {
+                // 发送节点开始测试事件
+                let update = NodeTestUpdate {
+                    node_name: node_clone.node_name.clone(),
+                    profile_name: node_clone.profile_name.clone(),
+                    status: "testing".to_string(),
+                    latency_ms: None,
+                    error_message: None,
+                    completed: all_results.len(),
+                    total: total_nodes,
+                };
+                let _ = app_handle_clone.emit("node-test-update", update);
+                
                 test_single_node(&node_clone).await
             });
             batch_tasks.push(task);
@@ -240,14 +287,37 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         // 等待当前批次完成
         for task in batch_tasks {
             match task.await {
-                Ok(result) => all_results.push(result),
-                Err(e) => log::error!(target: "app", "节点测试任务失败: {}", e),
+                Ok(result) => {
+                    if result.is_available {
+                        successful_tests += 1;
+                    } else {
+                        failed_tests += 1;
+                    }
+                    all_results.push(result);
+                    
+                    // 发送节点完成事件
+                    let update = NodeTestUpdate {
+                        node_name: result.node_name.clone(),
+                        profile_name: result.profile_name.clone(),
+                        status: if result.is_available { "success".to_string() } else { "failed".to_string() },
+                        latency_ms: result.latency,
+                        error_message: result.error_message.clone(),
+                        completed: all_results.len(),
+                        total: total_nodes,
+                    };
+                    let _ = app_handle.emit("node-test-update", update);
+                }
+                Err(e) => {
+                    log::error!(target: "app", "节点测试任务失败: {}", e);
+                    failed_tests += 1;
+                }
             }
         }
         
         let completed = all_results.len();
         let percentage = (completed as f64 / total_nodes as f64) * 100.0;
-        log::info!(target: "app", "📊 进度: {}/{} ({:.1}%)", completed, total_nodes, percentage);
+        log::info!(target: "app", "📊 进度: {}/{} ({:.1}%) - 成功: {}, 失败: {}", 
+                  completed, total_nodes, percentage, successful_tests, failed_tests);
     }
     
     let duration = start_time.elapsed();
@@ -258,6 +328,9 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     // 保存结果供后续使用
     *LATEST_RESULTS.lock() = Some(summary.clone());
+    
+    // 发送完成事件
+    let _ = app_handle.emit("global-speed-test-complete", summary.clone());
     
     log::info!(target: "app", "📈 测速统计: 总计 {} 个节点，成功 {} 个，失败 {} 个", 
               summary.total_nodes, summary.successful_tests, summary.failed_tests);
@@ -330,6 +403,27 @@ pub async fn apply_best_node() -> Result<String, String> {
     }
 }
 
+/// 切换到指定节点
+#[tauri::command]
+pub async fn switch_to_node(profile_uid: String, node_name: String) -> Result<String, String> {
+    log::info!(target: "app", "🔄 切换到指定节点: {} (订阅: {})", node_name, profile_uid);
+    
+    // 使用 IpcManager 来切换节点
+    let ipc_manager = IpcManager::global();
+    match ipc_manager.update_proxy(&profile_uid, &node_name).await {
+        Ok(_) => {
+            let success_msg = format!("已切换到节点: {}", node_name);
+            log::info!(target: "app", "✅ {}", success_msg);
+            Ok(success_msg)
+        }
+        Err(e) => {
+            let error_msg = format!("切换节点失败: {}", e);
+            log::error!(target: "app", "❌ {}", error_msg);
+            Err(error_msg)
+        }
+    }
+}
+
 /// 节点信息结构
 #[derive(Debug, Clone)]
 struct NodeInfo {
@@ -350,7 +444,7 @@ fn parse_profile_nodes(
     profile_data: &str, 
     profile_name: &str, 
     profile_uid: &str, 
-    profile_type: &str,
+    profile_type: &str, 
     subscription_url: &Option<String>
 ) -> Result<Vec<NodeInfo>, String> {
     let mut nodes = Vec::new();
@@ -389,7 +483,7 @@ fn parse_profile_nodes(
                             let node_type = ["type", "Type", "protocol", "Protocol"]
                                 .iter()
                                 .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                .and_then(|v| v.as_str()))
+                                    .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown");
                             
                             if matches!(node_type.to_lowercase().as_str(), "direct" | "reject" | "dns" | "block") {
@@ -403,38 +497,38 @@ fn parse_profile_nodes(
                             let node_name = ["name", "Name", "tag", "Tag"]
                                 .iter()
                                 .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                .and_then(|v| v.as_str()))
+                                    .and_then(|v| v.as_str()))
                                 .unwrap_or(&default_name);
                             
                             let server = ["server", "Server", "hostname", "Hostname", "host", "Host"]
                                 .iter()
                                 .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                .and_then(|v| v.as_str()))
+                                    .and_then(|v| v.as_str()))
                                 .unwrap_or("unknown");
                             
                             let port = ["port", "Port"]
                                 .iter()
                                 .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                .and_then(|v| v.as_u64()))
+                                    .and_then(|v| v.as_u64()))
                                 .unwrap_or(0) as u16;
                             
                             if server != "unknown" && port > 0 {
                                 log::debug!(target: "app", "📍 解析节点: {} ({}:{}, 类型: {})", 
                                           node_name, server, port, node_type);
-                                
-                                let node = NodeInfo {
+                            
+                            let node = NodeInfo {
                                     node_name: node_name.to_string(),
                                     node_type: node_type.to_string(),
                                     server: server.to_string(),
-                                    port,
-                                    profile_name: profile_name.to_string(),
-                                    profile_uid: profile_uid.to_string(),
-                                    profile_type: profile_type.to_string(),
-                                    subscription_url: subscription_url.clone(),
+                                port,
+                                profile_name: profile_name.to_string(),
+                                profile_uid: profile_uid.to_string(),
+                                profile_type: profile_type.to_string(),
+                                subscription_url: subscription_url.clone(),
                                     traffic_info: None, // 可以在这里解析流量信息
-                                };
-                                
-                                nodes.push(node);
+                            };
+                            
+                            nodes.push(node);
                             }
                         }
                     }
@@ -488,19 +582,19 @@ fn parse_profile_nodes(
                                         .unwrap_or(0) as u16;
                                     
                                     if server != "unknown" && port > 0 {
-                                        let node = NodeInfo {
+                                    let node = NodeInfo {
                                             node_name: node_name.to_string(),
                                             node_type: node_type.to_string(),
                                             server: server.to_string(),
-                                            port,
-                                            profile_name: profile_name.to_string(),
-                                            profile_uid: profile_uid.to_string(),
-                                            profile_type: profile_type.to_string(),
-                                            subscription_url: subscription_url.clone(),
+                                        port,
+                                        profile_name: profile_name.to_string(),
+                                        profile_uid: profile_uid.to_string(),
+                                        profile_type: profile_type.to_string(),
+                                        subscription_url: subscription_url.clone(),
                                             traffic_info: None,
-                                        };
-                                        
-                                        nodes.push(node);
+                                    };
+                                    
+                                    nodes.push(node);
                                     }
                                 }
                             }
@@ -556,12 +650,12 @@ async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
             
             SpeedTestResult {
                 node_name: node.node_name.clone(),
-                node_type: node.node_type.clone(),
-                server: node.server.clone(),
-                port: node.port,
-                profile_name: node.profile_name.clone(),
-                profile_uid: node.profile_uid.clone(),
-                subscription_url: node.subscription_url.clone(),
+            node_type: node.node_type.clone(),
+            server: node.server.clone(),
+            port: node.port,
+            profile_name: node.profile_name.clone(),
+            profile_uid: node.profile_uid.clone(),
+            subscription_url: node.subscription_url.clone(),
                 latency: Some(latency),
                 is_available: true,
                 error_message: None,
@@ -573,15 +667,15 @@ async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
         Ok(Err(e)) => {
             let error_msg = format!("连接失败: {}", e);
             log::warn!(target: "app", "❌ 节点 {} 连接失败: {}", node.node_name, error_msg);
-            
-            SpeedTestResult {
-                node_name: node.node_name.clone(),
-                node_type: node.node_type.clone(),
-                server: node.server.clone(),
-                port: node.port,
-                profile_name: node.profile_name.clone(),
-                profile_uid: node.profile_uid.clone(),
-                subscription_url: node.subscription_url.clone(),
+    
+    SpeedTestResult {
+        node_name: node.node_name.clone(),
+        node_type: node.node_type.clone(),
+        server: node.server.clone(),
+        port: node.port,
+        profile_name: node.profile_name.clone(),
+        profile_uid: node.profile_uid.clone(),
+        subscription_url: node.subscription_url.clone(),
                 latency: None,
                 is_available: false,
                 error_message: Some(error_msg),
