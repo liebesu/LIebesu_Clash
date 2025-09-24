@@ -79,6 +79,19 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     let _start_time = Instant::now();
     
+    // 发送调试信息到前端
+    let _ = app_handle.emit_all(
+        "global-speed-test-progress", 
+        GlobalSpeedTestProgress {
+            current_phase: "正在获取订阅配置...".to_string(),
+            current_subscription: None,
+            current_node: None,
+            completed_nodes: 0,
+            total_nodes: 0,
+            current_latency: None,
+        }
+    );
+
     // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
         log::info!(target: "app", "📋 正在获取订阅配置...");
@@ -87,6 +100,20 @@ pub async fn start_global_speed_test() -> Result<String, String> {
         match &profiles_ref.items {
             Some(items) if !items.is_empty() => {
                 log::info!(target: "app", "✅ 找到 {} 个订阅配置", items.len());
+                
+                // 发送发现的订阅数量到前端
+                let _ = app_handle.emit_all(
+                    "global-speed-test-progress", 
+                    GlobalSpeedTestProgress {
+                        current_phase: format!("找到 {} 个订阅配置，开始解析节点...", items.len()),
+                        current_subscription: None,
+                        current_node: None,
+                        completed_nodes: 0,
+                        total_nodes: 0,
+                        current_latency: None,
+                    }
+                );
+                
                 for (i, item) in items.iter().enumerate() {
                     let name = item.name.as_deref().unwrap_or("未命名");
                     let uid = item.uid.as_deref().unwrap_or("unknown");
@@ -96,12 +123,36 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                 items.clone()
             },
             Some(_) => {
-                log::error!(target: "app", "❌ 订阅配置列表为空");
-                return Err("订阅配置列表为空，请先添加订阅".to_string());
+                let error_msg = "订阅配置列表为空，请先添加订阅";
+                log::error!(target: "app", "❌ {}", error_msg);
+                let _ = app_handle.emit_all(
+                    "global-speed-test-progress", 
+                    GlobalSpeedTestProgress {
+                        current_phase: format!("❌ {}", error_msg),
+                        current_subscription: None,
+                        current_node: None,
+                        completed_nodes: 0,
+                        total_nodes: 0,
+                        current_latency: None,
+                    }
+                );
+                return Err(error_msg.to_string());
             },
             None => {
-                log::error!(target: "app", "❌ 没有找到订阅配置");
-                return Err("没有找到任何订阅配置，请先添加订阅".to_string());
+                let error_msg = "没有找到任何订阅配置，请先添加订阅";
+                log::error!(target: "app", "❌ {}", error_msg);
+                let _ = app_handle.emit_all(
+                    "global-speed-test-progress", 
+                    GlobalSpeedTestProgress {
+                        current_phase: format!("❌ {}", error_msg),
+                        current_subscription: None,
+                        current_node: None,
+                        completed_nodes: 0,
+                        total_nodes: 0,
+                        current_latency: None,
+                    }
+                );
+                return Err(error_msg.to_string());
             }
         }
     };
@@ -127,25 +178,100 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             continue;
         }
         
+        // 发送当前处理的订阅信息到前端
+        let _ = app_handle.emit_all(
+            "global-speed-test-progress", 
+            GlobalSpeedTestProgress {
+                current_phase: format!("正在处理订阅: {}", profile_name),
+                current_subscription: Some(profile_name.to_string()),
+                current_node: None,
+                completed_nodes: 0,
+                total_nodes: 0,
+                current_latency: None,
+            }
+        );
+
         // 读取配置文件内容
         if let Some(file_path) = &item.file {
             log::info!(target: "app", "📂 读取订阅配置文件: {}", file_path);
             
+            // 发送读取文件状态到前端
+            let _ = app_handle.emit_all(
+                "global-speed-test-progress", 
+                GlobalSpeedTestProgress {
+                    current_phase: format!("读取订阅 '{}' 的配置文件: {}", profile_name, file_path),
+                    current_subscription: Some(profile_name.to_string()),
+                    current_node: None,
+                    completed_nodes: 0,
+                    total_nodes: 0,
+                    current_latency: None,
+                }
+            );
+            
             match tokio::fs::read_to_string(file_path).await {
                 Ok(profile_data) => {
                     if profile_data.trim().is_empty() {
-                        log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
+                        let warning_msg = format!("订阅 '{}' 配置文件为空", profile_name);
+                        log::warn!(target: "app", "⚠️ {}", warning_msg);
+                        let _ = app_handle.emit_all(
+                            "global-speed-test-progress", 
+                            GlobalSpeedTestProgress {
+                                current_phase: format!("⚠️ {}", warning_msg),
+                                current_subscription: Some(profile_name.to_string()),
+                                current_node: None,
+                                completed_nodes: 0,
+                                total_nodes: 0,
+                                current_latency: None,
+                            }
+                        );
                         continue;
                     }
                     
                     log::info!(target: "app", "📄 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
                     
+                    // 发送解析状态到前端
+                    let _ = app_handle.emit_all(
+                        "global-speed-test-progress", 
+                        GlobalSpeedTestProgress {
+                            current_phase: format!("解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len()),
+                            current_subscription: Some(profile_name.to_string()),
+                            current_node: None,
+                            completed_nodes: 0,
+                            total_nodes: 0,
+                            current_latency: None,
+                        }
+                    );
+                    
                     match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
                         Ok(nodes) => {
                             if nodes.is_empty() {
-                                log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
+                                let warning_msg = format!("订阅 '{}' 未发现有效节点", profile_name);
+                                log::warn!(target: "app", "⚠️ {}", warning_msg);
+                                let _ = app_handle.emit_all(
+                                    "global-speed-test-progress", 
+                                    GlobalSpeedTestProgress {
+                                        current_phase: format!("⚠️ {}", warning_msg),
+                                        current_subscription: Some(profile_name.to_string()),
+                                        current_node: None,
+                                        completed_nodes: 0,
+                                        total_nodes: 0,
+                                        current_latency: None,
+                                    }
+                                );
                             } else {
-                                log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                                let success_msg = format!("订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                                log::info!(target: "app", "✅ {}", success_msg);
+                                let _ = app_handle.emit_all(
+                                    "global-speed-test-progress", 
+                                    GlobalSpeedTestProgress {
+                                        current_phase: format!("✅ {}", success_msg),
+                                        current_subscription: Some(profile_name.to_string()),
+                                        current_node: None,
+                                        completed_nodes: 0,
+                                        total_nodes: nodes.len(),
+                                        current_latency: None,
+                                    }
+                                );
                                 
                                 for node in nodes {
                                     all_nodes_with_profile.push(node);
@@ -153,34 +279,106 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                             }
                         }
                         Err(e) => {
-                            log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
+                            let error_msg = format!("解析订阅 '{}' 失败: {}", profile_name, e);
+                            log::error!(target: "app", "❌ {}", error_msg);
                             log::error!(target: "app", "   订阅数据预览: {}", 
                                       if profile_data.len() > 200 { 
                                           format!("{}...", &profile_data[..200]) 
                                       } else { 
                                           profile_data.to_string() 
                                       });
+                            
+                            let _ = app_handle.emit_all(
+                                "global-speed-test-progress", 
+                                GlobalSpeedTestProgress {
+                                    current_phase: format!("❌ {}", error_msg),
+                                    current_subscription: Some(profile_name.to_string()),
+                                    current_node: None,
+                                    completed_nodes: 0,
+                                    total_nodes: 0,
+                                    current_latency: None,
+                                }
+                            );
                         }
                     }
                 }
                 Err(e) => {
-                    log::error!(target: "app", "❌ 读取订阅文件 '{}' 失败: {}", profile_name, e);
+                    let error_msg = format!("读取订阅文件 '{}' 失败: {}", profile_name, e);
+                    log::error!(target: "app", "❌ {}", error_msg);
                     log::error!(target: "app", "   文件路径: {}", file_path);
+                    
+                    let _ = app_handle.emit_all(
+                        "global-speed-test-progress", 
+                        GlobalSpeedTestProgress {
+                            current_phase: format!("❌ {} (路径: {})", error_msg, file_path),
+                            current_subscription: Some(profile_name.to_string()),
+                            current_node: None,
+                            completed_nodes: 0,
+                            total_nodes: 0,
+                            current_latency: None,
+                        }
+                    );
                 }
             }
         } else {
-            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有文件路径", profile_name);
+            let warning_msg = format!("订阅 '{}' 没有文件路径", profile_name);
+            log::warn!(target: "app", "⚠️ {}", warning_msg);
+            let _ = app_handle.emit_all(
+                "global-speed-test-progress", 
+                GlobalSpeedTestProgress {
+                    current_phase: format!("⚠️ {}", warning_msg),
+                    current_subscription: Some(profile_name.to_string()),
+                    current_node: None,
+                    completed_nodes: 0,
+                    total_nodes: 0,
+                    current_latency: None,
+                }
+            );
         }
     }
 
     let total_nodes = all_nodes_with_profile.len();
     
+    // 发送节点统计信息到前端
+    let _ = app_handle.emit_all(
+        "global-speed-test-progress", 
+        GlobalSpeedTestProgress {
+            current_phase: format!("节点解析完成，共找到 {} 个节点", total_nodes),
+            current_subscription: None,
+            current_node: None,
+            completed_nodes: 0,
+            total_nodes,
+            current_latency: None,
+        }
+    );
+    
     if total_nodes == 0 {
-        log::error!(target: "app", "❌ 没有找到任何可测试的节点");
-        log::error!(target: "app", "   可能的原因:");
-        log::error!(target: "app", "   1. 订阅配置为空或格式错误");
-        log::error!(target: "app", "   2. 订阅中没有有效的代理节点");
-        log::error!(target: "app", "   3. 所有节点都被过滤掉了");
+        let error_details = vec![
+            "没有找到任何可测试的节点",
+            "可能的原因:",
+            "1. 订阅配置为空或格式错误",
+            "2. 订阅中没有有效的代理节点", 
+            "3. 所有节点都被过滤掉了(如DIRECT、REJECT等)",
+            "4. 配置文件不存在或无法读取"
+        ];
+        
+        for msg in &error_details {
+            log::error!(target: "app", "❌ {}", msg);
+        }
+        
+        let final_error_msg = format!("❌ {}\n{}", error_details[0], error_details[1..].join("\n"));
+        let _ = app_handle.emit_all(
+            "global-speed-test-progress", 
+            GlobalSpeedTestProgress {
+                current_phase: final_error_msg,
+                current_subscription: None,
+                current_node: None,
+                completed_nodes: 0,
+                total_nodes: 0,
+                current_latency: None,
+            }
+        );
+        
         return Err("没有找到任何可测试的节点，请检查订阅配置".to_string());
     }
 
