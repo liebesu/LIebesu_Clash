@@ -64,6 +64,7 @@ interface SpeedTestResult {
   status: string;
   region?: string;
   traffic_info?: TrafficInfo;
+  is_available: boolean;
 }
 
 interface GlobalSpeedTestProgress {
@@ -165,7 +166,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
           setCancelling(false);
           setProgress(null);
           setCurrentTestingNodes(new Set());
-          showNotice('测速已取消', 'info');
+          showNotice('info', '测速已取消');
         }
       );
 
