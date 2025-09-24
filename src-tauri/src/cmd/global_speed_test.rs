@@ -153,7 +153,7 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                               if profile_data.len() > 200 { 
                                   format!("{}...", &profile_data[..200]) 
                               } else { 
-                                  profile_data.clone() 
+                                  profile_data.to_string() 
                               });
                 }
             }
@@ -473,7 +473,7 @@ fn parse_profile_nodes(
               if profile_data.len() > 500 { 
                   format!("{}...", &profile_data[..500]) 
               } else { 
-                  profile_data.clone() 
+                  profile_data.to_string() 
               });
     
     // 首先尝试解析 YAML 格式

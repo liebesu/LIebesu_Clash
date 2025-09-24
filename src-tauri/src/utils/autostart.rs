@@ -98,7 +98,7 @@ pub fn create_shortcut() -> Result<()> {
 pub fn remove_shortcut() -> Result<()> {
     let startup_dir = get_startup_dir()?;
     let old_shortcut_path = startup_dir.join("Clash-Verge.lnk");
-    let verge_shortcut_path = startup_dir.join("Clash Verge.lnk");
+    let _verge_shortcut_path = startup_dir.join("Clash Verge.lnk");
     let new_shortcut_path = startup_dir.join("LIebesu_Clash.lnk");
 
     let mut removed_any = false;
