@@ -153,28 +153,68 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const handleStartTest = async () => {
     try {
       setTesting(true);
+      setCancelling(false); // 确保取消状态为false
       setProgress(null);
       setSummary(null);
       setResults([]);
       setShowAllResults(false); // 重置显示模式
       
+      console.log('🚀 开始全局节点测速...');
       showNotice('info', '开始全局节点测速...', 2000);
-      await startGlobalSpeedTest();
+      
+      const result = await startGlobalSpeedTest();
+      console.log('✅ 全局测速启动成功:', result);
     } catch (error: any) {
-      console.error('启动全局测速失败:', error);
-      showNotice('error', `启动测速失败: ${error.message}`, 3000);
+      console.error('❌ 启动全局测速失败:', error);
+      console.error('错误详情:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause
+      });
+      
+      let errorMessage = '启动测速失败';
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      } else if (typeof error === 'string') {
+        errorMessage += `: ${error}`;
+      } else {
+        errorMessage += ': 未知错误';
+      }
+      
+      showNotice('error', errorMessage, 5000);
       setTesting(false);
+      setCancelling(false);
     }
   };
 
   const handleCancelTest = async () => {
     try {
+      console.log('🛑 用户请求取消测速...');
       setCancelling(true);
-      await cancelGlobalSpeedTest();
+      
+      const result = await cancelGlobalSpeedTest();
+      console.log('✅ 取消测速请求成功:', result);
       showNotice('info', '正在取消测速...', 2000);
     } catch (error: any) {
-      console.error('取消测速失败:', error);
-      showNotice('error', `取消测速失败: ${error.message}`, 3000);
+      console.error('❌ 取消测速失败:', error);
+      console.error('取消测速错误详情:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause
+      });
+      
+      let errorMessage = '取消测速失败';
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      } else if (typeof error === 'string') {
+        errorMessage += `: ${error}`;
+      } else {
+        errorMessage += ': 未知错误';
+      }
+      
+      showNotice('error', errorMessage, 5000);
       setCancelling(false);
     }
   };

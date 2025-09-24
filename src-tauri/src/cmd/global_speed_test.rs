@@ -72,7 +72,7 @@ pub struct GlobalSpeedTestSummary {
 /// 全局节点测速
 #[tauri::command]
 pub async fn start_global_speed_test() -> Result<String, String> {
-    log::info!(target: "app", "开始全局节点测速");
+    log::info!(target: "app", "🚀 开始全局节点测速");
     
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
@@ -81,19 +81,26 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     
     // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
+        log::info!(target: "app", "📋 正在获取订阅配置...");
         let profiles_data = Config::profiles().await;
         let profiles_ref = profiles_data.latest_ref();
         match &profiles_ref.items {
             Some(items) if !items.is_empty() => {
-                log::info!(target: "app", "找到 {} 个订阅配置", items.len());
+                log::info!(target: "app", "✅ 找到 {} 个订阅配置", items.len());
+                for (i, item) in items.iter().enumerate() {
+                    let name = item.name.as_deref().unwrap_or("未命名");
+                    let uid = item.uid.as_deref().unwrap_or("unknown");
+                    let itype = item.itype.as_deref().unwrap_or("unknown");
+                    log::debug!(target: "app", "  配置 {}: {} (UID: {}, 类型: {})", i + 1, name, uid, itype);
+                }
                 items.clone()
             },
             Some(_) => {
-                log::warn!(target: "app", "订阅配置列表为空");
+                log::error!(target: "app", "❌ 订阅配置列表为空");
                 return Err("订阅配置列表为空，请先添加订阅".to_string());
             },
             None => {
-                log::warn!(target: "app", "没有找到订阅配置");
+                log::error!(target: "app", "❌ 没有找到订阅配置");
                 return Err("没有找到任何订阅配置，请先添加订阅".to_string());
             }
         }
@@ -102,35 +109,38 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     // 第一步：预解析所有订阅，收集所有节点信息
     let mut all_nodes_with_profile = Vec::new();
     
-    for item in &profiles {
+    log::info!(target: "app", "🔍 开始解析所有订阅节点...");
+    
+    for (index, item) in profiles.iter().enumerate() {
         // 安全地获取订阅信息
         let profile_name = item.name.as_deref().unwrap_or("未命名");
         let profile_uid = item.uid.as_deref().unwrap_or("unknown");
         let profile_type = item.itype.as_deref().unwrap_or("unknown");
         let subscription_url = item.url.clone();
         
+        log::info!(target: "app", "📝 处理订阅 {}/{}: {} (UID: {}, 类型: {})", 
+                  index + 1, profiles.len(), profile_name, profile_uid, profile_type);
+        
         // 跳过系统配置项
         if matches!(profile_type.to_lowercase().as_str(), "script" | "merge") {
-            log::debug!(target: "app", "跳过系统配置项: {} (类型: {})", profile_name, profile_type);
+            log::debug!(target: "app", "⏭️ 跳过系统配置项: {} (类型: {})", profile_name, profile_type);
             continue;
         }
         
-        log::info!(target: "app", "处理订阅: {} (UID: {}, 类型: {})", profile_name, profile_uid, profile_type);
-        
         if let Some(profile_data) = &item.file_data {
             if profile_data.trim().is_empty() {
-                log::warn!(target: "app", "订阅 '{}' 配置数据为空", profile_name);
+                log::warn!(target: "app", "⚠️ 订阅 '{}' 配置数据为空", profile_name);
                 continue;
             }
             
-            log::info!(target: "app", "解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
+            log::info!(target: "app", "📄 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
             
             match parse_profile_nodes(profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
                 Ok(nodes) => {
                     if nodes.is_empty() {
-                        log::warn!(target: "app", "订阅 '{}' 未发现有效节点", profile_name);
+                        log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
                     } else {
-                        log::info!(target: "app", "订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                        log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
                         
                         for node in nodes {
                             all_nodes_with_profile.push(node);
@@ -138,21 +148,32 @@ pub async fn start_global_speed_test() -> Result<String, String> {
                     }
                 }
                 Err(e) => {
-                    log::warn!(target: "app", "解析订阅 '{}' 失败: {}", profile_name, e);
+                    log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
+                    log::error!(target: "app", "   订阅数据预览: {}", 
+                              if profile_data.len() > 200 { 
+                                  format!("{}...", &profile_data[..200]) 
+                              } else { 
+                                  profile_data.clone() 
+                              });
                 }
             }
         } else {
-            log::warn!(target: "app", "订阅 '{}' 没有配置数据", profile_name);
+            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有配置数据", profile_name);
         }
     }
 
     let total_nodes = all_nodes_with_profile.len();
     
     if total_nodes == 0 {
-        return Err("没有找到任何可测试的节点".to_string());
+        log::error!(target: "app", "❌ 没有找到任何可测试的节点");
+        log::error!(target: "app", "   可能的原因:");
+        log::error!(target: "app", "   1. 订阅配置为空或格式错误");
+        log::error!(target: "app", "   2. 订阅中没有有效的代理节点");
+        log::error!(target: "app", "   3. 所有节点都被过滤掉了");
+        return Err("没有找到任何可测试的节点，请检查订阅配置".to_string());
     }
 
-    log::info!(target: "app", "共找到 {} 个节点，开始测速", total_nodes);
+    log::info!(target: "app", "🎯 共找到 {} 个节点，开始测速", total_nodes);
     
     let mut all_results = Vec::new();
     let start_time = Instant::now();
@@ -265,26 +286,41 @@ pub async fn start_global_speed_test() -> Result<String, String> {
     let duration = start_time.elapsed();
     
     // 分析结果
+    log::info!(target: "app", "📊 开始分析测速结果...");
     let summary = analyze_speed_test_results(all_results, duration);
     
+    log::info!(target: "app", "📈 测速结果分析完成:");
+    log::info!(target: "app", "   总节点数: {}", summary.total_nodes);
+    log::info!(target: "app", "   已测试: {}", summary.tested_nodes);
+    log::info!(target: "app", "   成功: {}", summary.successful_tests);
+    log::info!(target: "app", "   失败: {}", summary.failed_tests);
+    log::info!(target: "app", "   最佳节点: {:?}", summary.best_node.as_ref().map(|n| &n.node_name));
+    
     // 发送完成事件
+    log::info!(target: "app", "📤 发送测速完成事件...");
     if let Some(app_handle) = handle::Handle::global().app_handle() {
-        if let Err(e) = app_handle.emit("global-speed-test-complete", &summary) {
-            log::warn!(target: "app", "发送完成事件失败: {}", e);
-        } else {
-            log::info!(target: "app", "成功发送测速完成事件");
+        match app_handle.emit("global-speed-test-complete", &summary) {
+            Ok(_) => {
+                log::info!(target: "app", "✅ 成功发送测速完成事件");
+            },
+            Err(e) => {
+                log::error!(target: "app", "❌ 发送完成事件失败: {}", e);
+                return Err(format!("发送完成事件失败: {}", e));
+            }
         }
     } else {
-        log::warn!(target: "app", "无法获取应用句柄");
+        log::error!(target: "app", "❌ 无法获取应用句柄");
+        return Err("无法获取应用句柄".to_string());
     }
     
     // 保存最新的测速结果到全局状态
     {
         let mut latest_results = LATEST_RESULTS.lock();
         *latest_results = Some(summary.clone());
+        log::info!(target: "app", "💾 测速结果已保存到全局状态");
     }
     
-    log::info!(target: "app", "全局测速完成，共测试 {} 个节点，耗时 {:?}", total_nodes, duration);
+    log::info!(target: "app", "🎉 全局测速完成，共测试 {} 个节点，耗时 {:?}", total_nodes, duration);
     
     Ok(format!("全局测速完成，共测试 {} 个节点，耗时 {:.1} 秒", total_nodes, duration.as_secs_f64()))
 }
@@ -428,10 +464,17 @@ fn parse_profile_nodes(
     let mut nodes = Vec::new();
     
     if profile_data.trim().is_empty() {
+        log::error!(target: "app", "❌ 配置文件为空: {}", profile_name);
         return Err("配置文件为空".to_string());
     }
     
-    log::info!(target: "app", "开始解析配置文件，长度: {} 字符", profile_data.len());
+    log::info!(target: "app", "🔍 开始解析配置文件 '{}'，长度: {} 字符", profile_name, profile_data.len());
+    log::debug!(target: "app", "   配置数据预览: {}", 
+              if profile_data.len() > 500 { 
+                  format!("{}...", &profile_data[..500]) 
+              } else { 
+                  profile_data.clone() 
+              });
     
     // 首先尝试解析 YAML 格式
     match serde_yaml_ng::from_str::<serde_yaml_ng::Value>(profile_data) {
@@ -521,11 +564,13 @@ fn parse_profile_nodes(
             }
             
             if !found_nodes {
-                log::warn!(target: "app", "在 YAML 中未找到节点列表，尝试的字段: {:?}", possible_keys);
+                log::warn!(target: "app", "⚠️ 在 YAML 中未找到节点列表 '{}'，尝试的字段: {:?}", profile_name, possible_keys);
+                log::debug!(target: "app", "   YAML 结构: {:?}", yaml_value);
             }
         }
         Err(e) => {
-            log::warn!(target: "app", "YAML 解析失败: {}，尝试 JSON 格式", e);
+            log::warn!(target: "app", "⚠️ YAML 解析失败 '{}': {}，尝试 JSON 格式", profile_name, e);
+            log::debug!(target: "app", "   YAML 错误详情: {:?}", e);
             
             // 尝试解析 JSON 格式
             match serde_json::from_str::<serde_json::Value>(profile_data) {
@@ -605,12 +650,16 @@ fn parse_profile_nodes(
                     }
                     
                     if !found_nodes {
-                        log::warn!(target: "app", "在 JSON 中未找到节点列表，尝试的字段: {:?}", possible_keys);
+                        log::warn!(target: "app", "⚠️ 在 JSON 中未找到节点列表 '{}'，尝试的字段: {:?}", profile_name, possible_keys);
+                        log::debug!(target: "app", "   JSON 结构: {:?}", json_value);
                     }
                 }
                 Err(json_err) => {
-                    log::error!(target: "app", "JSON 解析也失败: {}", json_err);
-                    return Err(format!("配置文件格式不支持，YAML 错误: {}，JSON 错误: {}", e, json_err));
+                    log::error!(target: "app", "❌ JSON 解析也失败 '{}': {}", profile_name, json_err);
+                    log::error!(target: "app", "   配置数据可能不是有效的 YAML 或 JSON 格式");
+                    log::debug!(target: "app", "   YAML 错误: {:?}", e);
+                    log::debug!(target: "app", "   JSON 错误: {:?}", json_err);
+                    return Err(format!("配置文件 '{}' 解析失败，既不是有效的 YAML 也不是 JSON 格式。YAML 错误: {}，JSON 错误: {}", profile_name, e, json_err));
                 }
             }
         }
@@ -618,23 +667,27 @@ fn parse_profile_nodes(
     
     // 如果还是没有找到节点，返回错误
     if nodes.is_empty() {
-        log::warn!(target: "app", "未找到任何有效节点");
-        return Err("配置文件中没有找到有效的代理节点".to_string());
+        log::warn!(target: "app", "⚠️ 订阅 '{}' 未找到任何有效节点", profile_name);
+        log::warn!(target: "app", "   可能的原因:");
+        log::warn!(target: "app", "   1. 配置文件中没有 proxies 字段");
+        log::warn!(target: "app", "   2. 所有节点都是系统节点 (DIRECT, REJECT 等)");
+        log::warn!(target: "app", "   3. 节点配置格式不正确");
+        return Err(format!("订阅 '{}' 中没有找到有效的代理节点", profile_name));
     }
     
-    log::info!(target: "app", "成功解析 {} 个节点", nodes.len());
+    log::info!(target: "app", "📊 解析完成 '{}': 找到 {} 个有效节点", profile_name, nodes.len());
     Ok(nodes)
 }
 
 /// 测试单个节点
 async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
-    log::info!(target: "app", "开始测试节点: {} ({}:{}) 来自订阅: {}", node.node_name, node.server, node.port, node.profile_name);
+    log::info!(target: "app", "🔍 开始测试节点: {} ({}:{}) 来自订阅: {}", node.node_name, node.server, node.port, node.profile_name);
     
     let test_start = Instant::now();
     
     // 验证节点信息完整性
     if node.node_name.is_empty() || node.server.is_empty() {
-        log::warn!(target: "app", "节点信息不完整: 名称='{}'，服务器='{}'", node.node_name, node.server);
+        log::warn!(target: "app", "⚠️ 节点信息不完整: 名称='{}'，服务器='{}'", node.node_name, node.server);
         return SpeedTestResult {
             node_name: if node.node_name.is_empty() { "无名节点".to_string() } else { node.node_name.clone() },
             node_type: node.node_type.clone(),
