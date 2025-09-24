@@ -10,6 +10,7 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
     time::Instant,
 };
+use tauri::Emitter;
 
 /// 取消标志，用于停止全局测速
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
@@ -289,7 +290,7 @@ pub async fn apply_best_node() -> Result<String, String> {
                       best_node.node_name, best_node.server, best_node.port);
             
             // 使用 IpcManager 来切换节点
-            let ipc_manager = IpcManager::new();
+            let ipc_manager = IpcManager::global();
             match ipc_manager.update_proxy(&best_node.profile_uid, &best_node.node_name).await {
                 Ok(_) => {
                     let success_msg = format!("已切换到最佳节点: {}", best_node.node_name);
@@ -378,11 +379,12 @@ fn parse_profile_nodes(
                                 continue;
                             }
                             
+                            let default_name = format!("Node-{}", i + 1);
                             let node_name = ["name", "Name", "tag", "Tag"]
                                 .iter()
                                 .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
                                 .and_then(|v| v.as_str()))
-                                .unwrap_or(&format!("Node-{}", i + 1));
+                                .unwrap_or(&default_name);
                             
                             let server = ["server", "Server", "hostname", "Hostname", "host", "Host"]
                                 .iter()
@@ -449,10 +451,11 @@ fn parse_profile_nodes(
                                         continue;
                                     }
                                     
+                                    let default_name = format!("Node-{}", i + 1);
                                     let node_name = ["name", "Name", "tag", "Tag"]
                                         .iter()
                                         .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_str()))
-                                        .unwrap_or(&format!("Node-{}", i + 1));
+                                        .unwrap_or(&default_name);
                                     
                                     let server = ["server", "Server", "hostname", "Hostname", "host", "Host"]
                                         .iter()
