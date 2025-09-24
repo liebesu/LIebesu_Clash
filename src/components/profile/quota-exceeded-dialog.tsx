@@ -46,12 +46,30 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
   // 过滤出远程订阅
   const remoteProfiles = profiles.filter((p) => p.type === "remote");
 
+  // 获取所有额度为100%的订阅
+  const getOverQuotaProfiles = () => {
+    return remoteProfiles.filter((profile) => {
+      const trafficInfo = getProfileTrafficInfo(profile);
+      return trafficInfo && trafficInfo.progress >= 100;
+    }).map(p => p.uid);
+  };
+
   useEffect(() => {
     if (open) {
-      setSelectedProfiles([]);
-      setSelectAll(false);
+      // 自动选择所有额度为100%的订阅
+      const overQuotaUIDs = getOverQuotaProfiles();
+      setSelectedProfiles(overQuotaUIDs);
+      setSelectAll(overQuotaUIDs.length === remoteProfiles.length);
+      
+      // 如果有超额订阅，显示自动选择的提示
+      if (overQuotaUIDs.length > 0) {
+        // 延迟显示通知，让对话框先显示
+        setTimeout(() => {
+          console.log(`已自动选择 ${overQuotaUIDs.length} 个超额订阅`);
+        }, 100);
+      }
     }
-  }, [open]);
+  }, [open, remoteProfiles]);
 
   const handleSelectProfile = (uid: string) => {
     setSelectedProfiles((prev) => {
@@ -72,6 +90,12 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
       setSelectedProfiles(remoteProfiles.map((p) => p.uid));
       setSelectAll(true);
     }
+  };
+
+  const handleSelectOverQuota = () => {
+    const overQuotaUIDs = getOverQuotaProfiles();
+    setSelectedProfiles(overQuotaUIDs);
+    setSelectAll(overQuotaUIDs.length === remoteProfiles.length);
   };
 
   const handleConfirm = () => {
@@ -127,21 +151,35 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
         </Alert>
 
         <Box sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={selectAll}
-                onChange={handleSelectAll}
-                indeterminate={
-                  selectedProfiles.length > 0 &&
-                  selectedProfiles.length < remoteProfiles.length
-                }
-              />
-            }
-            label={t("Select All")}
-          />
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={selectAll}
+                  onChange={handleSelectAll}
+                  indeterminate={
+                    selectedProfiles.length > 0 &&
+                    selectedProfiles.length < remoteProfiles.length
+                  }
+                />
+              }
+              label={t("Select All")}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleSelectOverQuota}
+              sx={{ ml: 2 }}
+            >
+              {t("Select Over-Quota")}
+            </Button>
+          </Box>
           <Typography variant="body2" color="textSecondary" sx={{ ml: 4 }}>
             {t("Selected count", { count: selectedProfiles.length, total: remoteProfiles.length })}
+            {(() => {
+              const overQuotaCount = getOverQuotaProfiles().length;
+              return overQuotaCount > 0 ? ` (${overQuotaCount}个已超额)` : "";
+            })()}
           </Typography>
         </Box>
 
@@ -152,16 +190,22 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
             const trafficInfo = getProfileTrafficInfo(profile);
             const updateTime = getProfileUpdateTime(profile);
             const isSelected = selectedProfiles.includes(profile.uid);
+            const isOverQuota = trafficInfo && trafficInfo.progress >= 100;
 
             return (
               <ListItem
                 key={profile.uid}
                 sx={{
                   border: "1px solid",
-                  borderColor: "divider",
+                  borderColor: isOverQuota ? "error.main" : "divider",
                   borderRadius: 1,
                   mb: 1,
-                  backgroundColor: isSelected ? "action.selected" : "background.paper",
+                  backgroundColor: isSelected 
+                    ? "action.selected" 
+                    : isOverQuota 
+                      ? "error.light" 
+                      : "background.paper",
+                  opacity: isOverQuota ? 1 : 0.7,
                 }}
               >
                 <ListItemIcon>
@@ -202,10 +246,20 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
                           <LinearProgress
                             variant="determinate"
                             value={trafficInfo.progress}
-                            sx={{ height: 4 }}
+                            sx={{ 
+                              height: 4,
+                              backgroundColor: trafficInfo.progress >= 100 ? "error.light" : "grey.300",
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: trafficInfo.progress >= 100 ? "error.main" : "primary.main"
+                              }
+                            }}
                           />
                         </Box>
-                        <Typography variant="caption" color="textSecondary">
+                        <Typography 
+                          variant="caption" 
+                          color={trafficInfo.progress >= 100 ? "error.main" : "textSecondary"}
+                          sx={{ fontWeight: trafficInfo.progress >= 100 ? "bold" : "normal" }}
+                        >
                           {trafficInfo.progress}%
                         </Typography>
                       </Box>
