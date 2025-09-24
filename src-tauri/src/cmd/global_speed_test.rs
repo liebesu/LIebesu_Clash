@@ -7,10 +7,9 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    sync::{atomic::{AtomicBool, Ordering}, Arc},
+    sync::atomic::{AtomicBool, Ordering},
     time::Instant,
 };
-use tauri::Manager;
 
 /// 取消标志，用于停止全局测速
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
@@ -262,7 +261,7 @@ pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<()
     CANCEL_FLAG.store(true, Ordering::SeqCst);
     
     // 发送取消事件到前端
-    let _ = app_handle.emit_all("global-speed-test-cancelled", ());
+    let _ = app_handle.emit("global-speed-test-cancelled", ());
     
     log::info!(target: "app", "✅ 全局测速取消信号已发送");
     Ok(())
@@ -290,7 +289,8 @@ pub async fn apply_best_node() -> Result<String, String> {
                       best_node.node_name, best_node.server, best_node.port);
             
             // 使用 IpcManager 来切换节点
-            match IpcManager::update_proxy(&best_node.profile_uid, Some(&best_node.node_name)) {
+            let ipc_manager = IpcManager::new();
+            match ipc_manager.update_proxy(&best_node.profile_uid, &best_node.node_name).await {
                 Ok(_) => {
                     let success_msg = format!("已切换到最佳节点: {}", best_node.node_name);
                     log::info!(target: "app", "✅ {}", success_msg);
@@ -485,10 +485,7 @@ fn parse_profile_nodes(
                         }
                     }
                     
-                    if !found_nodes {
-                        log::warn!(target: "app", "⚠️ 在 JSON 中未找到节点列表 '{}'，尝试的字段: {:?}", profile_name, possible_keys);
-                        log::debug!(target: "app", "   JSON 结构: {:?}", json_value);
-                    }
+                    // 不需要found_nodes检查，直接继续
                 }
                 Err(json_err) => {
                     log::error!(target: "app", "❌ JSON 解析也失败 '{}': {}", profile_name, json_err);
