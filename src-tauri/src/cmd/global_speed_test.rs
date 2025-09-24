@@ -127,38 +127,49 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             continue;
         }
         
-        if let Some(profile_data) = &item.file_data {
-            if profile_data.trim().is_empty() {
-                log::warn!(target: "app", "⚠️ 订阅 '{}' 配置数据为空", profile_name);
-                continue;
-            }
+        // 读取配置文件内容
+        if let Some(file_path) = &item.file {
+            log::info!(target: "app", "📂 读取订阅配置文件: {}", file_path);
             
-            log::info!(target: "app", "📄 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
-            
-            match parse_profile_nodes(profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
-                Ok(nodes) => {
-                    if nodes.is_empty() {
-                        log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
-                    } else {
-                        log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
-                        
-                        for node in nodes {
-                            all_nodes_with_profile.push(node);
+            match tokio::fs::read_to_string(file_path).await {
+                Ok(profile_data) => {
+                    if profile_data.trim().is_empty() {
+                        log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
+                        continue;
+                    }
+                    
+                    log::info!(target: "app", "📄 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
+                    
+                    match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
+                        Ok(nodes) => {
+                            if nodes.is_empty() {
+                                log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
+                            } else {
+                                log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                                
+                                for node in nodes {
+                                    all_nodes_with_profile.push(node);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
+                            log::error!(target: "app", "   订阅数据预览: {}", 
+                                      if profile_data.len() > 200 { 
+                                          format!("{}...", &profile_data[..200]) 
+                                      } else { 
+                                          profile_data.to_string() 
+                                      });
                         }
                     }
                 }
                 Err(e) => {
-                    log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
-                    log::error!(target: "app", "   订阅数据预览: {}", 
-                              if profile_data.len() > 200 { 
-                                  format!("{}...", &profile_data[..200]) 
-                              } else { 
-                                  profile_data.to_string() 
-                              });
+                    log::error!(target: "app", "❌ 读取订阅文件 '{}' 失败: {}", profile_name, e);
+                    log::error!(target: "app", "   文件路径: {}", file_path);
                 }
             }
         } else {
-            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有配置数据", profile_name);
+            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有文件路径", profile_name);
         }
     }
 
@@ -479,7 +490,8 @@ fn parse_profile_nodes(
     // 首先尝试解析 YAML 格式
     match serde_yaml_ng::from_str::<serde_yaml_ng::Value>(profile_data) {
         Ok(yaml_value) => {
-            log::info!(target: "app", "YAML 解析成功");
+            log::info!(target: "app", "✅ YAML 解析成功: {}", profile_name);
+            log::debug!(target: "app", "   YAML根级字段: {:?}", yaml_value.as_mapping().map(|m| m.keys().collect::<Vec<_>>()));
             
             // 尝试多种可能的节点字段名
             let possible_keys = ["proxies", "Proxy", "proxy", "servers", "nodes", "outbounds"];
@@ -487,7 +499,7 @@ fn parse_profile_nodes(
             
             for key in &possible_keys {
                 if let Some(proxies) = yaml_value.get(key).and_then(|p| p.as_sequence()) {
-                    log::info!(target: "app", "找到节点列表 '{}', 包含 {} 个节点", key, proxies.len());
+                    log::info!(target: "app", "🎯 找到节点列表 '{}' (订阅: {}), 包含 {} 个节点", key, profile_name, proxies.len());
                     found_nodes = true;
                     
                     for (i, proxy) in proxies.iter().enumerate() {
