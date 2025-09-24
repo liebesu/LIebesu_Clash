@@ -126,48 +126,55 @@ pub async fn start_global_speed_test() -> Result<String, String> {
             continue;
         }
         
-        // 读取配置文件内容
-        if let Some(file_path) = &item.file {
-            log::info!(target: "app", "📂 处理订阅 '{}', 读取配置文件: {}", profile_name, file_path);
-            
+        // 读取配置文件内容 - 优先使用 file_data，如果没有则从文件路径读取
+        let profile_data = if let Some(file_data) = &item.file_data {
+            log::info!(target: "app", "📄 使用内存中的配置数据 '{}' (长度: {} 字符)", profile_name, file_data.len());
+            file_data.clone()
+        } else if let Some(file_path) = &item.file {
+            log::info!(target: "app", "📂 从文件读取配置 '{}': {}", profile_name, file_path);
             match tokio::fs::read_to_string(file_path).await {
-                Ok(profile_data) => {
-                    if profile_data.trim().is_empty() {
-                        log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
-                        continue;
-                    }
-                    
-                    log::info!(target: "app", "📄 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
-                    
-                    match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
-                        Ok(nodes) => {
-                            if nodes.is_empty() {
-                                log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
-                            } else {
-                                log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
-                                for node in nodes {
-                                    all_nodes_with_profile.push(node);
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
-                            log::error!(target: "app", "   订阅数据预览: {}", 
-                                      if profile_data.len() > 200 { 
-                                          format!("{}...", &profile_data[..200]) 
-                                      } else { 
-                                          profile_data.to_string() 
-                                      });
-                        }
-                    }
+                Ok(data) => {
+                    log::info!(target: "app", "✅ 成功读取配置文件 '{}' (长度: {} 字符)", profile_name, data.len());
+                    data
                 }
                 Err(e) => {
                     log::error!(target: "app", "❌ 读取订阅文件 '{}' 失败: {}", profile_name, e);
                     log::error!(target: "app", "   文件路径: {}", file_path);
+                    continue;
                 }
             }
         } else {
-            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有文件路径", profile_name);
+            log::warn!(target: "app", "⚠️ 订阅 '{}' 没有配置数据或文件路径", profile_name);
+            continue;
+        };
+        
+        if profile_data.trim().is_empty() {
+            log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
+            continue;
+        }
+        
+        log::info!(target: "app", "🔍 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
+        
+        match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
+            Ok(nodes) => {
+                if nodes.is_empty() {
+                    log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
+                } else {
+                    log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
+                    for node in nodes {
+                        all_nodes_with_profile.push(node);
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
+                log::error!(target: "app", "   订阅数据预览: {}", 
+                          if profile_data.len() > 200 { 
+                              format!("{}...", &profile_data[..200]) 
+                          } else { 
+                              profile_data.to_string() 
+                          });
+            }
         }
     }
 
