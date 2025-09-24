@@ -257,7 +257,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
             failed_tests,
             current_batch: batch_index + 1,
             total_batches,
-            estimated_remaining_seconds: ((total_batches - batch_index) * 15).max(1),
+            estimated_remaining_seconds: ((total_batches - batch_index) * 15).max(1) as u64,
         };
         let _ = app_handle.emit("global-speed-test-progress", progress);
         
@@ -266,6 +266,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
         for node in chunk {
             let node_clone = node.clone();
             let app_handle_clone = app_handle.clone();
+            let completed_count = all_results.len();
             let task = tokio::spawn(async move {
                 // 发送节点开始测试事件
                 let update = NodeTestUpdate {
@@ -274,7 +275,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                     status: "testing".to_string(),
                     latency_ms: None,
                     error_message: None,
-                    completed: all_results.len(),
+                    completed: completed_count,
                     total: total_nodes,
                 };
                 let _ = app_handle_clone.emit("node-test-update", update);
@@ -293,7 +294,6 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                     } else {
                         failed_tests += 1;
                     }
-                    all_results.push(result);
                     
                     // 发送节点完成事件
                     let update = NodeTestUpdate {
@@ -306,6 +306,8 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                         total: total_nodes,
                     };
                     let _ = app_handle.emit("node-test-update", update);
+                    
+                    all_results.push(result);
                 }
                 Err(e) => {
                     log::error!(target: "app", "节点测试任务失败: {}", e);
