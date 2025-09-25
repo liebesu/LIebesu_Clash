@@ -2204,8 +2204,22 @@ export async function getAutoCleanupRules() {
 /**
  * 开始全局节点测速
  */
-export async function startGlobalSpeedTest(): Promise<string> {
-  return invoke<string>("start_global_speed_test");
+export async function startGlobalSpeedTest(config?: {
+  batchSize: number;
+  nodeTimeout: number;
+  batchTimeout: number;
+  overallTimeout: number;
+  maxConcurrent: number;
+}): Promise<string> {
+  return invoke<string>("start_global_speed_test", { 
+    config: config ? {
+      batch_size: config.batchSize,
+      node_timeout_seconds: config.nodeTimeout,
+      batch_timeout_seconds: config.batchTimeout,
+      overall_timeout_seconds: config.overallTimeout,
+      max_concurrent: config.maxConcurrent,
+    } : undefined
+  });
 }
 
 /**

@@ -33,6 +33,8 @@ import {
   TrendingUp,
   NetworkCheck,
   Timer,
+  Settings,
+  Save,
 } from '@mui/icons-material';
 import { startGlobalSpeedTest, applyBestNode, cancelGlobalSpeedTest, switchToNode } from '@/services/cmds';
 import { listen } from '@tauri-apps/api/event';
@@ -120,6 +122,14 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const [showAllResults, setShowAllResults] = useState(false);
   const [recentTests, setRecentTests] = useState<NodeTestUpdate[]>([]);
   const [currentTestingNodes, setCurrentTestingNodes] = useState<Set<string>>(new Set());
+  const [showConfig, setShowConfig] = useState(false);
+  const [config, setConfig] = useState({
+    batchSize: 2,           // 保守的批次大小
+    nodeTimeout: 3,         // 保守的节点超时（秒）
+    batchTimeout: 30,       // 保守的批次超时（秒）
+    overallTimeout: 120,    // 保守的总体超时（秒）
+    maxConcurrent: 4,       // 最大并发数
+  });
 
   useEffect(() => {
     let progressUnlisten: (() => void) | null = null;
@@ -207,7 +217,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       setCurrentTestingNodes(new Set()); // 清空当前测试节点
       
       showNotice('info', '开始全局节点测速...', 2000);
-      await startGlobalSpeedTest();
+      await startGlobalSpeedTest(config);
     } catch (error: any) {
       console.error('启动全局测速失败:', error);
       showNotice('error', `启动测速失败: ${error.message}`, 3000);
@@ -393,9 +403,185 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                   切换到最佳节点
                 </Button>
               </Box>
+              <Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<Settings />}
+                  onClick={() => setShowConfig(!showConfig)}
+                  disabled={testing}
+                  size="large"
+                >
+                  配置参数
+                </Button>
+              </Box>
             </Box>
           </CardContent>
         </Card>
+
+        {/* 参数配置面板 */}
+        {showConfig && (
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                ⚙️ 测速参数配置
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                调整测速参数以优化性能和稳定性。保守设置适合网络较慢的环境。
+              </Typography>
+              
+              <Box display="flex" flexDirection="column" gap={3}>
+                <Box display="flex" gap={3} flexDirection={{ xs: 'column', sm: 'row' }}>
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      批次大小
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                      每批同时测试的节点数量 (推荐: 2-4)
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <input
+                        type="range"
+                        min="1"
+                        max="8"
+                        value={config.batchSize}
+                        onChange={(e) => setConfig(prev => ({ ...prev, batchSize: parseInt(e.target.value) }))}
+                        style={{ flex: 1 }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: '20px' }}>
+                        {config.batchSize}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      节点超时 (秒)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                      单个节点连接超时时间 (推荐: 3-8秒)
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <input
+                        type="range"
+                        min="2"
+                        max="15"
+                        value={config.nodeTimeout}
+                        onChange={(e) => setConfig(prev => ({ ...prev, nodeTimeout: parseInt(e.target.value) }))}
+                        style={{ flex: 1 }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: '20px' }}>
+                        {config.nodeTimeout}s
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+                
+                <Box display="flex" gap={3} flexDirection={{ xs: 'column', sm: 'row' }}>
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      批次超时 (秒)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                      每批次最大等待时间 (推荐: 30-120秒)
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <input
+                        type="range"
+                        min="15"
+                        max="300"
+                        step="15"
+                        value={config.batchTimeout}
+                        onChange={(e) => setConfig(prev => ({ ...prev, batchTimeout: parseInt(e.target.value) }))}
+                        style={{ flex: 1 }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: '30px' }}>
+                        {config.batchTimeout}s
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  <Box flex={1}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      总体超时 (秒)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                      整个测速过程最大时间 (推荐: 120-600秒)
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <input
+                        type="range"
+                        min="60"
+                        max="1800"
+                        step="30"
+                        value={config.overallTimeout}
+                        onChange={(e) => setConfig(prev => ({ ...prev, overallTimeout: parseInt(e.target.value) }))}
+                        style={{ flex: 1 }}
+                      />
+                      <Typography variant="body2" sx={{ minWidth: '40px' }}>
+                        {Math.floor(config.overallTimeout / 60)}m
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+              
+              <Divider sx={{ my: 2 }} />
+              
+              <Box display="flex" gap={2} justifyContent="flex-end">
+                <Button
+                  variant="outlined"
+                  onClick={() => setConfig({
+                    batchSize: 2,
+                    nodeTimeout: 3,
+                    batchTimeout: 30,
+                    overallTimeout: 120,
+                    maxConcurrent: 4,
+                  })}
+                  disabled={testing}
+                >
+                  重置为保守设置
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => setConfig({
+                    batchSize: 4,
+                    nodeTimeout: 5,
+                    batchTimeout: 60,
+                    overallTimeout: 300,
+                    maxConcurrent: 8,
+                  })}
+                  disabled={testing}
+                >
+                  平衡设置
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => setConfig({
+                    batchSize: 6,
+                    nodeTimeout: 8,
+                    batchTimeout: 120,
+                    overallTimeout: 600,
+                    maxConcurrent: 12,
+                  })}
+                  disabled={testing}
+                >
+                  快速设置
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Save />}
+                  onClick={() => {
+                    setShowConfig(false);
+                    showNotice('success', '参数配置已保存', 2000);
+                  }}
+                  disabled={testing}
+                >
+                  保存配置
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 进度显示 */}
         {progress && (

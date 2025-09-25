@@ -85,13 +85,35 @@ pub struct GlobalSpeedTestSummary {
     pub duration_seconds: u64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpeedTestConfig {
+    pub batch_size: usize,
+    pub node_timeout_seconds: u64,
+    pub batch_timeout_seconds: u64,
+    pub overall_timeout_seconds: u64,
+    pub max_concurrent: usize,
+}
+
 /// 全局节点测速
 #[tauri::command]
-pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<String, String> {
+pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Option<SpeedTestConfig>) -> Result<String, String> {
     log::info!(target: "app", "🚀 开始全局节点测速");
     
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
+    
+    // 使用配置参数或默认值
+    let config = config.unwrap_or_else(|| SpeedTestConfig {
+        batch_size: 2,                    // 保守的批次大小
+        node_timeout_seconds: 3,          // 保守的节点超时
+        batch_timeout_seconds: 30,        // 保守的批次超时
+        overall_timeout_seconds: 120,     // 保守的总体超时
+        max_concurrent: 4,                // 保守的并发数
+    });
+    
+    log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
+              config.batch_size, config.node_timeout_seconds, config.batch_timeout_seconds, 
+              config.overall_timeout_seconds, config.max_concurrent);
     
     let _start_time = Instant::now();
     
@@ -231,13 +253,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
     let _start_time = Instant::now();
 
     // 第二步：批量测试所有节点
-    let batch_size = 4; // 进一步减少批次大小，避免资源竞争
+    let batch_size = config.batch_size;
     let total_batches = (total_nodes + batch_size - 1) / batch_size;
     let mut successful_tests = 0;
     let mut failed_tests = 0;
     
     // 添加超时保护，防止整个测速过程卡死
-    let overall_timeout = std::time::Duration::from_secs(300); // 5分钟总超时
+    let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
     let start_time = Instant::now();
     
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
@@ -291,13 +313,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                 };
                 let _ = app_handle_clone.emit("node-test-update", update);
                 
-                test_single_node(&node_clone).await
+                test_single_node(&node_clone, config.node_timeout_seconds).await
             });
             batch_tasks.push(task);
         }
         
         // 等待当前批次完成，添加批次超时保护
-        let batch_timeout = std::time::Duration::from_secs(60); // 每批次最多60秒
+        let batch_timeout = std::time::Duration::from_secs(config.batch_timeout_seconds);
         let batch_start = Instant::now();
         
         for task in batch_tasks {
@@ -661,15 +683,15 @@ fn parse_profile_nodes(
 }
 
 /// 测试单个节点
-async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
+async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
     log::info!(target: "app", "🔍 开始测试节点: {} ({}:{}) 来自订阅: {}", 
               node.node_name, node.server, node.port, node.profile_name);
     
     let start_time = Instant::now();
     
-    // 使用 tokio 的 TcpStream 进行连接测试，减少超时时间
+    // 使用 tokio 的 TcpStream 进行连接测试，使用配置的超时时间
     match tokio::time::timeout(
-        std::time::Duration::from_secs(5), // 减少到5秒，避免长时间阻塞
+        std::time::Duration::from_secs(timeout_seconds),
         tokio::net::TcpStream::connect(format!("{}:{}", node.server, node.port))
     ).await {
         Ok(Ok(_stream)) => {
@@ -716,7 +738,7 @@ async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
             }
         }
         Err(_) => {
-            let error_msg = "连接超时 (5秒)".to_string();
+            let error_msg = format!("连接超时 ({}秒)", timeout_seconds);
             log::warn!(target: "app", "⏰ 节点 {} 连接超时", node.node_name);
     
     SpeedTestResult {
