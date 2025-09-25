@@ -56,17 +56,13 @@ interface SpeedTestResult {
   port: number;
   profile_name: string;
   profile_uid: string;
-  profile_type: string;
   subscription_url?: string;
-  latency_ms?: number;
-  download_speed_mbps?: number;
-  upload_speed_mbps?: number;
-  stability_score: number;
-  test_duration_ms: number;
-  status: string;
+  latency?: number;
+  is_available: boolean;
+  error_message?: string;
+  score: number;
   region?: string;
   traffic_info?: TrafficInfo;
-  is_available: boolean;
 }
 
 interface GlobalSpeedTestProgress {
@@ -821,14 +817,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                       {summary.best_node.region && ` | 地区: ${summary.best_node.region}`}
                     </Typography>
                     <Typography variant="body2">
-                      <span style={{ color: getLatencyColor(summary.best_node.latency_ms), fontWeight: 'bold' }}>
-                        延迟: {formatLatency(summary.best_node.latency_ms)}
+                      <span style={{ color: getLatencyColor(summary.best_node.latency), fontWeight: 'bold' }}>
+                        延迟: {formatLatency(summary.best_node.latency)}
                       </span> | 
-                      <span style={{ color: getSpeedColor(summary.best_node.download_speed_mbps), fontWeight: 'bold' }}>
-                        下载: {formatSpeed(summary.best_node.download_speed_mbps)}
-                      </span> | 
-                      <span style={{ color: getQualityColor(summary.best_node.stability_score), fontWeight: 'bold' }}>
-                        稳定性: {summary.best_node.stability_score.toFixed(1)}分
+                      <span style={{ color: getQualityColor(summary.best_node.score), fontWeight: 'bold' }}>
+                        评分: {summary.best_node.score.toFixed(1)}分
                       </span>
                     </Typography>
                   </Box>
@@ -920,7 +913,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                   </Box>
                   <Box flex={1} minWidth="200px">
                     <Typography variant="caption" display="block" gutterBottom>
-                      <strong>稳定性评分:</strong>
+                      <strong>节点评分:</strong>
                     </Typography>
                     <Box display="flex" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
                       <Box display="flex" alignItems="center">
@@ -956,7 +949,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                       <TableCell>延迟</TableCell>
                       <TableCell>下载速度</TableCell>
                       <TableCell>上传速度</TableCell>
-                      <TableCell>稳定性</TableCell>
+                      <TableCell>评分</TableCell>
                       <TableCell>剩余流量</TableCell>
                       <TableCell>状态</TableCell>
                       <TableCell>操作</TableCell>
@@ -1000,33 +993,21 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                           <Typography 
                             variant="body2" 
                             sx={{ 
-                              color: getLatencyColor(result.latency_ms),
+                              color: getLatencyColor(result.latency),
                               fontWeight: 'bold'
                             }}
                           >
-                            {formatLatency(result.latency_ms)}
+                            {formatLatency(result.latency)}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: getSpeedColor(result.download_speed_mbps),
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            {formatSpeed(result.download_speed_mbps)}
+                          <Typography variant="body2" color="text.secondary">
+                            -
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              color: getSpeedColor(result.upload_speed_mbps),
-                              fontWeight: 'bold'
-                            }}
-                          >
-                            {formatSpeed(result.upload_speed_mbps)}
+                          <Typography variant="body2" color="text.secondary">
+                            -
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -1036,11 +1017,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                                 width: 8,
                                 height: 8,
                                 borderRadius: '50%',
-                                bgcolor: getQualityColor(result.stability_score),
+                                bgcolor: getQualityColor(result.score),
                                 mr: 1,
                               }}
                             />
-                            {result.stability_score.toFixed(1)}
+                            {result.score.toFixed(1)}
                           </Box>
                         </TableCell>
                         <TableCell>
@@ -1068,9 +1049,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={result.status} 
+                            label={result.is_available ? '可用' : '不可用'} 
                             size="small" 
-                            color={getStatusColor(result.status) as any}
+                            color={result.is_available ? 'success' : 'error'}
                           />
                         </TableCell>
                         <TableCell>
