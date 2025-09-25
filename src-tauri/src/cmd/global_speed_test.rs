@@ -252,7 +252,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     let mut all_results = Vec::new();
     let _start_time = Instant::now();
 
-    // 第二步：批量测试所有节点
+    // 第二步：检查Clash服务可用性
+    log::info!(target: "app", "🔍 检查Clash服务可用性...");
+    if let Err(e) = check_clash_availability().await {
+        log::warn!(target: "app", "⚠️ Clash服务不可用，将使用TCP连接测试: {}", e);
+    }
+    
+    // 第三步：批量测试所有节点
     let batch_size = config.batch_size;
     let total_batches = (total_nodes + batch_size - 1) / batch_size;
     let mut successful_tests = 0;
@@ -782,8 +788,35 @@ async fn ensure_profile_activated(profile_uid: &str) -> Result<()> {
     Ok(())
 }
 
-/// 通过Clash API测试代理延迟
+/// 检查Clash服务是否可用
+async fn check_clash_availability() -> Result<()> {
+    let ipc = IpcManager::global();
+    
+    // 快速检查Clash API是否响应
+    let check_timeout = std::time::Duration::from_secs(2); // 只给2秒检查时间
+    let version_call = ipc.get_version();
+    
+    match tokio::time::timeout(check_timeout, version_call).await {
+        Ok(Ok(_)) => {
+            log::debug!(target: "app", "✅ Clash服务可用");
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            let error_msg = format!("Clash服务不可用: {}", e);
+            log::error!(target: "app", "{}", error_msg);
+            Err(anyhow::anyhow!(error_msg))
+        }
+        Err(_) => {
+            let error_msg = "Clash服务检查超时";
+            log::error!(target: "app", "{}", error_msg);
+            Err(anyhow::anyhow!(error_msg))
+        }
+    }
+}
+
+/// 通过Clash API测试代理延迟（不做预检查，提高性能）
 async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u64> {
+    
     // 获取IPC管理器实例
     let ipc = IpcManager::global();
     
@@ -793,26 +826,63 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
     
     log::debug!(target: "app", "🌐 通过Clash API测试节点 '{}' (超时: {}ms)", node_name, timeout_ms);
     
-    match ipc.test_proxy_delay(node_name, test_url, timeout_ms).await {
-        Ok(response) => {
-            // 解析Clash API响应
-            if let Some(delay_obj) = response.as_object() {
-                if let Some(delay) = delay_obj.get("delay").and_then(|v| v.as_u64()) {
-                    log::debug!(target: "app", "✅ Clash API返回延迟: {}ms", delay);
-                    Ok(delay)
+    // 检查节点名称是否为空或包含可能有问题的字符
+    if node_name.is_empty() {
+        let error_msg = "节点名称为空";
+        log::error!(target: "app", "{}", error_msg);
+        return Err(anyhow::anyhow!(error_msg));
+    }
+    
+    // 记录开始时间用于调试
+    let start_time = std::time::Instant::now();
+    
+    // 添加外层超时保护，防止IPC调用无限期等待
+    let api_call = ipc.test_proxy_delay(node_name, test_url, timeout_ms);
+    let overall_timeout = std::time::Duration::from_secs(timeout_seconds + 2); // 比内部超时多2秒
+    
+    // 在API调用期间也检查取消标志
+    let cancel_check = async {
+        loop {
+            if CANCEL_FLAG.load(Ordering::SeqCst) {
+                return Err(anyhow::anyhow!("测速已被用户取消")) as Result<serde_json::Value>;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    };
+    
+    // 竞争：API调用 vs 超时 vs 取消检查
+    match tokio::select! {
+        result = api_call => Ok(result),
+        _ = tokio::time::sleep(overall_timeout) => Err(anyhow::anyhow!("API调用超时")),
+        cancel_result = cancel_check => Err(cancel_result.unwrap_err()),
+    } {
+        Ok(result) => match result {
+            Ok(response) => {
+                // 解析Clash API响应
+                if let Some(delay_obj) = response.as_object() {
+                    if let Some(delay) = delay_obj.get("delay").and_then(|v| v.as_u64()) {
+                        let elapsed = start_time.elapsed();
+                        log::debug!(target: "app", "✅ Clash API返回延迟: {}ms (实际耗时: {:?})", delay, elapsed);
+                        Ok(delay)
+                    } else {
+                        let error_msg = "Clash API响应格式无效";
+                        log::error!(target: "app", "{}: {:?}", error_msg, response);
+                        Err(anyhow::anyhow!(error_msg))
+                    }
                 } else {
-                    let error_msg = "Clash API响应格式无效";
+                    let error_msg = "Clash API响应不是有效的JSON对象";
                     log::error!(target: "app", "{}: {:?}", error_msg, response);
                     Err(anyhow::anyhow!(error_msg))
                 }
-            } else {
-                let error_msg = "Clash API响应不是有效的JSON对象";
-                log::error!(target: "app", "{}: {:?}", error_msg, response);
+            }
+            Err(e) => {
+                let error_msg = format!("Clash API调用失败: {}", e);
+                log::error!(target: "app", "{}", error_msg);
                 Err(anyhow::anyhow!(error_msg))
             }
-        }
+        },
         Err(e) => {
-            let error_msg = format!("Clash API调用失败: {}", e);
+            let error_msg = format!("IPC调用失败或超时 - 节点: '{}', 错误: {}", node_name, e);
             log::error!(target: "app", "{}", error_msg);
             Err(anyhow::anyhow!(error_msg))
         }
