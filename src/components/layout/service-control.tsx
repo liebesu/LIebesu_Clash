@@ -46,21 +46,53 @@ export const ServiceControl: React.FC = () => {
   const handleStop = async () => {
     console.log('[ServiceControl] 🛑 用户点击停止服务按钮');
     console.log('[ServiceControl] 当前服务状态:', { isRunning, server: clashInfo?.server });
+    
+    if (!isRunning) {
+      console.log('[ServiceControl] ⚠️ 服务已停止，无需重复操作');
+      showNotice('info', '服务已停止', 2000);
+      return;
+    }
+    
     try {
       setLoading('stop');
       console.log('[ServiceControl] ⏳ 正在调用stopCore API...');
-      await stopCore();
+      
+      // 🔧 修复：增加超时控制，防止API调用卡死
+      const stopPromise = stopCore();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('停止服务超时')), 10000)
+      );
+      
+      await Promise.race([stopPromise, timeoutPromise]);
       console.log('[ServiceControl] ✅ stopCore API调用成功');
+      
+      // 🔧 修复：立即检查状态变化
+      console.log('[ServiceControl] 🔍 检查停止后的服务状态...');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒让状态更新
+      
       showNotice('success', '服务停止成功', 2000);
       console.log('[ServiceControl] 📢 已显示停止成功通知');
       
-      // 🔧 修复：停止后延迟刷新状态，确保状态同步
+      // 🔧 修复：多重状态刷新机制
+      console.log('[ServiceControl] 🔄 开始多重状态同步...');
+      
+      // 方法1：触发自定义事件
+      window.dispatchEvent(new CustomEvent('refresh-clash-status'));
+      console.log('[ServiceControl] 📡 已触发自定义刷新事件');
+      
+      // 方法2：延迟再次刷新
       setTimeout(() => {
-        console.log('[ServiceControl] 🔄 开始状态同步检查...');
-        // 强制重新获取clash状态
-        clashInfo && window.dispatchEvent(new CustomEvent('refresh-clash-status'));
-        console.log('[ServiceControl] 📡 已触发状态刷新事件');
-      }, 500);
+        console.log('[ServiceControl] 🔄 延迟状态刷新...');
+        window.dispatchEvent(new CustomEvent('refresh-clash-status'));
+        console.log('[ServiceControl] 📡 已触发延迟刷新事件');
+      }, 1000);
+      
+      // 方法3：强制页面刷新（最后手段）
+      setTimeout(() => {
+        console.log('[ServiceControl] 🔄 强制页面刷新...');
+        window.location.reload();
+      }, 3000);
+      
     } catch (error: any) {
       console.error('[ServiceControl] ❌ 停止服务失败:', error);
       console.error('[ServiceControl] 错误详情:', error.stack || error.toString());

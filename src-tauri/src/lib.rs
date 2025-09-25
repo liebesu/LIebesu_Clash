@@ -29,6 +29,64 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tokio::time::{Duration, timeout};
 use utils::logging::Type;
 
+/// 🔧 修复：初始化日志系统
+fn init_logger() {
+    use std::env;
+    use std::path::Path;
+    
+    // 设置日志级别
+    let log_level = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
+    env::set_var("RUST_LOG", &log_level);
+    
+    // 尝试使用log4rs配置文件
+    let config_paths = [
+        "log4rs.yaml",
+        "log4rs.yml", 
+        "config/log4rs.yaml",
+        "config/log4rs.yml"
+    ];
+    
+    let mut logger_initialized = false;
+    
+    for config_path in &config_paths {
+        if Path::new(config_path).exists() {
+            match log4rs::init_file(config_path, Default::default()) {
+                Ok(_) => {
+                    println!("✅ 日志系统已初始化 (log4rs): {}", config_path);
+                    logger_initialized = true;
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("⚠️ 加载日志配置文件失败 {}: {}", config_path, e);
+                }
+            }
+        }
+    }
+    
+    // 如果没有配置文件，使用简单的控制台日志
+    if !logger_initialized {
+        match log4rs::init_config(log4rs::config::Config::builder()
+            .appender(log4rs::config::Appender::builder()
+                .build("console", Box::new(log4rs::append::console::ConsoleAppender::builder()
+                    .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
+                    .build())))
+            .logger(log4rs::config::Logger::builder()
+                .build("app", log_level.parse().unwrap_or(log4rs::config::LevelFilter::Info)))
+            .build(log4rs::config::Root::builder()
+                .appender("console")
+                .build(log_level.parse().unwrap_or(log4rs::config::LevelFilter::Info)))
+            .unwrap())
+        {
+            Ok(_) => {
+                println!("✅ 日志系统已初始化 (控制台模式)");
+            }
+            Err(e) => {
+                eprintln!("⚠️ 日志系统初始化失败: {}", e);
+            }
+        }
+    }
+}
+
 /// Application initialization helper functions
 mod app_init {
     use super::*;
@@ -376,6 +434,9 @@ mod app_init {
 }
 
 pub fn run() {
+    // 🔧 修复：初始化日志系统
+    init_logger();
+    
     // 强制启用控制台输出用于诊断启动问题
     println!("=== Liebesu_Clash 应用启动 ===");
     println!("时间: {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));

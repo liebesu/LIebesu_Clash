@@ -104,13 +104,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
     
-    // 🔧 修复：使用更保守的配置参数，避免资源竞争导致假死
+    // 🔧 修复：针对1000+节点的大批量测速优化配置
     let config = config.unwrap_or_else(|| SpeedTestConfig {
-        batch_size: 1,                    // 🔧 修复：单批次处理，避免并发竞争
-        node_timeout_seconds: 6,          // 🔧 增加超时时间，确保稳定性
-        batch_timeout_seconds: 30,        // 🔧 批次超时适配单节点处理
-        overall_timeout_seconds: 600,     // 🔧 总超时增加到10分钟，确保完整测试
-        max_concurrent: 1,                // 🔧 修复：禁用并发，避免代理切换竞争
+        batch_size: 1,                    // 🔧 严格单节点处理，避免任何并发
+        node_timeout_seconds: 3,          // 🔧 减少单节点超时，提高效率
+        batch_timeout_seconds: 10,        // 🔧 批次超时大幅减少
+        overall_timeout_seconds: 1800,    // 🔧 总超时增加到30分钟，适应1000+节点
+        max_concurrent: 1,                // 🔧 严格禁用并发
     });
     
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
@@ -321,10 +321,10 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             // 发送节点测试开始事件
             let completed_count = all_results.len();
             let update = NodeTestUpdate {
-                node_name: node.node_name.clone(),
-                profile_name: node.profile_name.clone(),
+                        node_name: node.node_name.clone(),
+                        profile_name: node.profile_name.clone(),
                 status: "testing".to_string(),
-                latency_ms: None,
+                        latency_ms: None,
                 error_message: None,
                 completed: completed_count,
                 total: total_nodes,
@@ -346,10 +346,10 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             
             batch_results.push(Ok(result));
             
-            // 🔧 添加节点间隔，防止资源竞争
+            // 🔧 优化：减少节点间隔，提高1000+节点测速效率
             if node_index < chunk.len() - 1 {
-                log::debug!(target: "app", "⏳ [节点间隔] 等待300ms，避免资源竞争...");
-                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                log::debug!(target: "app", "⏳ [节点间隔] 等待100ms，避免资源竞争...");
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
         }
         
@@ -383,7 +383,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                                 latency_ms: test_result.latency,
                                 error_message: test_result.error_message.clone(),
                                 completed: all_results.len() + 1,
-                                total: total_nodes,
+            total: total_nodes,
                             };
                             let _ = app_handle.emit("node-test-update", update);
                             
