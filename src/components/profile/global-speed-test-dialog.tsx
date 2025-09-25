@@ -120,11 +120,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const [currentTestingNodes, setCurrentTestingNodes] = useState<Set<string>>(new Set());
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState({
-    batchSize: 2,           // 保守的批次大小
-    nodeTimeout: 3,         // 保守的节点超时（秒）
-    batchTimeout: 30,       // 保守的批次超时（秒）
-    overallTimeout: 120,    // 保守的总体超时（秒）
-    maxConcurrent: 4,       // 最大并发数
+    batchSize: 3,           // 🚀 优化后的默认批次大小
+    nodeTimeout: 4,         // 🚀 优化后的节点超时（秒）
+    batchTimeout: 45,       // 🚀 优化后的批次超时（秒）
+    overallTimeout: 300,    // 🚀 优化后的总体超时（秒，5分钟）
+    maxConcurrent: 6,       // 🚀 优化后的最大并发数
   });
 
   useEffect(() => {

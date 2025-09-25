@@ -12,6 +12,7 @@ use std::{
     time::Instant,
 };
 use tauri::Emitter;
+use futures::future;
 
 /// 取消标志，用于停止全局测速
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
@@ -104,11 +105,11 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     
     // 使用配置参数或默认值
     let config = config.unwrap_or_else(|| SpeedTestConfig {
-        batch_size: 2,                    // 保守的批次大小
-        node_timeout_seconds: 3,          // 保守的节点超时
-        batch_timeout_seconds: 30,        // 保守的批次超时
-        overall_timeout_seconds: 120,     // 保守的总体超时
-        max_concurrent: 4,                // 保守的并发数
+        batch_size: 3,                    // 🚀 略微增加批次大小提高效率
+        node_timeout_seconds: 4,          // 🚀 增加单节点超时，减少失败
+        batch_timeout_seconds: 45,        // 🚀 增加批次超时，适应并行处理
+        overall_timeout_seconds: 300,     // 🚀 增加总超时到5分钟，适应大量节点
+        max_concurrent: 6,                // 🚀 适度增加并发数
     });
     
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
@@ -324,49 +325,56 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             batch_tasks.push(task);
         }
         
-        // 等待当前批次完成，添加批次超时保护
+        // 🚀 并行等待所有任务完成，避免顺序阻塞
         let batch_timeout = std::time::Duration::from_secs(config.batch_timeout_seconds);
-        let batch_start = Instant::now();
+        let batch_results = tokio::time::timeout(
+            batch_timeout,
+            futures::future::join_all(batch_tasks) // 🔥 关键修复：并行等待而非顺序等待
+        ).await;
         
-        for task in batch_tasks {
-            // 检查批次超时
-            if batch_start.elapsed() > batch_timeout {
-                log::warn!(target: "app", "⏰ 批次 {} 超时，跳过剩余任务", batch_index + 1);
-                break;
-            }
-            
-            // 检查取消标志
-            if CANCEL_FLAG.load(Ordering::SeqCst) {
-                log::info!(target: "app", "🛑 批次 {} 被取消", batch_index + 1);
-                break;
-            }
-            
-            match task.await {
-                Ok(result) => {
-                    if result.is_available {
-                        successful_tests += 1;
-                    } else {
-                        failed_tests += 1;
+        match batch_results {
+            Ok(results) => {
+                // 处理所有任务结果
+                for result in results {
+                    // 检查取消标志
+                    if CANCEL_FLAG.load(Ordering::SeqCst) {
+                        log::info!(target: "app", "🛑 批次 {} 处理被取消", batch_index + 1);
+                        break;
                     }
                     
-                    // 发送节点完成事件（非阻塞）
-                    let update = NodeTestUpdate {
-                        node_name: result.node_name.clone(),
-                        profile_name: result.profile_name.clone(),
-                        status: if result.is_available { "success".to_string() } else { "failed".to_string() },
-                        latency_ms: result.latency,
-                        error_message: result.error_message.clone(),
-                        completed: all_results.len(),
-            total: total_nodes,
-                    };
-                    let _ = app_handle.emit("node-test-update", update);
-                    
-                    all_results.push(result);
+                    match result {
+                        Ok(test_result) => {
+                            if test_result.is_available {
+                                successful_tests += 1;
+                            } else {
+                                failed_tests += 1;
+                            }
+                            
+                            // 发送节点完成事件（非阻塞）
+                            let update = NodeTestUpdate {
+                                node_name: test_result.node_name.clone(),
+                                profile_name: test_result.profile_name.clone(),
+                                status: if test_result.is_available { "success".to_string() } else { "failed".to_string() },
+                                latency_ms: test_result.latency,
+                                error_message: test_result.error_message.clone(),
+                                completed: all_results.len() + 1,
+                                total: total_nodes,
+                            };
+                            let _ = app_handle.emit("node-test-update", update);
+                            
+                            all_results.push(test_result);
+                        }
+                        Err(e) => {
+                            log::error!(target: "app", "❌ 节点测试任务失败: {}", e);
+                            failed_tests += 1;
+                        }
+                    }
                 }
-                Err(e) => {
-                    log::error!(target: "app", "节点测试任务失败: {}", e);
-                    failed_tests += 1;
-                }
+                log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results.len());
+            }
+            Err(_) => {
+                log::warn!(target: "app", "⏰ 批次 {} 超时 ({} 秒)，跳过", batch_index + 1, config.batch_timeout_seconds);
+                failed_tests += chunk.len(); // 将超时的节点计为失败
             }
         }
         
@@ -374,6 +382,12 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         let percentage = (completed as f64 / total_nodes as f64) * 100.0;
         log::info!(target: "app", "📊 进度: {}/{} ({:.1}%) - 成功: {}, 失败: {}", 
                   completed, total_nodes, percentage, successful_tests, failed_tests);
+        
+        // 🚀 添加批次间延迟，避免资源耗尽和连接堆积
+        if batch_index + 1 < total_batches {
+            log::debug!(target: "app", "⏸️ 批次间休息 200ms，避免资源耗尽");
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        }
     }
     
     let duration = start_time.elapsed();
@@ -855,8 +869,8 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
     }
     log::debug!(target: "app", "🔄 已临时切换到节点: '{}'", node_name);
     
-    // 等待切换生效
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    // 🚀 优化：减少等待时间，避免累积延迟
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     
     // Step 5: 进行真实的延迟测试（现在通过目标节点）
     let test_url = Some("https://cp.cloudflare.com/generate_204".to_string());
@@ -904,12 +918,25 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
     };
     
     // Step 6: 恢复原始代理配置（无论测试成功与否）
-    if let Err(e) = ipc.update_proxy(&target_group, &original_selected).await {
-        log::error!(target: "app", "⚠️ 恢复原始代理配置失败: {}", e);
-        // 不返回错误，因为测试可能已经成功
-    } else {
-        log::debug!(target: "app", "🔄 已恢复到原始节点: '{}'", original_selected);
+    let restore_result = tokio::time::timeout(
+        std::time::Duration::from_secs(5), // 🚀 恢复操作也要有超时
+        ipc.update_proxy(&target_group, &original_selected)
+    ).await;
+    
+    match restore_result {
+        Ok(Ok(_)) => {
+            log::debug!(target: "app", "🔄 已恢复到原始节点: '{}'", original_selected);
+        }
+        Ok(Err(e)) => {
+            log::error!(target: "app", "⚠️ 恢复原始代理配置失败: {}", e);
+        }
+        Err(_) => {
+            log::error!(target: "app", "⚠️ 恢复原始代理配置超时");
+        }
     }
+    
+    // 🚀 添加小延迟确保恢复操作完成，避免连续切换冲突
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     
     // 返回测试结果
     test_result
