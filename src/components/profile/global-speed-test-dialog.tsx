@@ -241,8 +241,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   }, [open]);
 
   const handleStartTest = async () => {
+    console.log('[GlobalSpeedTest] 🚀 用户点击开始全局测速');
+    console.log('[GlobalSpeedTest] 测速配置:', config);
     try {
       setTesting(true);
+      console.log('[GlobalSpeedTest] ✅ 已设置testing状态为true');
       setProgress(null);
       setSummary(null);
       setResults([]);
@@ -250,25 +253,40 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       setLiveResults([]); // 🚀 重置实时结果
       setRecentTests([]); // 清空历史测试记录
       setCurrentTestingNodes(new Set()); // 清空当前测试节点
+      console.log('[GlobalSpeedTest] ✅ 已重置所有状态');
       
       showNotice('info', '开始全局节点测速...', 2000);
+      console.log('[GlobalSpeedTest] 📢 已显示开始测速通知');
+      console.log('[GlobalSpeedTest] ⏳ 正在调用startGlobalSpeedTest API...');
       await startGlobalSpeedTest(config);
+      console.log('[GlobalSpeedTest] ✅ startGlobalSpeedTest API调用成功');
     } catch (error: any) {
-      console.error('启动全局测速失败:', error);
+      console.error('[GlobalSpeedTest] ❌ 启动全局测速失败:', error);
+      console.error('[GlobalSpeedTest] 错误详情:', error.stack || error.toString());
       showNotice('error', `启动测速失败: ${error.message}`, 3000);
+      console.log('[GlobalSpeedTest] 📢 已显示启动失败通知');
       setTesting(false);
+      console.log('[GlobalSpeedTest] ✅ 已重置testing状态为false');
     }
   };
 
   const handleCancelTest = async () => {
+    console.log('[GlobalSpeedTest] ⏹️ 用户点击取消测速');
     try {
       setCancelling(true);
+      console.log('[GlobalSpeedTest] ✅ 已设置cancelling状态为true');
+      console.log('[GlobalSpeedTest] ⏳ 正在调用cancelGlobalSpeedTest API...');
       await cancelGlobalSpeedTest();
+      console.log('[GlobalSpeedTest] ✅ cancelGlobalSpeedTest API调用成功');
       showNotice('info', '正在取消测速...', 2000);
+      console.log('[GlobalSpeedTest] 📢 已显示取消通知');
     } catch (error: any) {
-      console.error('取消测速失败:', error);
+      console.error('[GlobalSpeedTest] ❌ 取消测速失败:', error);
+      console.error('[GlobalSpeedTest] 错误详情:', error.stack || error.toString());
       showNotice('error', `取消测速失败: ${error.message}`, 3000);
+      console.log('[GlobalSpeedTest] 📢 已显示取消失败通知');
       setCancelling(false);
+      console.log('[GlobalSpeedTest] ✅ 已重置cancelling状态为false');
     }
   };
 

@@ -85,9 +85,17 @@ pub async fn change_clash_core(clash_core: String) -> CmdResult<Option<String>> 
 /// 启动核心
 #[tauri::command]
 pub async fn start_core() -> CmdResult {
+    log::info!(target: "app", "🚀 [前端请求] 启动Clash核心服务");
     let result = wrap_err!(CoreManager::global().start_core().await);
-    if result.is_ok() {
-        handle::Handle::refresh_clash();
+    match &result {
+        Ok(_) => {
+            log::info!(target: "app", "✅ [启动服务] Clash核心服务启动成功");
+            handle::Handle::refresh_clash();
+            log::info!(target: "app", "🔄 [启动服务] 已刷新前端状态");
+        }
+        Err(e) => {
+            log::error!(target: "app", "❌ [启动服务] Clash核心服务启动失败: {}", e);
+        }
     }
     result
 }
@@ -95,11 +103,19 @@ pub async fn start_core() -> CmdResult {
 /// 关闭核心
 #[tauri::command]
 pub async fn stop_core() -> CmdResult {
+    log::info!(target: "app", "🛑 [前端请求] 停止Clash核心服务");
     let result = wrap_err!(CoreManager::global().stop_core().await);
-    if result.is_ok() {
-        // 🔧 修复：停止服务后立即刷新状态，确保前端状态同步
-        handle::Handle::refresh_clash();
-        logging!(info, Type::Core, true, "服务已停止，状态已刷新");
+    match &result {
+        Ok(_) => {
+            log::info!(target: "app", "✅ [停止服务] Clash核心服务停止成功");
+            // 🔧 修复：停止服务后立即刷新状态，确保前端状态同步
+            handle::Handle::refresh_clash();
+            log::info!(target: "app", "🔄 [停止服务] 已刷新前端状态");
+            logging!(info, Type::Core, true, "服务已停止，状态已刷新");
+        }
+        Err(e) => {
+            log::error!(target: "app", "❌ [停止服务] Clash核心服务停止失败: {}", e);
+        }
     }
     result
 }
@@ -107,9 +123,17 @@ pub async fn stop_core() -> CmdResult {
 /// 重启核心
 #[tauri::command]
 pub async fn restart_core() -> CmdResult {
+    log::info!(target: "app", "🔄 [前端请求] 重启Clash核心服务");
     let result = wrap_err!(CoreManager::global().restart_core().await);
-    if result.is_ok() {
-        handle::Handle::refresh_clash();
+    match &result {
+        Ok(_) => {
+            log::info!(target: "app", "✅ [重启服务] Clash核心服务重启成功");
+            handle::Handle::refresh_clash();
+            log::info!(target: "app", "🔄 [重启服务] 已刷新前端状态");
+        }
+        Err(e) => {
+            log::error!(target: "app", "❌ [重启服务] Clash核心服务重启失败: {}", e);
+        }
     }
     result
 }

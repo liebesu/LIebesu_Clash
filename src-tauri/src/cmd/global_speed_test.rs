@@ -98,10 +98,12 @@ pub struct SpeedTestConfig {
 /// 全局节点测速
 #[tauri::command]
 pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Option<SpeedTestConfig>) -> Result<String, String> {
-    log::info!(target: "app", "🚀 开始全局节点测速");
+    log::info!(target: "app", "🚀 [前端请求] 开始全局节点测速");
+    log::info!(target: "app", "📋 [测速配置] {:?}", config);
     
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
+    log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
     
     // 使用配置参数或默认值
     let config = config.unwrap_or_else(|| SpeedTestConfig {
@@ -425,10 +427,11 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
 /// 取消全局节点测速
 #[tauri::command]
 pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<(), String> {
-    log::info!(target: "app", "🛑 收到取消全局测速请求");
+    log::info!(target: "app", "🛑 [前端请求] 用户取消全局测速");
     
     // 设置取消标志
     CANCEL_FLAG.store(true, Ordering::SeqCst);
+    log::info!(target: "app", "✅ [取消状态] 已设置取消标志为true");
     
     // 发送取消事件到前端
     let _ = app_handle.emit("global-speed-test-cancelled", ());
@@ -1118,9 +1121,11 @@ fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -
 
 /// 清理僵死连接，防止连接累积导致假死
 async fn cleanup_stale_connections() -> Result<()> {
+    log::debug!(target: "app", "🧹 [连接清理] 开始清理僵死连接");
     let ipc = IpcManager::global();
     
     // 获取当前所有连接
+    log::debug!(target: "app", "📡 [连接清理] 正在获取当前连接列表...");
     match ipc.get_connections().await {
         Ok(connections) => {
             if let Some(connections_array) = connections.as_array() {
@@ -1142,23 +1147,34 @@ async fn cleanup_stale_connections() -> Result<()> {
                     .collect();
                 
                 if !stale_connections.is_empty() {
-                    log::info!(target: "app", "🧹 发现 {} 个可能的僵死连接，开始清理", stale_connections.len());
+                    let total_connections = stale_connections.len(); // 🔧 提前获取长度避免借用问题
+                    log::info!(target: "app", "🧹 [连接清理] 发现 {} 个可能的僵死连接，开始批量清理", total_connections);
                     
                     // 批量关闭僵死连接
+                    let mut cleaned_count = 0;
                     for conn in stale_connections {
                         if let Some(id) = conn.get("id").and_then(|i| i.as_str()) {
-                            if let Err(e) = ipc.delete_connection(id).await {
-                                log::debug!(target: "app", "清理连接 {} 失败: {}", id, e);
+                            log::debug!(target: "app", "🗑️ [连接清理] 正在清理连接: {}", id);
+                            match ipc.delete_connection(id).await {
+                                Ok(_) => {
+                                    cleaned_count += 1;
+                                    log::debug!(target: "app", "✅ [连接清理] 连接 {} 清理成功", id);
+                                }
+                                Err(e) => {
+                                    log::debug!(target: "app", "❌ [连接清理] 连接 {} 清理失败: {}", id, e);
+                                }
                             }
                         }
                     }
                     
-                    log::info!(target: "app", "✅ 连接清理完成");
+                    log::info!(target: "app", "✅ [连接清理] 清理完成，成功清理 {}/{} 个连接", cleaned_count, total_connections);
+                } else {
+                    log::debug!(target: "app", "✨ [连接清理] 未发现需要清理的僵死连接");
                 }
             }
         }
         Err(e) => {
-            log::debug!(target: "app", "获取连接列表失败: {}", e);
+            log::debug!(target: "app", "❌ [连接清理] 获取连接列表失败: {}", e);
         }
     }
     

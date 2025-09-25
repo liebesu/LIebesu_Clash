@@ -24,47 +24,72 @@ export const ServiceControl: React.FC = () => {
   const isRunning = clashInfo?.server !== undefined && clashInfo?.server !== '';
   
   const handleStart = async () => {
+    console.log('[ServiceControl] 🚀 用户点击启动服务按钮');
     try {
       setLoading('start');
+      console.log('[ServiceControl] ⏳ 正在调用startCore API...');
       await startCore();
+      console.log('[ServiceControl] ✅ startCore API调用成功');
       showNotice('success', '服务启动成功', 2000);
+      console.log('[ServiceControl] 📢 已显示启动成功通知');
     } catch (error: any) {
-      console.error('启动服务失败:', error);
+      console.error('[ServiceControl] ❌ 启动服务失败:', error);
+      console.error('[ServiceControl] 错误详情:', error.stack || error.toString());
       showNotice('error', `启动失败: ${error.message}`, 3000);
+      console.log('[ServiceControl] 📢 已显示启动失败通知');
     } finally {
       setLoading(null);
+      console.log('[ServiceControl] 🏁 启动操作完成，已重置loading状态');
     }
   };
 
   const handleStop = async () => {
+    console.log('[ServiceControl] 🛑 用户点击停止服务按钮');
+    console.log('[ServiceControl] 当前服务状态:', { isRunning, server: clashInfo?.server });
     try {
       setLoading('stop');
+      console.log('[ServiceControl] ⏳ 正在调用stopCore API...');
       await stopCore();
+      console.log('[ServiceControl] ✅ stopCore API调用成功');
       showNotice('success', '服务停止成功', 2000);
+      console.log('[ServiceControl] 📢 已显示停止成功通知');
       
       // 🔧 修复：停止后延迟刷新状态，确保状态同步
       setTimeout(() => {
+        console.log('[ServiceControl] 🔄 开始状态同步检查...');
         // 强制重新获取clash状态
         clashInfo && window.dispatchEvent(new CustomEvent('refresh-clash-status'));
+        console.log('[ServiceControl] 📡 已触发状态刷新事件');
       }, 500);
     } catch (error: any) {
-      console.error('停止服务失败:', error);
+      console.error('[ServiceControl] ❌ 停止服务失败:', error);
+      console.error('[ServiceControl] 错误详情:', error.stack || error.toString());
       showNotice('error', `停止失败: ${error.message}`, 3000);
+      console.log('[ServiceControl] 📢 已显示停止失败通知');
     } finally {
       setLoading(null);
+      console.log('[ServiceControl] 🏁 停止操作完成，已重置loading状态');
     }
   };
 
   const handleRestart = async () => {
+    console.log('[ServiceControl] 🔄 用户点击重启服务按钮');
+    console.log('[ServiceControl] 当前服务状态:', { isRunning, server: clashInfo?.server });
     try {
       setLoading('restart');
+      console.log('[ServiceControl] ⏳ 正在调用restartCore API...');
       await restartCore();
+      console.log('[ServiceControl] ✅ restartCore API调用成功');
       showNotice('success', '服务重启成功', 2000);
+      console.log('[ServiceControl] 📢 已显示重启成功通知');
     } catch (error: any) {
-      console.error('重启服务失败:', error);
+      console.error('[ServiceControl] ❌ 重启服务失败:', error);
+      console.error('[ServiceControl] 错误详情:', error.stack || error.toString());
       showNotice('error', `重启失败: ${error.message}`, 3000);
+      console.log('[ServiceControl] 📢 已显示重启失败通知');
     } finally {
       setLoading(null);
+      console.log('[ServiceControl] 🏁 重启操作完成，已重置loading状态');
     }
   };
 
