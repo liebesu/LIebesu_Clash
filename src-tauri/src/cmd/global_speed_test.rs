@@ -12,7 +12,6 @@ use std::{
     time::Instant,
 };
 use tauri::Emitter;
-use futures::future;
 
 /// 取消标志，用于停止全局测速
 static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
@@ -307,7 +306,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         log::info!(target: "app", "🔄 [批次处理] 开始顺序测试批次 {}/{} 的 {} 个节点", 
                   batch_index + 1, total_batches, chunk.len());
         
-        let mut batch_results = Vec::new();
+        let mut batch_results: Vec<Result<SpeedTestResult, anyhow::Error>> = Vec::new();
         
         for (node_index, node) in chunk.iter().enumerate() {
             // 检查取消标志
