@@ -124,7 +124,7 @@ jobs:
           - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
 
           ### macOS
-          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
+          - [Apple M芯片(推荐)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
 
           ### Linux
           #### DEB包(Debian系) 使用 apt ./路径 安装
@@ -199,7 +199,10 @@ jobs:
           - os: macos-latest
             target: aarch64-apple-darwin
             arch: arm64
-          # 移除不常用的 ARM Windows 和 x86_64 macOS
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            arch: x64
+          # 移除不常用的 ARM Windows
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -751,7 +754,7 @@ jobs:
           - [64位](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64_fixed_webview2-setup.exe) | [ARM64](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_arm64_fixed_webview2-setup.exe)
 
           ### macOS
-          - [Apple M芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
+          - [Apple M芯片(推荐)](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_aarch64.dmg) | [Intel芯片](${{ env.DOWNLOAD_URL }}/LIebesu_Clash_${{ env.VERSION }}_x64.dmg)
 
           ### Linux
           #### DEB包(Debian系) 使用 apt ./路径 安装
