@@ -41,6 +41,12 @@ export const ServiceControl: React.FC = () => {
       setLoading('stop');
       await stopCore();
       showNotice('success', '服务停止成功', 2000);
+      
+      // 🔧 修复：停止后延迟刷新状态，确保状态同步
+      setTimeout(() => {
+        // 强制重新获取clash状态
+        clashInfo && window.dispatchEvent(new CustomEvent('refresh-clash-status'));
+      }, 500);
     } catch (error: any) {
       console.error('停止服务失败:', error);
       showNotice('error', `停止失败: ${error.message}`, 3000);

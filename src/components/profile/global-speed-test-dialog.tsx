@@ -110,6 +110,21 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   open,
   onClose,
 }) => {
+  // 🚀 计算节点评分（与后端保持一致）
+  const calculateScore = (latency: number): number => {
+    if (latency <= 50) {
+      return 100.0 - (latency * 0.1);
+    } else if (latency <= 100) {
+      return 95.0 - ((latency - 50) * 0.2);
+    } else if (latency <= 200) {
+      return 85.0 - ((latency - 100) * 0.15);
+    } else if (latency <= 500) {
+      return 70.0 - ((latency - 200) * 0.1);
+    } else {
+      return Math.max(0.0, 40.0 - ((latency - 500) * 0.08));
+    }
+  };
+
   const [testing, setTesting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [progress, setProgress] = useState<GlobalSpeedTestProgress | null>(null);
@@ -118,6 +133,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const [showAllResults, setShowAllResults] = useState(false);
   const [recentTests, setRecentTests] = useState<NodeTestUpdate[]>([]);
   const [currentTestingNodes, setCurrentTestingNodes] = useState<Set<string>>(new Set());
+  const [liveResults, setLiveResults] = useState<SpeedTestResult[]>([]); // 🚀 实时结果，动态排序
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState({
     batchSize: 3,           // 🚀 优化后的默认批次大小
@@ -159,6 +175,28 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
               const newSet = new Set(prev);
               newSet.delete(update.node_name);
               return newSet;
+            });
+          }
+          
+          // 🚀 如果测试成功，添加到实时结果并动态排序
+          if (update.status === 'success' && update.latency_ms) {
+            const newResult: SpeedTestResult = {
+              node_name: update.node_name,
+              node_type: 'unknown',
+              server: 'unknown',
+              port: 0,
+              profile_name: update.profile_name,
+              profile_uid: 'unknown',
+              latency: update.latency_ms,
+              is_available: true,
+              score: calculateScore(update.latency_ms),
+            };
+            
+            setLiveResults(prev => {
+              const filtered = prev.filter(r => r.node_name !== update.node_name);
+              const updated = [...filtered, newResult];
+              // 按延迟排序，低延迟在前
+              return updated.sort((a, b) => (a.latency || 9999) - (b.latency || 9999));
             });
           }
         }
@@ -209,6 +247,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       setSummary(null);
       setResults([]);
       setShowAllResults(false); // 重置显示模式
+      setLiveResults([]); // 🚀 重置实时结果
       setRecentTests([]); // 清空历史测试记录
       setCurrentTestingNodes(new Set()); // 清空当前测试节点
       
@@ -840,6 +879,72 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                     </Typography>
                   </Box>
                 </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 🚀 实时排名结果显示 */}
+        {liveResults.length > 0 && testing && (
+          <Card sx={{ mb: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TrendingUp color="success" />
+                实时排名 (前10名)
+              </Typography>
+              
+              <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+                {liveResults.slice(0, 10).map((result, index) => (
+                  <Box 
+                    key={result.node_name}
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      py: 1,
+                      px: 2,
+                      mb: 1,
+                      bgcolor: index < 3 ? 'success.light' : 'background.default',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: index < 3 ? 'success.main' : 'divider',
+                      opacity: index < 3 ? 1 : 0.8
+                    }}
+                  >
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Chip 
+                        label={index + 1} 
+                        size="small" 
+                        color={index < 3 ? 'success' : 'default'}
+                        sx={{ minWidth: 32, fontWeight: 'bold' }}
+                      />
+                      <Typography variant="body2" fontWeight={index < 3 ? 'bold' : 'normal'}>
+                        {result.node_name}
+                      </Typography>
+                      <Chip 
+                        label={result.profile_name} 
+                        size="small" 
+                        variant="outlined"
+                        sx={{ fontSize: '0.7rem' }}
+                      />
+                    </Box>
+                    
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Typography variant="body2" color="success.main" fontWeight="bold">
+                        {result.latency}ms
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {result.score.toFixed(1)}分
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+              
+              {liveResults.length > 10 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                  还有 {liveResults.length - 10} 个节点测试完成，测试结束后查看完整结果
+                </Typography>
               )}
             </CardContent>
           </Card>

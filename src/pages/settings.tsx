@@ -8,6 +8,7 @@ import SettingVergeBasic from "@/components/setting/setting-verge-basic";
 import SettingVergeAdvanced from "@/components/setting/setting-verge-advanced";
 import SettingClash from "@/components/setting/setting-clash";
 import SettingSystem from "@/components/setting/setting-system";
+import { SettingVersionInfo } from "@/components/setting/setting-version-info";
 import { useThemeMode } from "@/services/states";
 import { showNotice } from "@/services/noticeService";
 
@@ -99,11 +100,14 @@ const SettingPage = () => {
           <Box
             sx={{
               borderRadius: 2,
+              marginBottom: 1.5,
               backgroundColor: isDark ? "#282a36" : "#ffffff",
             }}
           >
             <SettingVergeAdvanced onError={onError} />
           </Box>
+          {/* 🔧 新增：版本信息组件 */}
+          <SettingVersionInfo />
         </Grid>
       </Grid>
     </BasePage>

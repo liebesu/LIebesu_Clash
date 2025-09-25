@@ -384,9 +384,15 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         log::info!(target: "app", "📊 进度: {}/{} ({:.1}%) - 成功: {}, 失败: {}", 
                   completed, total_nodes, percentage, successful_tests, failed_tests);
         
-        // 🚀 添加批次间延迟，避免资源耗尽和连接堆积
+        // 🚀 添加批次间延迟和连接清理，避免资源耗尽和连接堆积
         if batch_index + 1 < total_batches {
-            log::debug!(target: "app", "⏸️ 批次间休息 200ms，避免资源耗尽");
+            log::debug!(target: "app", "⏸️ 批次间休息和清理，避免资源耗尽");
+            
+            // 批次间清理连接
+            if let Err(e) = cleanup_stale_connections().await {
+                log::warn!(target: "app", "批次间连接清理失败: {}", e);
+            }
+            
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
     }
@@ -939,6 +945,11 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
     // 🚀 添加小延迟确保恢复操作完成，避免连续切换冲突
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     
+    // 🔧 强制清理可能的僵死连接
+    if let Err(e) = cleanup_stale_connections().await {
+        log::warn!(target: "app", "⚠️ 清理僵死连接失败: {}", e);
+    }
+    
     // 返回测试结果
     test_result
 }
@@ -1103,4 +1114,53 @@ fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -
     
     log::warn!(target: "app", "⚠️ 无法获取组 '{}' 的当前选中节点，使用DIRECT作为备用", group_name);
     Ok("DIRECT".to_string())
+}
+
+/// 清理僵死连接，防止连接累积导致假死
+async fn cleanup_stale_connections() -> Result<()> {
+    let ipc = IpcManager::global();
+    
+    // 获取当前所有连接
+    match ipc.get_connections().await {
+        Ok(connections) => {
+            if let Some(connections_array) = connections.as_array() {
+                let stale_connections: Vec<&serde_json::Value> = connections_array
+                    .iter()
+                    .filter(|conn| {
+                        // 检查连接是否可能是僵死的
+                        if let Some(metadata) = conn.get("metadata") {
+                            if let Some(host) = metadata.get("host").and_then(|h| h.as_str()) {
+                                // 如果是测试相关的连接且处于异常状态
+                                return host.contains("cloudflare.com") || 
+                                       host.contains("cp.cloudflare.com") ||
+                                       metadata.get("process").and_then(|p| p.as_str())
+                                           .map_or(false, |p| p.contains("liebesu-clash"));
+                            }
+                        }
+                        false
+                    })
+                    .collect();
+                
+                if !stale_connections.is_empty() {
+                    log::info!(target: "app", "🧹 发现 {} 个可能的僵死连接，开始清理", stale_connections.len());
+                    
+                    // 批量关闭僵死连接
+                    for conn in stale_connections {
+                        if let Some(id) = conn.get("id").and_then(|i| i.as_str()) {
+                            if let Err(e) = ipc.delete_connection(id).await {
+                                log::debug!(target: "app", "清理连接 {} 失败: {}", id, e);
+                            }
+                        }
+                    }
+                    
+                    log::info!(target: "app", "✅ 连接清理完成");
+                }
+            }
+        }
+        Err(e) => {
+            log::debug!(target: "app", "获取连接列表失败: {}", e);
+        }
+    }
+    
+    Ok(())
 }
