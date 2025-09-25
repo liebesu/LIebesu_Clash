@@ -3,6 +3,7 @@ use crate::{
     core::{
         handle,
         service::{self},
+        sysopt::Sysopt,
     },
     ipc::IpcManager,
     logging, logging_error,
@@ -1091,11 +1092,37 @@ impl CoreManager {
 
     /// 停止核心运行
     pub async fn stop_core(&self) -> Result<()> {
-        match self.get_running_mode() {
-            RunningMode::Service => self.stop_core_by_service().await,
-            RunningMode::Sidecar => self.stop_core_by_sidecar(),
-            RunningMode::NotRunning => Ok(()),
+        log::info!(target: "app", "🛑 [核心管理] 开始停止Clash核心服务");
+        
+        // 🔧 修复：停止服务前先重置系统代理设置
+        log::info!(target: "app", "🔄 [系统代理] 停止前重置系统代理设置");
+        if let Err(e) = Sysopt::global().reset_sysproxy().await {
+            log::warn!(target: "app", "⚠️ [系统代理] 重置系统代理失败: {}", e);
+        } else {
+            log::info!(target: "app", "✅ [系统代理] 系统代理已重置");
         }
+        
+        let result = match self.get_running_mode() {
+            RunningMode::Service => {
+                log::info!(target: "app", "🔄 [核心管理] 通过服务方式停止核心");
+                self.stop_core_by_service().await
+            },
+            RunningMode::Sidecar => {
+                log::info!(target: "app", "🔄 [核心管理] 通过进程方式停止核心");
+                self.stop_core_by_sidecar()
+            },
+            RunningMode::NotRunning => {
+                log::info!(target: "app", "ℹ️ [核心管理] 核心未运行，无需停止");
+                Ok(())
+            },
+        };
+        
+        match &result {
+            Ok(_) => log::info!(target: "app", "✅ [核心管理] Clash核心服务已完全停止"),
+            Err(e) => log::error!(target: "app", "❌ [核心管理] 停止Clash核心服务失败: {}", e),
+        }
+        
+        result
     }
 
     /// 重启内核

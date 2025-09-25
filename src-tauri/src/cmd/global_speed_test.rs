@@ -105,13 +105,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
     
-    // 使用配置参数或默认值
+    // 🔧 修复：使用更保守的配置参数，避免资源竞争导致假死
     let config = config.unwrap_or_else(|| SpeedTestConfig {
-        batch_size: 3,                    // 🚀 略微增加批次大小提高效率
-        node_timeout_seconds: 4,          // 🚀 增加单节点超时，减少失败
-        batch_timeout_seconds: 45,        // 🚀 增加批次超时，适应并行处理
-        overall_timeout_seconds: 300,     // 🚀 增加总超时到5分钟，适应大量节点
-        max_concurrent: 6,                // 🚀 适度增加并发数
+        batch_size: 1,                    // 🔧 修复：单批次处理，避免并发竞争
+        node_timeout_seconds: 6,          // 🔧 增加超时时间，确保稳定性
+        batch_timeout_seconds: 30,        // 🔧 批次超时适配单节点处理
+        overall_timeout_seconds: 600,     // 🔧 总超时增加到10分钟，确保完整测试
+        max_concurrent: 1,                // 🔧 修复：禁用并发，避免代理切换竞争
     });
     
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
@@ -303,42 +303,65 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         };
         let _ = app_handle.emit("global-speed-test-progress", progress);
         
-        // 并发测试当前批次的节点
-        let mut batch_tasks = Vec::new();
-        for node in chunk {
-            let node_clone = node.clone();
-            let app_handle_clone = app_handle.clone();
+        // 🔧 修复：顺序测试批次节点，避免并发竞争导致假死
+        log::info!(target: "app", "🔄 [批次处理] 开始顺序测试批次 {}/{} 的 {} 个节点", 
+                  batch_index + 1, total_batches, chunk.len());
+        
+        let mut batch_results = Vec::new();
+        
+        for (node_index, node) in chunk.iter().enumerate() {
+            // 检查取消标志
+            if CANCEL_FLAG.load(Ordering::SeqCst) {
+                log::info!(target: "app", "⏹️ [取消检查] 用户取消测速，停止当前批次");
+                break;
+            }
+            
+            log::info!(target: "app", "🎯 [节点测试] 开始测试节点 {}/{}: {} (来自: {})", 
+                      node_index + 1, chunk.len(), node.node_name, node.profile_name);
+            
+            // 发送节点测试开始事件
             let completed_count = all_results.len();
-            let task = tokio::spawn(async move {
-                // 发送节点开始测试事件
-                let update = NodeTestUpdate {
-                    node_name: node_clone.node_name.clone(),
-                    profile_name: node_clone.profile_name.clone(),
-                    status: "testing".to_string(),
-                    latency_ms: None,
-                    error_message: None,
-                    completed: completed_count,
-            total: total_nodes,
-                };
-                let _ = app_handle_clone.emit("node-test-update", update);
-                
-                test_single_node(&node_clone, config.node_timeout_seconds).await
-            });
-            batch_tasks.push(task);
+            let update = NodeTestUpdate {
+                node_name: node.node_name.clone(),
+                profile_name: node.profile_name.clone(),
+                status: "testing".to_string(),
+                latency_ms: None,
+                error_message: None,
+                completed: completed_count,
+                total: total_nodes,
+            };
+            let _ = app_handle.emit("node-test-update", update);
+            
+            // 🔧 修复：顺序测试单个节点，避免并发竞争
+            let node_start_time = Instant::now();
+            let result = test_single_node(node, config.node_timeout_seconds).await;
+            let node_duration = node_start_time.elapsed();
+            
+            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
+                      node.node_name, node_duration, 
+                      if result.is_available { 
+                          format!("成功 ({}ms)", result.latency.unwrap_or(0)) 
+                      } else { 
+                          "失败".to_string() 
+                      });
+            
+            batch_results.push(Ok(result));
+            
+            // 🔧 添加节点间隔，防止资源竞争
+            if node_index < chunk.len() - 1 {
+                log::debug!(target: "app", "⏳ [节点间隔] 等待300ms，避免资源竞争...");
+                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            }
         }
         
-        // 🚀 并行等待所有任务完成，避免顺序阻塞
-        let batch_timeout = std::time::Duration::from_secs(config.batch_timeout_seconds);
-        let batch_results = tokio::time::timeout(
-            batch_timeout,
-            future::join_all(batch_tasks) // 🔥 关键修复：并行等待而非顺序等待
-        ).await;
+        log::info!(target: "app", "✅ [批次处理] 批次 {}/{} 测试完成，共处理 {} 个节点", 
+                  batch_index + 1, total_batches, batch_results.len());
         
-        match batch_results {
-            Ok(results) => {
-                // 处理所有任务结果
-                let results_len = results.len(); // 🔧 先保存长度
-                for result in results {
+        // 🔧 修复：直接处理顺序测试结果
+        {
+            // 处理所有测试结果
+            let results_len = batch_results.len(); // 🔧 先保存长度
+            for result in batch_results {
                     // 检查取消标志
                     if CANCEL_FLAG.load(Ordering::SeqCst) {
                         log::info!(target: "app", "🛑 批次 {} 处理被取消", batch_index + 1);
@@ -374,11 +397,6 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                     }
                 }
                 log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results_len);
-            }
-            Err(_) => {
-                log::warn!(target: "app", "⏰ 批次 {} 超时 ({} 秒)，跳过", batch_index + 1, config.batch_timeout_seconds);
-                failed_tests += chunk.len(); // 将超时的节点计为失败
-            }
         }
         
         let completed = all_results.len();
