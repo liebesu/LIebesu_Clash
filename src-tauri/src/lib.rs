@@ -28,6 +28,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
 use tokio::time::{Duration, timeout};
 use utils::logging::Type;
+use log::LevelFilter;
 
 /// 🔧 修复：初始化日志系统
 fn init_logger() {
@@ -71,10 +72,10 @@ fn init_logger() {
                     .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
                     .build())))
             .logger(log4rs::config::Logger::builder()
-                .build("app", log_level.parse().unwrap_or(log4rs::config::LevelFilter::Info)))
+                .build("app", log_level.parse().unwrap_or(LevelFilter::Info)))
             .build(log4rs::config::Root::builder()
                 .appender("console")
-                .build(log_level.parse().unwrap_or(log4rs::config::LevelFilter::Info)))
+                .build(log_level.parse().unwrap_or(LevelFilter::Info)))
             .unwrap())
         {
             Ok(_) => {
