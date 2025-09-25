@@ -267,7 +267,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     // 添加超时保护，防止整个测速过程卡死
     let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
     let start_time = Instant::now();
-    
+
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
         // 检查取消标志
         if CANCEL_FLAG.load(Ordering::SeqCst) {
@@ -357,7 +357,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                         latency_ms: result.latency,
                         error_message: result.error_message.clone(),
                         completed: all_results.len(),
-                        total: total_nodes,
+            total: total_nodes,
                     };
                     let _ = app_handle.emit("node-test-update", update);
                     
@@ -710,12 +710,12 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
             
             SpeedTestResult {
                 node_name: node.node_name.clone(),
-                node_type: node.node_type.clone(),
-                server: node.server.clone(),
-                port: node.port,
-                profile_name: node.profile_name.clone(),
-                profile_uid: node.profile_uid.clone(),
-                subscription_url: node.subscription_url.clone(),
+            node_type: node.node_type.clone(),
+            server: node.server.clone(),
+            port: node.port,
+            profile_name: node.profile_name.clone(),
+            profile_uid: node.profile_uid.clone(),
+            subscription_url: node.subscription_url.clone(),
                 latency: Some(latency),
                 is_available: true,
                 error_message: None,
@@ -736,15 +736,15 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
                     
                     log::info!(target: "app", "⚠️ 节点 {} TCP连接成功(降级)，延迟: {}ms, 评分: {:.2}", 
                               node.node_name, latency, score);
-                    
-                    SpeedTestResult {
-                        node_name: node.node_name.clone(),
-                        node_type: node.node_type.clone(),
-                        server: node.server.clone(),
-                        port: node.port,
-                        profile_name: node.profile_name.clone(),
-                        profile_uid: node.profile_uid.clone(),
-                        subscription_url: node.subscription_url.clone(),
+    
+    SpeedTestResult {
+        node_name: node.node_name.clone(),
+        node_type: node.node_type.clone(),
+        server: node.server.clone(),
+        port: node.port,
+        profile_name: node.profile_name.clone(),
+        profile_uid: node.profile_uid.clone(),
+        subscription_url: node.subscription_url.clone(),
                         latency: Some(latency),
                         is_available: true,
                         error_message: Some(format!("代理测试失败，降级到TCP测试: {}", e)),
@@ -814,79 +814,105 @@ async fn check_clash_availability() -> Result<()> {
     }
 }
 
-/// 通过Clash API测试代理延迟（不做预检查，提高性能）
+/// 通过临时切换节点进行真实代理延迟测试（修复测速逻辑）
 async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u64> {
     
     // 获取IPC管理器实例
     let ipc = IpcManager::global();
     
-    // 使用Clash API测试节点延迟
-    let test_url = Some("https://cp.cloudflare.com/generate_204".to_string());
-    let timeout_ms = (timeout_seconds * 1000) as i32;
+    log::debug!(target: "app", "🎯 开始真实代理测速：临时切换到节点 '{}'", node_name);
     
-    log::debug!(target: "app", "🌐 通过Clash API测试节点 '{}' (超时: {}ms)", node_name, timeout_ms);
-    
-    // 检查节点名称是否为空或包含可能有问题的字符
+    // 检查节点名称
     if node_name.is_empty() {
-        let error_msg = "节点名称为空";
-        log::error!(target: "app", "{}", error_msg);
-        return Err(anyhow::anyhow!(error_msg));
+        return Err(anyhow::anyhow!("节点名称为空"));
     }
     
-    // 记录开始时间用于调试
-    let start_time = std::time::Instant::now();
-    
-    // 添加外层超时保护，防止IPC调用无限期等待
-    let api_call = ipc.test_proxy_delay(node_name, test_url, timeout_ms);
-    let overall_timeout = std::time::Duration::from_secs(timeout_seconds + 2); // 比内部超时多2秒
-    
-    // 在API调用期间也检查取消标志
-    let cancel_check = async {
-        loop {
-            if CANCEL_FLAG.load(Ordering::SeqCst) {
-                return Err(anyhow::anyhow!("测速已被用户取消")) as Result<serde_json::Value>;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    // Step 1: 获取当前代理配置（用于恢复）
+    let original_proxies = match ipc.get_proxies().await {
+        Ok(proxies) => {
+            log::debug!(target: "app", "✅ 已获取当前代理配置");
+            proxies
+        }
+        Err(e) => {
+            log::error!(target: "app", "❌ 获取当前代理配置失败: {}", e);
+            return Err(anyhow::anyhow!("获取当前代理配置失败: {}", e));
         }
     };
     
-    // 竞争：API调用 vs 超时 vs 取消检查
-    match tokio::select! {
-        result = api_call => Ok(result),
-        _ = tokio::time::sleep(overall_timeout) => Err(anyhow::anyhow!("API调用超时")),
-        cancel_result = cancel_check => Err(cancel_result.unwrap_err()),
-    } {
-        Ok(result) => match result {
-            Ok(response) => {
-                // 解析Clash API响应
-                if let Some(delay_obj) = response.as_object() {
-                    if let Some(delay) = delay_obj.get("delay").and_then(|v| v.as_u64()) {
-                        let elapsed = start_time.elapsed();
-                        log::debug!(target: "app", "✅ Clash API返回延迟: {}ms (实际耗时: {:?})", delay, elapsed);
-                        Ok(delay)
-                    } else {
-                        let error_msg = "Clash API响应格式无效";
-                        log::error!(target: "app", "{}: {:?}", error_msg, response);
-                        Err(anyhow::anyhow!(error_msg))
-                    }
-                } else {
-                    let error_msg = "Clash API响应不是有效的JSON对象";
-                    log::error!(target: "app", "{}: {:?}", error_msg, response);
-                    Err(anyhow::anyhow!(error_msg))
-                }
-            }
-            Err(e) => {
-                let error_msg = format!("Clash API调用失败: {}", e);
-                log::error!(target: "app", "{}", error_msg);
-                Err(anyhow::anyhow!(error_msg))
-            }
-        },
-        Err(e) => {
-            let error_msg = format!("IPC调用失败或超时 - 节点: '{}', 错误: {}", node_name, e);
-            log::error!(target: "app", "{}", error_msg);
-            Err(anyhow::anyhow!(error_msg))
-        }
+    
+    // Step 2: 找到包含目标节点的代理组
+    let target_group = find_proxy_group_for_node(&original_proxies, node_name)?;
+    log::debug!(target: "app", "🔍 找到目标节点所在组: '{}'", target_group);
+    
+    // Step 3: 获取当前选中的节点（用于恢复）
+    let original_selected = get_selected_proxy_for_group(&original_proxies, &target_group)?;
+    log::debug!(target: "app", "📝 当前选中节点: '{}'", original_selected);
+    
+    // Step 4: 临时切换到目标节点
+    if let Err(e) = ipc.update_proxy(&target_group, node_name).await {
+        log::error!(target: "app", "❌ 切换到目标节点失败: {}", e);
+        return Err(anyhow::anyhow!("切换到目标节点失败: {}", e));
     }
+    log::debug!(target: "app", "🔄 已临时切换到节点: '{}'", node_name);
+    
+    // 等待切换生效
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    
+    // Step 5: 进行真实的延迟测试（现在通过目标节点）
+    let test_url = Some("https://cp.cloudflare.com/generate_204".to_string());
+    let timeout_ms = (timeout_seconds * 1000) as i32;
+    let start_time = std::time::Instant::now();
+    
+    let test_result = {
+        let api_call = ipc.test_proxy_delay("GLOBAL", test_url, timeout_ms); // 测试当前生效的代理
+        let overall_timeout = std::time::Duration::from_secs(timeout_seconds + 3);
+        
+        // 取消检查
+        let cancel_check = async {
+            loop {
+                if CANCEL_FLAG.load(Ordering::SeqCst) {
+                    return Err(anyhow::anyhow!("测速已被用户取消")) as Result<serde_json::Value>;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        };
+        
+        // 竞争执行
+        match tokio::select! {
+            result = api_call => Ok(result),
+            _ = tokio::time::sleep(overall_timeout) => Err(anyhow::anyhow!("测试超时")),
+            cancel_result = cancel_check => Err(cancel_result.unwrap_err()),
+        } {
+            Ok(result) => match result {
+                Ok(response) => {
+                    if let Some(delay_obj) = response.as_object() {
+                        if let Some(delay) = delay_obj.get("delay").and_then(|v| v.as_u64()) {
+                            let elapsed = start_time.elapsed();
+                            log::debug!(target: "app", "✅ 真实代理延迟: {}ms (耗时: {:?})", delay, elapsed);
+                            Ok(delay)
+                        } else {
+                            Err(anyhow::anyhow!("API响应格式无效"))
+                        }
+                    } else {
+                        Err(anyhow::anyhow!("API响应不是有效JSON"))
+                    }
+                }
+                Err(e) => Err(anyhow::anyhow!("API调用失败: {}", e))
+            },
+            Err(e) => Err(e),
+        }
+    };
+    
+    // Step 6: 恢复原始代理配置（无论测试成功与否）
+    if let Err(e) = ipc.update_proxy(&target_group, &original_selected).await {
+        log::error!(target: "app", "⚠️ 恢复原始代理配置失败: {}", e);
+        // 不返回错误，因为测试可能已经成功
+    } else {
+        log::debug!(target: "app", "🔄 已恢复到原始节点: '{}'", original_selected);
+    }
+    
+    // 返回测试结果
+    test_result
 }
 
 /// TCP连接测试（作为备用方案）
@@ -1014,4 +1040,39 @@ fn analyze_results(mut results: Vec<SpeedTestResult>, duration: std::time::Durat
         results_by_profile,
         duration_seconds: duration.as_secs(),
     }
+}
+
+/// 查找包含指定节点的代理组
+fn find_proxy_group_for_node(proxies: &serde_json::Value, node_name: &str) -> Result<String> {
+    if let Some(proxies_obj) = proxies.as_object() {
+        for (group_name, group_info) in proxies_obj {
+            if let Some(all_nodes) = group_info.get("all").and_then(|v| v.as_array()) {
+                for node in all_nodes {
+                    if let Some(name) = node.as_str() {
+                        if name == node_name {
+                            log::debug!(target: "app", "🔍 节点 '{}' 属于组 '{}'", node_name, group_name);
+                            return Ok(group_name.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 如果没找到，尝试GLOBAL组
+    log::warn!(target: "app", "⚠️ 未找到节点 '{}' 所属组，尝试使用GLOBAL组", node_name);
+    Ok("GLOBAL".to_string())
+}
+
+/// 获取指定组当前选中的代理
+fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -> Result<String> {
+    if let Some(group_info) = proxies.as_object().and_then(|obj| obj.get(group_name)) {
+        if let Some(now) = group_info.get("now").and_then(|v| v.as_str()) {
+            log::debug!(target: "app", "📝 组 '{}' 当前选中: '{}'", group_name, now);
+            return Ok(now.to_string());
+        }
+    }
+    
+    log::warn!(target: "app", "⚠️ 无法获取组 '{}' 的当前选中节点，使用DIRECT作为备用", group_name);
+    Ok("DIRECT".to_string())
 }

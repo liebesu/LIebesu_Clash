@@ -386,14 +386,15 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
             <Typography variant="caption" sx={{ 
               display: 'block', 
               p: 1, 
-              bgcolor: 'info.light', 
+              bgcolor: 'success.light', 
               borderRadius: 1,
-              color: 'info.dark',
+              color: 'success.dark',
               fontWeight: 'bold' 
             }}>
-              📡 <strong>流量路径说明</strong>：<br/>
-              • <strong>主要测试</strong>: 应用 → Clash → 指定节点 → cloudflare.com (真实代理测试)<br/>
-              • <strong>备用测试</strong>: 应用 → 直连 → 节点服务器 (TCP连接测试，可能受系统代理影响)
+              🎯 <strong>正确测速逻辑（已修复）</strong>：<br/>
+              • <strong>主要测试</strong>: 临时切换到目标节点 → 本机 → 目标节点 → cloudflare.com (真实单节点性能)<br/>
+              • <strong>备用测试</strong>: 应用 → 直连TCP → 节点服务器 (基础连通性测试)<br/>
+              • <strong>测试完成后自动恢复</strong>到原始节点，不影响正常使用
             </Typography>
           </CardContent>
         </Card>
