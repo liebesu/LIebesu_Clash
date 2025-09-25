@@ -37,7 +37,9 @@ fn init_logger() {
     
     // 设置日志级别
     let log_level = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    env::set_var("RUST_LOG", &log_level);
+    unsafe {
+        env::set_var("RUST_LOG", &log_level);
+    }
     
     // 尝试使用log4rs配置文件
     let config_paths = [
