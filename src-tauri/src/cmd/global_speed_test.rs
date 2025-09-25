@@ -199,7 +199,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                 log::error!(target: "app", "   订阅数据预览: {}", 
                           if profile_data.len() > 200 { 
                               format!("{}...", &profile_data[..200]) 
-                          } else { 
+        } else {
                               profile_data.to_string() 
                           });
             }
@@ -228,18 +228,29 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
     log::info!(target: "app", "🎯 共找到 {} 个节点，开始测速", total_nodes);
     
     let mut all_results = Vec::new();
-    let start_time = Instant::now();
+    let _start_time = Instant::now();
 
     // 第二步：批量测试所有节点
-    let batch_size = 8; // 减少批次大小以提高响应性
+    let batch_size = 4; // 进一步减少批次大小，避免资源竞争
     let total_batches = (total_nodes + batch_size - 1) / batch_size;
     let mut successful_tests = 0;
     let mut failed_tests = 0;
     
+    // 添加超时保护，防止整个测速过程卡死
+    let overall_timeout = std::time::Duration::from_secs(300); // 5分钟总超时
+    let start_time = Instant::now();
+    
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
+        // 检查取消标志
         if CANCEL_FLAG.load(Ordering::SeqCst) {
             log::info!(target: "app", "🛑 测速已被取消");
             return Err("测速已被用户取消".to_string());
+        }
+        
+        // 检查总体超时
+        if start_time.elapsed() > overall_timeout {
+            log::warn!(target: "app", "⏰ 测速超时，已运行 {} 秒", start_time.elapsed().as_secs());
+            return Err("测速超时，请检查网络连接或减少节点数量".to_string());
         }
         
         log::info!(target: "app", "📦 处理批次 {}/{} (包含 {} 个节点)", 
@@ -276,7 +287,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                     latency_ms: None,
                     error_message: None,
                     completed: completed_count,
-                    total: total_nodes,
+            total: total_nodes,
                 };
                 let _ = app_handle_clone.emit("node-test-update", update);
                 
@@ -285,8 +296,23 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
             batch_tasks.push(task);
         }
         
-        // 等待当前批次完成
+        // 等待当前批次完成，添加批次超时保护
+        let batch_timeout = std::time::Duration::from_secs(60); // 每批次最多60秒
+        let batch_start = Instant::now();
+        
         for task in batch_tasks {
+            // 检查批次超时
+            if batch_start.elapsed() > batch_timeout {
+                log::warn!(target: "app", "⏰ 批次 {} 超时，跳过剩余任务", batch_index + 1);
+                break;
+            }
+            
+            // 检查取消标志
+            if CANCEL_FLAG.load(Ordering::SeqCst) {
+                log::info!(target: "app", "🛑 批次 {} 被取消", batch_index + 1);
+                break;
+            }
+            
             match task.await {
                 Ok(result) => {
                     if result.is_available {
@@ -295,7 +321,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle) -> Result<Str
                         failed_tests += 1;
                     }
                     
-                    // 发送节点完成事件
+                    // 发送节点完成事件（非阻塞）
                     let update = NodeTestUpdate {
                         node_name: result.node_name.clone(),
                         profile_name: result.profile_name.clone(),
@@ -357,6 +383,9 @@ pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<()
     
     // 发送取消事件到前端
     let _ = app_handle.emit("global-speed-test-cancelled", ());
+    
+    // 等待一小段时间确保事件发送
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     
     log::info!(target: "app", "✅ 全局测速取消信号已发送");
     Ok(())
@@ -531,8 +560,8 @@ fn parse_profile_nodes(
                             };
                             
                             nodes.push(node);
-                            }
                         }
+                    }
                     }
                     break;
                 }
@@ -638,9 +667,9 @@ async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
     
     let start_time = Instant::now();
     
-    // 使用 tokio 的 TcpStream 进行连接测试
+    // 使用 tokio 的 TcpStream 进行连接测试，减少超时时间
     match tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(5), // 减少到5秒，避免长时间阻塞
         tokio::net::TcpStream::connect(format!("{}:{}", node.server, node.port))
     ).await {
         Ok(Ok(_stream)) => {
@@ -687,17 +716,17 @@ async fn test_single_node(node: &NodeInfo) -> SpeedTestResult {
             }
         }
         Err(_) => {
-            let error_msg = "连接超时 (10秒)".to_string();
+            let error_msg = "连接超时 (5秒)".to_string();
             log::warn!(target: "app", "⏰ 节点 {} 连接超时", node.node_name);
-            
-            SpeedTestResult {
-                node_name: node.node_name.clone(),
-                node_type: node.node_type.clone(),
-                server: node.server.clone(),
-                port: node.port,
-                profile_name: node.profile_name.clone(),
-                profile_uid: node.profile_uid.clone(),
-                subscription_url: node.subscription_url.clone(),
+    
+    SpeedTestResult {
+        node_name: node.node_name.clone(),
+        node_type: node.node_type.clone(),
+        server: node.server.clone(),
+        port: node.port,
+        profile_name: node.profile_name.clone(),
+        profile_uid: node.profile_uid.clone(),
+        subscription_url: node.subscription_url.clone(),
                 latency: None,
                 is_available: false,
                 error_message: Some(error_msg),
