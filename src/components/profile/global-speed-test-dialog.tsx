@@ -378,9 +378,22 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
               <NetworkCheck color="primary" fontSize="small" />
               <strong>真实代理测速</strong>
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
               本测速功能通过Clash API进行真实的代理延迟测试，访问 cloudflare.com 测试网站获得准确的延迟数据。
               如果代理测试失败，将降级到TCP连接测试作为备用方案（评分会相应降低）。
+            </Typography>
+            
+            <Typography variant="caption" sx={{ 
+              display: 'block', 
+              p: 1, 
+              bgcolor: 'info.light', 
+              borderRadius: 1,
+              color: 'info.dark',
+              fontWeight: 'bold' 
+            }}>
+              📡 <strong>流量路径说明</strong>：<br/>
+              • <strong>主要测试</strong>: 应用 → Clash → 指定节点 → cloudflare.com (真实代理测试)<br/>
+              • <strong>备用测试</strong>: 应用 → 直连 → 节点服务器 (TCP连接测试，可能受系统代理影响)
             </Typography>
           </CardContent>
         </Card>
