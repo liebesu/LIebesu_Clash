@@ -329,12 +329,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         let batch_timeout = std::time::Duration::from_secs(config.batch_timeout_seconds);
         let batch_results = tokio::time::timeout(
             batch_timeout,
-            futures::future::join_all(batch_tasks) // 🔥 关键修复：并行等待而非顺序等待
+            future::join_all(batch_tasks) // 🔥 关键修复：并行等待而非顺序等待
         ).await;
         
         match batch_results {
             Ok(results) => {
                 // 处理所有任务结果
+                let results_len = results.len(); // 🔧 先保存长度
                 for result in results {
                     // 检查取消标志
                     if CANCEL_FLAG.load(Ordering::SeqCst) {
@@ -370,7 +371,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                         }
                     }
                 }
-                log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results.len());
+                log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results_len);
             }
             Err(_) => {
                 log::warn!(target: "app", "⏰ 批次 {} 超时 ({} 秒)，跳过", batch_index + 1, config.batch_timeout_seconds);
