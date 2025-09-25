@@ -682,33 +682,34 @@ fn parse_profile_nodes(
     Ok(nodes)
 }
 
-/// 测试单个节点
+/// 测试单个节点 - 使用真正的Clash代理测试
 async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
-    log::info!(target: "app", "🔍 开始测试节点: {} ({}:{}) 来自订阅: {}", 
+    log::info!(target: "app", "🔍 开始真实代理测试节点: {} ({}:{}) 来自订阅: {}", 
               node.node_name, node.server, node.port, node.profile_name);
     
-    let start_time = Instant::now();
+    let _start_time = Instant::now();
     
-    // 使用 tokio 的 TcpStream 进行连接测试，使用配置的超时时间
-    match tokio::time::timeout(
-        std::time::Duration::from_secs(timeout_seconds),
-        tokio::net::TcpStream::connect(format!("{}:{}", node.server, node.port))
-    ).await {
-        Ok(Ok(_stream)) => {
-            let latency = start_time.elapsed().as_millis() as u64;
+    // 确保配置文件已激活（可选，取决于实现）
+    if let Err(e) = ensure_profile_activated(&node.profile_uid).await {
+        log::warn!(target: "app", "⚠️ 无法激活配置文件 {}: {}", node.profile_uid, e);
+    }
+    
+    // 首先尝试使用Clash API进行真实的代理延迟测试
+    match test_proxy_via_clash(&node.node_name, timeout_seconds).await {
+        Ok(latency) => {
             let score = calculate_score(Some(latency), true);
             
-            log::info!(target: "app", "✅ 节点 {} 连接成功，延迟: {}ms, 评分: {:.2}", 
+            log::info!(target: "app", "✅ 节点 {} 代理测试成功，延迟: {}ms, 评分: {:.2}", 
                       node.node_name, latency, score);
             
             SpeedTestResult {
                 node_name: node.node_name.clone(),
-            node_type: node.node_type.clone(),
-            server: node.server.clone(),
-            port: node.port,
-            profile_name: node.profile_name.clone(),
-            profile_uid: node.profile_uid.clone(),
-            subscription_url: node.subscription_url.clone(),
+                node_type: node.node_type.clone(),
+                server: node.server.clone(),
+                port: node.port,
+                profile_name: node.profile_name.clone(),
+                profile_uid: node.profile_uid.clone(),
+                subscription_url: node.subscription_url.clone(),
                 latency: Some(latency),
                 is_available: true,
                 error_message: None,
@@ -717,45 +718,124 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
                 traffic_info: node.traffic_info.clone(),
             }
         }
-        Ok(Err(e)) => {
-            let error_msg = format!("连接失败: {}", e);
-            log::warn!(target: "app", "❌ 节点 {} 连接失败: {}", node.node_name, error_msg);
-    
-    SpeedTestResult {
-        node_name: node.node_name.clone(),
-        node_type: node.node_type.clone(),
-        server: node.server.clone(),
-        port: node.port,
-        profile_name: node.profile_name.clone(),
-        profile_uid: node.profile_uid.clone(),
-        subscription_url: node.subscription_url.clone(),
-                latency: None,
-                is_available: false,
-                error_message: Some(error_msg),
-                score: 0.0,
-                region: identify_region(&node.server),
-                traffic_info: node.traffic_info.clone(),
+        Err(e) => {
+            log::warn!(target: "app", "❌ 节点 {} 代理测试失败: {}", node.node_name, e);
+            
+            // 如果Clash API测试失败，降级到TCP连接测试作为备用
+            log::info!(target: "app", "🔄 节点 {} 降级到TCP连接测试", node.node_name);
+            
+            match test_tcp_connection(&node.server, node.port, timeout_seconds).await {
+                Ok(latency) => {
+                    let score = calculate_score(Some(latency), true) * 0.5; // 降级测试评分减半
+                    
+                    log::info!(target: "app", "⚠️ 节点 {} TCP连接成功(降级)，延迟: {}ms, 评分: {:.2}", 
+                              node.node_name, latency, score);
+                    
+                    SpeedTestResult {
+                        node_name: node.node_name.clone(),
+                        node_type: node.node_type.clone(),
+                        server: node.server.clone(),
+                        port: node.port,
+                        profile_name: node.profile_name.clone(),
+                        profile_uid: node.profile_uid.clone(),
+                        subscription_url: node.subscription_url.clone(),
+                        latency: Some(latency),
+                        is_available: true,
+                        error_message: Some(format!("代理测试失败，降级到TCP测试: {}", e)),
+                        score,
+                        region: identify_region(&node.server),
+                        traffic_info: node.traffic_info.clone(),
+                    }
+                }
+                Err(tcp_error) => {
+                    let error_msg = format!("代理测试失败: {}; TCP测试也失败: {}", e, tcp_error);
+                    
+                    SpeedTestResult {
+                        node_name: node.node_name.clone(),
+                        node_type: node.node_type.clone(),
+                        server: node.server.clone(),
+                        port: node.port,
+                        profile_name: node.profile_name.clone(),
+                        profile_uid: node.profile_uid.clone(),
+                        subscription_url: node.subscription_url.clone(),
+                        latency: None,
+                        is_available: false,
+                        error_message: Some(error_msg),
+                        score: 0.0,
+                        region: identify_region(&node.server),
+                        traffic_info: node.traffic_info.clone(),
+                    }
+                }
             }
         }
-        Err(_) => {
-            let error_msg = format!("连接超时 ({}秒)", timeout_seconds);
-            log::warn!(target: "app", "⏰ 节点 {} 连接超时", node.node_name);
+    }
+}
+
+/// 确保配置文件已激活（如果需要的话）
+async fn ensure_profile_activated(profile_uid: &str) -> Result<()> {
+    log::debug!(target: "app", "🔧 确保配置文件已激活: {}", profile_uid);
     
-    SpeedTestResult {
-        node_name: node.node_name.clone(),
-        node_type: node.node_type.clone(),
-        server: node.server.clone(),
-        port: node.port,
-        profile_name: node.profile_name.clone(),
-        profile_uid: node.profile_uid.clone(),
-        subscription_url: node.subscription_url.clone(),
-                latency: None,
-                is_available: false,
-                error_message: Some(error_msg),
-                score: 0.0,
-                region: identify_region(&node.server),
-                traffic_info: node.traffic_info.clone(),
+    // 这里可以添加激活配置文件的逻辑
+    // 例如：Config::activate_profile(profile_uid).await?;
+    
+    // 目前先简单返回成功，实际使用时可能需要检查当前活动的配置文件
+    Ok(())
+}
+
+/// 通过Clash API测试代理延迟
+async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u64> {
+    // 获取IPC管理器实例
+    let ipc = IpcManager::global();
+    
+    // 使用Clash API测试节点延迟
+    let test_url = Some("https://cp.cloudflare.com/generate_204".to_string());
+    let timeout_ms = (timeout_seconds * 1000) as i32;
+    
+    log::debug!(target: "app", "🌐 通过Clash API测试节点 '{}' (超时: {}ms)", node_name, timeout_ms);
+    
+    match ipc.test_proxy_delay(node_name, test_url, timeout_ms).await {
+        Ok(response) => {
+            // 解析Clash API响应
+            if let Some(delay_obj) = response.as_object() {
+                if let Some(delay) = delay_obj.get("delay").and_then(|v| v.as_u64()) {
+                    log::debug!(target: "app", "✅ Clash API返回延迟: {}ms", delay);
+                    Ok(delay)
+                } else {
+                    let error_msg = "Clash API响应格式无效";
+                    log::error!(target: "app", "{}: {:?}", error_msg, response);
+                    Err(anyhow::anyhow!(error_msg))
+                }
+            } else {
+                let error_msg = "Clash API响应不是有效的JSON对象";
+                log::error!(target: "app", "{}: {:?}", error_msg, response);
+                Err(anyhow::anyhow!(error_msg))
             }
+        }
+        Err(e) => {
+            let error_msg = format!("Clash API调用失败: {}", e);
+            log::error!(target: "app", "{}", error_msg);
+            Err(anyhow::anyhow!(error_msg))
+        }
+    }
+}
+
+/// TCP连接测试（作为备用方案）
+async fn test_tcp_connection(server: &str, port: u16, timeout_seconds: u64) -> Result<u64> {
+    let start_time = Instant::now();
+    
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(timeout_seconds),
+        tokio::net::TcpStream::connect(format!("{}:{}", server, port))
+    ).await {
+        Ok(Ok(_stream)) => {
+            let latency = start_time.elapsed().as_millis() as u64;
+            Ok(latency)
+        }
+        Ok(Err(e)) => {
+            Err(anyhow::anyhow!("TCP连接失败: {}", e))
+        }
+        Err(_) => {
+            Err(anyhow::anyhow!("TCP连接超时 ({}秒)", timeout_seconds))
         }
     }
 }
