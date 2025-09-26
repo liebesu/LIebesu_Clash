@@ -340,19 +340,26 @@ jobs:
             chmod -R 755 "$APP_PATH"
             chmod +x "$APP_PATH/Contents/MacOS/"* 2>/dev/null || true
             
-            # 3. 检查和修复Info.plist
-            INFO_PLIST="$APP_PATH/Contents/Info.plist"
-            if [[ -f "$INFO_PLIST" ]]; then
-              echo "检查Info.plist..."
-              # 确保CFBundleExecutable正确
-              BUNDLE_EXEC=$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")
-              if [[ -z "$BUNDLE_EXEC" ]]; then
-                plutil -replace CFBundleExecutable -string "LIebesu_Clash" "$INFO_PLIST" || true
-              fi
-              # 设置其他必要属性
-              plutil -replace LSMinimumSystemVersion -string "10.15" "$INFO_PLIST" || true
-              plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" || true
+          # 3. 检查和修复Info.plist（确保 CFBundleExecutable 与实际二进制一致）
+          INFO_PLIST="$APP_PATH/Contents/Info.plist"
+          if [[ -f "$INFO_PLIST" ]]; then
+            echo "检查Info.plist..."
+            # 读取实际二进制名
+            ACTUAL_EXEC="$(basename "$(ls \"$APP_PATH/Contents/MacOS\" | head -1)")"
+            echo "实际二进制: $ACTUAL_EXEC"
+            # 强制对齐 CFBundleExecutable
+            plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
+            # 仅设置高分屏标志，不再写入 LSMinimumSystemVersion（由打包器生成）
+            plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" || true
+            # 验证 CFBundleExecutable 指向的文件是否存在
+            BUNDLE_EXEC="$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")"
+            if [[ -n "$BUNDLE_EXEC" && ! -f "$APP_PATH/Contents/MacOS/$BUNDLE_EXEC" ]]; then
+              echo "⚠️ CFBundleExecutable 指向不存在的文件: $BUNDLE_EXEC"
+              echo "回退到实际二进制: $ACTUAL_EXEC"
+              plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
             fi
+            echo "最终 CFBundleExecutable: $(plutil -extract CFBundleExecutable raw \"$INFO_PLIST\" 2>/dev/null || echo \"\")"
+          fi
             
             # 4. 重新签名
             echo "重新签名应用程序..."

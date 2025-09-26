@@ -48,8 +48,7 @@
   "build": {
     "beforeBuildCommand": "pnpm run web:build",
     "frontendDist": "../dist",
-    "beforeDevCommand": "pnpm run web:dev",
-    "devUrl": "http://localhost:3000/"
+    "beforeDevCommand": "pnpm run web:dev"
   },
   "productName": "LIebesu_Clash",
   "identifier": "io.github.liebesu.clash",

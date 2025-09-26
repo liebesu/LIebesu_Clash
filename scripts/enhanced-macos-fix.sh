@@ -103,17 +103,12 @@ fix_info_plist() {
         return 1
     fi
     
-    # 验证基本属性
-    BUNDLE_EXEC=$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")
-    if [ -z "$BUNDLE_EXEC" ]; then
-        echo "修复 CFBundleExecutable..."
-        plutil -replace CFBundleExecutable -string "LIebesu_Clash" "$INFO_PLIST"
-    fi
+    # 对齐 CFBundleExecutable 到实际二进制
+    ACTUAL_EXEC="$(basename "$(ls \"$APP_PATH/Contents/MacOS\" | head -1)")"
+    echo "实际二进制: $ACTUAL_EXEC"
+    plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" 2>/dev/null || true
     
-    # 设置最低系统版本
-    plutil -replace LSMinimumSystemVersion -string "10.15" "$INFO_PLIST" 2>/dev/null || true
-    
-    # 启用高分辨率
+    # 启用高分辨率（保持，不改最低系统版本）
     plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" 2>/dev/null || true
     
     echo "✅ Info.plist 检查完成"
