@@ -1090,7 +1090,7 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
         let cancel_check = async {
             loop {
                 if CANCEL_FLAG.load(Ordering::SeqCst) {
-                    return Err(anyhow::anyhow!("测速已被用户取消"));
+                    return Err(anyhow::anyhow!("测速已被用户取消")) as anyhow::Result<serde_json::Value>;
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
