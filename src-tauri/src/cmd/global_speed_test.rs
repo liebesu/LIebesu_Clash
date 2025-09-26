@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     sync::atomic::{AtomicBool, Ordering},
-    time::Instant,
+    time::{Duration, Instant},
 };
 use tauri::Emitter;
 
@@ -341,37 +341,18 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             
             // 🔧 修复：顺序测试单个节点，避免并发竞争
             let node_start_time = Instant::now();
-            let result = match test_single_node(node, config.node_timeout_seconds).await {
-                Ok(test_result) => {
-                    let node_duration = node_start_time.elapsed();
-                    log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
-                              node.node_name, node_duration, 
-                              if test_result.is_available { 
-                                  format!("成功 ({}ms)", test_result.latency.unwrap_or(0)) 
-                              } else { 
-                                  "失败".to_string() 
-                              });
-                    Ok(test_result)
-                }
-                Err(e) => {
-                    let node_duration = node_start_time.elapsed();
-                    log::error!(target: "app", "❌ [节点测试] 节点 {} 测试失败，耗时: {:?}, 错误: {}", 
-                              node.node_name, node_duration, e);
-                    
-                    // 🔧 修复：创建失败结果而不是直接返回错误
-                    let failed_result = SpeedTestResult {
-                        node_name: node.node_name.clone(),
-                        profile_name: node.profile_name.clone(),
-                        is_available: false,
-                        latency: None,
-                        score: 0.0,
-                        error_message: Some(format!("测试失败: {}", e)),
-                    };
-                    Ok(failed_result)
-                }
-            };
+            let test_result = test_single_node(node, config.node_timeout_seconds).await;
+            let node_duration = node_start_time.elapsed();
             
-            batch_results.push(result);
+            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
+                      node.node_name, node_duration, 
+                      if test_result.is_available { 
+                          format!("成功 ({}ms)", test_result.latency.unwrap_or(0)) 
+                      } else { 
+                          "失败".to_string() 
+                      });
+            
+            batch_results.push(Ok(test_result));
             
             // 🔧 优化：减少节点间隔，提高1000+节点测速效率
             if node_index < chunk.len() - 1 {
