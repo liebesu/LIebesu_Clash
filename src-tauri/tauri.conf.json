@@ -60,6 +60,20 @@
     }
   },
   "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Liebesu_Clash",
+        "fullscreen": false,
+        "resizable": true,
+        "decorations": true,
+        "width": 1200,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "visible": true
+      }
+    ],
     "security": {
       "capabilities": ["desktop-capability", "migrated"],
       "assetProtocol": {
