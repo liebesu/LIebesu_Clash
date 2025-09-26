@@ -297,7 +297,7 @@ jobs:
       - name: Tauri build for Windows-macOS-Linux
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=8192"  # 优化：大幅增加内存限制
           # 移除GITHUB_TOKEN，禁用所有GitHub相关操作
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 使用 ad-hoc 签名，避免证书导入
@@ -314,36 +314,108 @@ jobs:
           args: --target ${{ matrix.target }}
           # includeUpdaterJson: true
 
-      - name: Post-process macOS app (remove quarantine and ad-hoc sign)
+      - name: Enhanced macOS Post-Build Processing
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           set -e
-          # 运行 macOS 构建后处理脚本
-          if [[ -f "scripts/post-build-macos.sh" ]]; then
-            chmod +x scripts/post-build-macos.sh
-            ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos
+          echo "🍎 开始增强的 macOS 后处理..."
+          
+          # 查找构建的应用程序和DMG
+          APP_PATH=$(find src-tauri/target -type d -path "*/release/bundle/*/*.app" | head -1)
+          DMG_PATH=$(find src-tauri/target -type f -path "*/release/bundle/dmg/*.dmg" | head -1)
+          
+          echo "应用程序路径: $APP_PATH"
+          echo "DMG路径: $DMG_PATH"
+          
+          if [[ -n "$APP_PATH" ]]; then
+            echo "🔧 处理应用程序包..."
+            
+            # 1. 移除所有扩展属性
+            echo "移除扩展属性..."
+            sudo xattr -cr "$APP_PATH" || xattr -cr "$APP_PATH" || true
+            
+            # 2. 设置正确的权限
+            echo "设置权限..."
+            chmod -R 755 "$APP_PATH"
+            chmod +x "$APP_PATH/Contents/MacOS/"* 2>/dev/null || true
+            
+            # 3. 检查和修复Info.plist
+            INFO_PLIST="$APP_PATH/Contents/Info.plist"
+            if [[ -f "$INFO_PLIST" ]]; then
+              echo "检查Info.plist..."
+              # 确保CFBundleExecutable正确
+              BUNDLE_EXEC=$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")
+              if [[ -z "$BUNDLE_EXEC" ]]; then
+                plutil -replace CFBundleExecutable -string "LIebesu_Clash" "$INFO_PLIST" || true
+              fi
+              # 设置其他必要属性
+              plutil -replace LSMinimumSystemVersion -string "10.15" "$INFO_PLIST" || true
+              plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" || true
+            fi
+            
+            # 4. 重新签名
+            echo "重新签名应用程序..."
+            codesign --force --deep --sign - "$APP_PATH" || true
+            
+            # 5. 验证签名
+            echo "验证签名..."
+            codesign --verify --verbose=2 "$APP_PATH" || echo "⚠️ 签名验证失败"
+            
+            # 6. 注册到Launch Services
+            echo "注册到Launch Services..."
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" || true
+            
+            # 7. 创建修复脚本
+            echo "创建修复脚本..."
+            cat > "$(dirname "$APP_PATH")/fix-startup.sh" << 'EOF'
+          #!/bin/bash
+          echo "🔧 LIebesu_Clash 启动修复"
+          APP_PATH="/Applications/LIebesu_Clash.app"
+          [[ ! -d "$APP_PATH" ]] && APP_PATH="$PWD/LIebesu_Clash.app"
+          
+          if [[ -d "$APP_PATH" ]]; then
+            echo "移除隔离属性..."
+            sudo xattr -cr "$APP_PATH" 2>/dev/null || xattr -cr "$APP_PATH"
+            echo "重新签名..."
+            codesign --force --deep --sign - "$APP_PATH"
+            echo "注册应用..."
+            /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH"
+            echo "刷新Dock..."
+            killall Dock 2>/dev/null || true
+            echo "✅ 修复完成！"
+            open "$APP_PATH"
           else
-            # 备用处理方式
-            APP_PATH=$(find src-tauri/target -type d -path "*/release/bundle/*/*.app" | head -1)
-            DMG_PATH=$(find src-tauri/target -type f -path "*/release/bundle/dmg/*.dmg" | head -1)
-            echo "APP_PATH=$APP_PATH"
-            echo "DMG_PATH=$DMG_PATH"
-            if [[ -n "$APP_PATH" ]]; then
-              xattr -cr "$APP_PATH" || true
-              codesign --force --deep --sign - "$APP_PATH" || true
-              codesign --verify --verbose "$APP_PATH" || true
-              # 预注册应用程序到 Launch Services
-              /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" || true
-            fi
-            if [[ -n "$DMG_PATH" ]]; then
-              xattr -cr "$DMG_PATH" || true
-            fi
+            echo "❌ 未找到应用程序"
           fi
-          if [[ -f "refresh-launchpad.sh" && -n "$DMG_PATH" ]]; then
-            cp refresh-launchpad.sh "$(dirname "$DMG_PATH")/"
-            chmod +x "$(dirname "$DMG_PATH")/refresh-launchpad.sh"
+          EOF
+            chmod +x "$(dirname "$APP_PATH")/fix-startup.sh"
+            
+            # 8. 更新时间戳
+            touch "$APP_PATH"
+            
+            echo "✅ 应用程序处理完成"
           fi
+          
+          if [[ -n "$DMG_PATH" ]]; then
+            echo "🔧 处理DMG文件..."
+            # 移除DMG隔离属性
+            sudo xattr -cr "$DMG_PATH" || xattr -cr "$DMG_PATH" || true
+            
+            # 复制修复脚本
+            if [[ -f "$(dirname "$APP_PATH")/fix-startup.sh" ]]; then
+              cp "$(dirname "$APP_PATH")/fix-startup.sh" "$(dirname "$DMG_PATH")/"
+            fi
+            
+            # 复制增强修复脚本
+            if [[ -f "scripts/enhanced-macos-fix.sh" ]]; then
+              cp "scripts/enhanced-macos-fix.sh" "$(dirname "$DMG_PATH")/"
+            fi
+            
+            echo "✅ DMG处理完成"
+          fi
+          
+          echo "🎉 增强的macOS后处理完成！"
 
       - name: Rename Windows EXE with run number
         if: matrix.os == 'windows-latest'
@@ -542,7 +614,7 @@ jobs:
           fi
           pnpm build --target ${{ matrix.target }}
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=8192"  # 优化：大幅增加内存限制
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
@@ -633,7 +705,7 @@ jobs:
         id: build
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=8192"  # 优化：大幅增加内存限制
           # 移除GITHUB_TOKEN，禁用GitHub相关操作
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}

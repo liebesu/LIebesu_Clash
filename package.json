@@ -8,7 +8,7 @@
     "dev:trace": "cross-env RUST_BACKTRACE=1 RUSTFLAGS=\"--cfg tokio_unstable\" tauri dev -f verge-dev tokio-trace",
     "build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' tauri build",
     "build:fast": "cross-env NODE_OPTIONS='--max-old-space-size=8192' tauri build -- --profile fast-release",
-    "postbuild": "node -e \"if (process.platform === 'darwin') { const { execSync } = require('child_process'); execSync('chmod +x scripts/post-build-macos.sh && ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos', { stdio: 'inherit' }); }\"",
+    "postbuild": "node -e \"if (process.platform === 'darwin') { const { execSync } = require('child_process'); try { execSync('chmod +x scripts/post-build-macos.sh && ./scripts/post-build-macos.sh src-tauri/target/release/bundle/macos', { stdio: 'inherit' }); } catch(e) { console.log('Post-build script failed, but continuing...', e.message); } }\"",
     "tauri": "tauri",
     "web:dev": "vite",
     "web:build": "cross-env NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit && cross-env NODE_OPTIONS='--max-old-space-size=8192' vite build",
