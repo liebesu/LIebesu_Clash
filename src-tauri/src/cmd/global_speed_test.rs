@@ -850,7 +850,7 @@ async fn test_single_node_with_monitoring(node: &NodeInfo, timeout_seconds: u64)
             loop {
                 if CANCEL_FLAG.load(Ordering::SeqCst) {
                     log::info!(target: "speed_test", "🛑 [取消检查] 节点 {} 测试被取消", node.node_name);
-                    return Err(anyhow::anyhow!("测试被用户取消"));
+                    return Err(anyhow::anyhow!("测试被用户取消")) as anyhow::Result<()>;
                 }
                 tokio::time::sleep(Duration::from_millis(200)).await;
             }

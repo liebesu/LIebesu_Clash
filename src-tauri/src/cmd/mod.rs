@@ -40,6 +40,7 @@ pub use backup_restore::*;
 pub use batch_import::*;
 pub use clash::*;
 pub use global_speed_test::*;
+pub use speed_test_monitor::*;
 pub use health_check::*;
 pub use lightweight::*;
 pub use media_unlock_checker::*;
