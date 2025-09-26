@@ -15,15 +15,15 @@ use std::{
 use tauri::Emitter;
 
 /// 取消标志，用于停止全局测速
-static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
+pub static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// 最新测速结果，用于应用最佳节点
 static LATEST_RESULTS: Mutex<Option<GlobalSpeedTestSummary>> = Mutex::new(None);
 
 /// 当前测速状态跟踪，用于诊断假死问题
-static CURRENT_SPEED_TEST_STATE: Mutex<Option<SpeedTestState>> = Mutex::new(None);
+pub static CURRENT_SPEED_TEST_STATE: Mutex<Option<SpeedTestState>> = Mutex::new(None);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeedTestState {
     pub current_node: String,
     pub current_profile: String,

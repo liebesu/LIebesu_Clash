@@ -1,6 +1,5 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 

@@ -10,6 +10,9 @@ pub mod batch_import;
 pub mod clash;
 pub mod global_speed_test;
 pub mod speed_test_monitor;
+
+// Re-export the command functions
+pub use speed_test_monitor::{force_cancel_frozen_speed_test, get_speed_test_health_report};
 pub mod health_check;
 pub mod lightweight;
 pub mod media_unlock_checker;
