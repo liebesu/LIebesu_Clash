@@ -36,7 +36,14 @@ import {
   Settings,
   Save,
 } from '@mui/icons-material';
-import { startGlobalSpeedTest, applyBestNode, cancelGlobalSpeedTest, switchToNode } from '@/services/cmds';
+import { 
+  startGlobalSpeedTest, 
+  applyBestNode, 
+  cancelGlobalSpeedTest, 
+  forceCancelFrozenSpeedTest,
+  getSpeedTestHealthReport,
+  switchToNode 
+} from '@/services/cmds';
 import { listen } from '@tauri-apps/api/event';
 import { showNotice } from '@/services/noticeService';
 
@@ -101,6 +108,14 @@ interface GlobalSpeedTestSummary {
   duration_seconds: number;
 }
 
+interface HealthCheckReport {
+  is_healthy: boolean;
+  issues: string[];
+  recommendations: string[];
+  current_state?: any;
+  system_resources: any;
+}
+
 interface GlobalSpeedTestDialogProps {
   open: boolean;
   onClose: () => void;
@@ -119,6 +134,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
   const [recentTests, setRecentTests] = useState<NodeTestUpdate[]>([]);
   const [currentTestingNodes, setCurrentTestingNodes] = useState<Set<string>>(new Set());
   const [showConfig, setShowConfig] = useState(false);
+  const [healthReport, setHealthReport] = useState<HealthCheckReport | null>(null);
+  const [showHealthPanel, setShowHealthPanel] = useState(false);
+  const [freezeDetected, setFreezeDetected] = useState(false);
   const [config, setConfig] = useState({
     batchSize: 3,           // 🚀 优化后的默认批次大小
     nodeTimeout: 4,         // 🚀 优化后的节点超时（秒）
@@ -186,7 +204,45 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
           setTesting(false);
           setProgress(null);
           setCurrentTestingNodes(new Set());
+          setFreezeDetected(false);
+          setHealthReport(null);
           showNotice('success', '全局测速完成！', 2000);
+        }
+      );
+
+      // 监听健康报告
+      const healthUnlisten = await listen<HealthCheckReport>(
+        'speed-test-health-report',
+        (event) => {
+          setHealthReport(event.payload);
+          if (!event.payload.is_healthy) {
+            setShowHealthPanel(true);
+          }
+        }
+      );
+
+      // 监听假死检测
+      const freezeUnlisten = await listen<HealthCheckReport>(
+        'speed-test-freeze-detected',
+        (event) => {
+          setFreezeDetected(true);
+          setHealthReport(event.payload);
+          setShowHealthPanel(true);
+          showNotice('error', '检测到测速假死，建议立即取消！', 5000);
+        }
+      );
+
+      // 监听强制取消事件
+      const forceCancelUnlisten = await listen(
+        'global-speed-test-force-cancelled',
+        () => {
+          setTesting(false);
+          setCancelling(false);
+          setProgress(null);
+          setCurrentTestingNodes(new Set());
+          setFreezeDetected(false);
+          setHealthReport(null);
+          showNotice('warning', '测速已强制取消', 3000);
         }
       );
     };
@@ -199,6 +255,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       progressUnlisten?.();
       nodeUpdateUnlisten?.();
       completeUnlisten?.();
+      healthUnlisten?.();
+      freezeUnlisten?.();
+      forceCancelUnlisten?.();
     };
   }, [open]);
 
@@ -230,6 +289,29 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       console.error('取消测速失败:', error);
       showNotice('error', `取消测速失败: ${error.message}`, 3000);
       setCancelling(false);
+    }
+  };
+
+  const handleForceCancelTest = async () => {
+    try {
+      setCancelling(true);
+      await forceCancelFrozenSpeedTest();
+      showNotice('warning', '正在强制取消假死的测速...', 3000);
+    } catch (error: any) {
+      console.error('强制取消失败:', error);
+      showNotice('error', `强制取消失败: ${error.message}`, 3000);
+      setCancelling(false);
+    }
+  };
+
+  const handleCheckHealth = async () => {
+    try {
+      const report = await getSpeedTestHealthReport();
+      setHealthReport(report);
+      setShowHealthPanel(true);
+    } catch (error: any) {
+      console.error('获取健康报告失败:', error);
+      showNotice('error', `获取健康报告失败: ${error.message}`, 3000);
     }
   };
 
@@ -376,11 +458,11 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
           <CardContent sx={{ py: 2 }}>
             <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <NetworkCheck color="primary" fontSize="small" />
-              <strong>真实代理测速</strong>
+              <strong>增强版全局测速（防假死）</strong>
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-              本测速功能通过Clash API进行真实的代理延迟测试，访问 cloudflare.com 测试网站获得准确的延迟数据。
-              如果代理测试失败，将降级到TCP连接测试作为备用方案（评分会相应降低）。
+              新版本增加了假死检测和自动恢复机制，支持大批量节点测速（1000+）。
+              通过Clash API进行真实代理测试，包含完整的状态监控和资源管理。
             </Typography>
             
             <Typography variant="caption" sx={{ 
@@ -391,13 +473,99 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
               color: 'success.dark',
               fontWeight: 'bold' 
             }}>
-              🎯 <strong>正确测速逻辑（已修复）</strong>：<br/>
-              • <strong>主要测试</strong>: 临时切换到目标节点 → 本机 → 目标节点 → cloudflare.com (真实单节点性能)<br/>
-              • <strong>备用测试</strong>: 应用 → 直连TCP → 节点服务器 (基础连通性测试)<br/>
-              • <strong>测试完成后自动恢复</strong>到原始节点，不影响正常使用
+              🛡️ <strong>防假死特性（全新）</strong>：<br/>
+              • <strong>智能监控</strong>: 实时检测测速状态，自动识别假死情况<br/>
+              • <strong>资源管理</strong>: 自动清理僵死连接，防止内存泄漏<br/>
+              • <strong>强制恢复</strong>: 假死时可强制取消，立即恢复系统状态<br/>
+              • <strong>详细日志</strong>: 完整记录测速过程，便于问题诊断
             </Typography>
           </CardContent>
         </Card>
+
+        {/* 健康状态面板 */}
+        {(healthReport || testing) && (
+          <Card sx={{ 
+            mb: 2, 
+            border: '1px solid', 
+            borderColor: freezeDetected ? 'error.main' : healthReport?.is_healthy === false ? 'warning.main' : 'info.main',
+            bgcolor: freezeDetected ? 'error.50' : healthReport?.is_healthy === false ? 'warning.50' : 'info.50'
+          }}>
+            <CardContent sx={{ py: 2 }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  color: freezeDetected ? 'error.dark' : healthReport?.is_healthy === false ? 'warning.dark' : 'info.dark'
+                }}>
+                  {freezeDetected ? '🚨' : healthReport?.is_healthy === false ? '⚠️' : '💚'} 
+                  <strong>
+                    {freezeDetected ? '假死检测警告' : 
+                     healthReport?.is_healthy === false ? '健康状态异常' : '测速状态正常'}
+                  </strong>
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setShowHealthPanel(!showHealthPanel)}
+                >
+                  {showHealthPanel ? '隐藏' : '详情'}
+                </Button>
+              </Box>
+              
+              {showHealthPanel && healthReport && (
+                <Box>
+                  {healthReport.issues.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="error.main" fontWeight="bold" display="block" gutterBottom>
+                        发现的问题:
+                      </Typography>
+                      {healthReport.issues.map((issue, index) => (
+                        <Typography key={index} variant="caption" display="block" sx={{ ml: 1 }}>
+                          • {issue}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {healthReport.recommendations.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="warning.main" fontWeight="bold" display="block" gutterBottom>
+                        建议操作:
+                      </Typography>
+                      {healthReport.recommendations.map((rec, index) => (
+                        <Typography key={index} variant="caption" display="block" sx={{ ml: 1 }}>
+                          • {rec}
+                        </Typography>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {freezeDetected && (
+                    <Box display="flex" gap={2} sx={{ mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={handleForceCancelTest}
+                        disabled={cancelling}
+                      >
+                        强制取消假死测速
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={handleCheckHealth}
+                      >
+                        刷新健康状态
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* 控制面板 */}
         <Card sx={{ mb: 3 }}>
@@ -427,7 +595,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                   切换到最佳节点
                 </Button>
               </Box>
-              <Box>
+              <Box display="flex" gap={1}>
                 <Button
                   variant="outlined"
                   startIcon={<Settings />}
@@ -437,6 +605,16 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 >
                   配置参数
                 </Button>
+                {testing && (
+                  <Button
+                    variant="outlined"
+                    color="info"
+                    onClick={handleCheckHealth}
+                    size="large"
+                  >
+                    健康检查
+                  </Button>
+                )}
               </Box>
             </Box>
           </CardContent>

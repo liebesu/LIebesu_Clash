@@ -19,6 +19,13 @@ appenders:
     encoder:
       pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}"
     append: true
+  
+  speed_test_debug:
+    kind: file
+    path: "logs/speed_test_debug.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}"
+    append: true
 
 loggers:
   app:
@@ -32,6 +39,8 @@ loggers:
     level: debug
     appenders:
       - speed_test
+      - speed_test_debug
+      - console
     additive: false
 
 root:

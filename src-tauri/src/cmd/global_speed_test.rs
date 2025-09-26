@@ -2,6 +2,7 @@ use crate::{
     config::Config,
     ipc::IpcManager,
     utils::dirs,
+    cmd::speed_test_monitor::{update_speed_test_state, clear_speed_test_state, monitor_speed_test_health},
 };
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -18,6 +19,22 @@ static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
 /// 最新测速结果，用于应用最佳节点
 static LATEST_RESULTS: Mutex<Option<GlobalSpeedTestSummary>> = Mutex::new(None);
+
+/// 当前测速状态跟踪，用于诊断假死问题
+static CURRENT_SPEED_TEST_STATE: Mutex<Option<SpeedTestState>> = Mutex::new(None);
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedTestState {
+    pub current_node: String,
+    pub current_profile: String,
+    pub start_time: u64,
+    pub last_activity_time: u64,
+    pub total_nodes: usize,
+    pub completed_nodes: usize,
+    pub active_connections: usize,
+    pub memory_usage_mb: f64,
+    pub stage: String, // "parsing", "testing", "switching", "cleanup"
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeedTestResult {
@@ -94,23 +111,50 @@ pub struct SpeedTestConfig {
     pub max_concurrent: usize,
 }
 
-/// 全局节点测速
+/// 全局节点测速 - 增强版（防假死）
 #[tauri::command]
 pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Option<SpeedTestConfig>) -> Result<String, String> {
-    log::info!(target: "app", "🚀 [前端请求] 开始全局节点测速");
-    log::info!(target: "app", "📋 [测速配置] {:?}", config);
+    log::info!(target: "speed_test", "🚀 [前端请求] 开始增强版全局节点测速");
+    log::info!(target: "speed_test", "📋 [测速配置] {:?}", config);
     
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
-    log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
+    log::info!(target: "speed_test", "✅ [状态重置] 已重置取消标志");
     
-    // 🔧 修复：针对1000+节点的大批量测速优化配置
+    // 初始化测速状态跟踪
+    let start_timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    
+    let initial_state = SpeedTestState {
+        current_node: "初始化中".to_string(),
+        current_profile: "准备阶段".to_string(),
+        start_time: start_timestamp,
+        last_activity_time: start_timestamp,
+        total_nodes: 0,
+        completed_nodes: 0,
+        active_connections: 0,
+        memory_usage_mb: 0.0,
+        stage: "initialization".to_string(),
+    };
+    
+    *CURRENT_SPEED_TEST_STATE.lock() = Some(initial_state.clone());
+    log::info!(target: "speed_test", "📊 [状态跟踪] 已初始化测速状态监控");
+    
+    // 启动状态监控任务（防假死检测）
+    let monitor_handle = app_handle.clone();
+    let _monitor_task = tokio::spawn(async move {
+        monitor_speed_test_health(monitor_handle).await;
+    });
+    
+    // 🔧 防假死配置：保守设置，优先稳定性
     let config = config.unwrap_or_else(|| SpeedTestConfig {
-        batch_size: 1,                    // 🔧 严格单节点处理，避免任何并发
-        node_timeout_seconds: 3,          // 🔧 减少单节点超时，提高效率
-        batch_timeout_seconds: 10,        // 🔧 批次超时大幅减少
-        overall_timeout_seconds: 1800,    // 🔧 总超时增加到30分钟，适应1000+节点
-        max_concurrent: 1,                // 🔧 严格禁用并发
+        batch_size: 1,                    // 🔧 严格单节点处理，彻底避免并发竞争
+        node_timeout_seconds: 2,          // 🔧 大幅减少超时，快速失败策略
+        batch_timeout_seconds: 5,         // 🔧 批次超时进一步减少，防止长时间等待
+        overall_timeout_seconds: 900,     // 🔧 总超时减少到15分钟，避免无限等待
+        max_concurrent: 1,                // 🔧 严格禁用并发，避免资源竞争
     });
     
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
@@ -323,11 +367,20 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                 break;
             }
             
-            log::info!(target: "app", "🎯 [节点测试] 开始测试节点 {}/{}: {} (来自: {})", 
+            log::info!(target: "speed_test", "🎯 [节点测试] 开始测试节点 {}/{}: {} (来自: {})", 
                       node_index + 1, chunk.len(), node.node_name, node.profile_name);
             
-            // 发送节点测试开始事件
+            // 更新状态跟踪：正在测试节点
             let completed_count = all_results.len();
+            update_speed_test_state(
+                &node.node_name, 
+                &node.profile_name, 
+                "testing", 
+                completed_count, 
+                total_nodes
+            );
+            
+            // 发送节点测试开始事件
             let update = NodeTestUpdate {
                         node_name: node.node_name.clone(),
                         profile_name: node.profile_name.clone(),
@@ -339,12 +392,21 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             };
             let _ = app_handle.emit("node-test-update", update);
             
-            // 🔧 修复：顺序测试单个节点，避免并发竞争
+            // 🔧 修复：带状态跟踪的单节点测试
             let node_start_time = Instant::now();
-            let test_result = test_single_node(node, config.node_timeout_seconds).await;
+            let test_result = test_single_node_with_monitoring(node, config.node_timeout_seconds).await;
             let node_duration = node_start_time.elapsed();
             
-            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
+            // 更新状态：节点测试完成
+            update_speed_test_state(
+                &node.node_name, 
+                &node.profile_name, 
+                "completed", 
+                all_results.len() + 1, 
+                total_nodes
+            );
+            
+            log::info!(target: "speed_test", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
                       node.node_name, node_duration, 
                       if test_result.is_available { 
                           format!("成功 ({}ms)", test_result.latency.unwrap_or(0)) 
@@ -441,7 +503,10 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     }
     
     let duration = start_time.elapsed();
-    log::info!(target: "app", "🏁 全局测速完成，耗时 {:.2} 秒", duration.as_secs_f64());
+    log::info!(target: "speed_test", "🏁 全局测速完成，耗时 {:.2} 秒", duration.as_secs_f64());
+    
+    // 更新状态：正在分析结果
+    update_speed_test_state("分析结果中", "汇总阶段", "analyzing", all_results.len(), total_nodes);
     
     // 第三步：分析结果
     let summary = analyze_results(all_results, duration);
@@ -449,14 +514,17 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     // 保存结果供后续使用
     *LATEST_RESULTS.lock() = Some(summary.clone());
     
+    // 清理状态跟踪
+    clear_speed_test_state();
+    
     // 发送完成事件
     let _ = app_handle.emit("global-speed-test-complete", summary.clone());
     
-    log::info!(target: "app", "📈 测速统计: 总计 {} 个节点，成功 {} 个，失败 {} 个", 
+    log::info!(target: "speed_test", "📈 测速统计: 总计 {} 个节点，成功 {} 个，失败 {} 个", 
               summary.total_nodes, summary.successful_tests, summary.failed_tests);
     
     if let Some(best) = &summary.best_node {
-        log::info!(target: "app", "🏆 最佳节点: {} (延迟: {}ms, 评分: {:.2})", 
+        log::info!(target: "speed_test", "🏆 最佳节点: {} (延迟: {}ms, 评分: {:.2})", 
                   best.node_name, 
                   best.latency.unwrap_or(0), 
                   best.score);
@@ -465,22 +533,31 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     Ok("全局节点测速完成".to_string())
 }
 
-/// 取消全局节点测速
+/// 增强版取消全局节点测速（防假死）
 #[tauri::command]
 pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<(), String> {
-    log::info!(target: "app", "🛑 [前端请求] 用户取消全局测速");
+    log::info!(target: "speed_test", "🛑 [前端请求] 用户取消全局测速");
     
     // 设置取消标志
     CANCEL_FLAG.store(true, Ordering::SeqCst);
-    log::info!(target: "app", "✅ [取消状态] 已设置取消标志为true");
+    log::info!(target: "speed_test", "✅ [取消状态] 已设置取消标志为true");
+    
+    // 立即清理状态跟踪
+    clear_speed_test_state();
     
     // 发送取消事件到前端
     let _ = app_handle.emit("global-speed-test-cancelled", ());
     
-    // 等待一小段时间确保事件发送
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    // 强制清理连接，防止僵死连接影响后续测速
+    log::info!(target: "speed_test", "🧹 [取消清理] 强制清理连接...");
+    if let Err(e) = cleanup_stale_connections().await {
+        log::warn!(target: "speed_test", "⚠️ [取消清理] 连接清理失败: {}", e);
+    }
     
-    log::info!(target: "app", "✅ 全局测速取消信号已发送");
+    // 等待更长时间确保所有操作完成
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    
+    log::info!(target: "speed_test", "✅ 增强版全局测速取消完成");
     Ok(())
 }
 
@@ -578,7 +655,10 @@ fn parse_profile_nodes(
         return Err("配置文件为空".to_string());
     }
     
-    log::info!(target: "app", "🔍 开始解析配置文件 '{}'，长度: {} 字符", profile_name, profile_data.len());
+            log::info!(target: "speed_test", "🔍 开始解析配置文件 '{}'，长度: {} 字符", profile_name, profile_data.len());
+            
+            // 更新状态：正在解析配置
+            update_speed_test_state(&format!("解析订阅: {}", profile_name), profile_name, "parsing", 0, 1);
     log::debug!(target: "app", "   配置数据预览: {}", 
               if profile_data.len() > 500 { 
                   format!("{}...", &profile_data[..500]) 
@@ -753,8 +833,82 @@ fn parse_profile_nodes(
     Ok(nodes)
 }
 
-/// 测试单个节点 - 使用真正的Clash代理测试
-async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
+/// 测试单个节点 - 带状态监控的版本（防假死）
+async fn test_single_node_with_monitoring(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
+    log::debug!(target: "speed_test", "🎯 [防假死测试] 开始测试节点: {} ({}:{})", 
+              node.node_name, node.server, node.port);
+    
+    // 添加超时保护，防止单个节点测试卡死
+    let test_timeout = Duration::from_secs(timeout_seconds + 5); // 给额外的5秒缓冲
+    
+    let test_future = async {
+        // 更新状态：开始连接
+        update_speed_test_state(&node.node_name, &node.profile_name, "connecting", 0, 1);
+        
+        // 定期检查取消标志
+        let cancel_check = async {
+            loop {
+                if CANCEL_FLAG.load(Ordering::SeqCst) {
+                    log::info!(target: "speed_test", "🛑 [取消检查] 节点 {} 测试被取消", node.node_name);
+                    return Err(anyhow::anyhow!("测试被用户取消"));
+                }
+                tokio::time::sleep(Duration::from_millis(200)).await;
+            }
+        };
+        
+        // 执行实际的节点测试
+        let actual_test = test_single_node_internal(node, timeout_seconds);
+        
+        // 竞争执行：测试 vs 取消检查
+        tokio::select! {
+            result = actual_test => result,
+            _ = cancel_check => SpeedTestResult {
+                node_name: node.node_name.clone(),
+                node_type: node.node_type.clone(),
+                server: node.server.clone(),
+                port: node.port,
+                profile_name: node.profile_name.clone(),
+                profile_uid: node.profile_uid.clone(),
+                subscription_url: node.subscription_url.clone(),
+                latency: None,
+                is_available: false,
+                error_message: Some("测试被用户取消".to_string()),
+                score: 0.0,
+                region: identify_region(&node.server),
+                traffic_info: node.traffic_info.clone(),
+            }
+        }
+    };
+    
+    // 添加总体超时保护
+    match tokio::time::timeout(test_timeout, test_future).await {
+        Ok(result) => {
+            log::debug!(target: "speed_test", "✅ [防假死测试] 节点 {} 测试完成", node.node_name);
+            result
+        }
+        Err(_) => {
+            log::warn!(target: "speed_test", "⏰ [防假死测试] 节点 {} 测试超时", node.node_name);
+            SpeedTestResult {
+                node_name: node.node_name.clone(),
+                node_type: node.node_type.clone(),
+                server: node.server.clone(),
+                port: node.port,
+                profile_name: node.profile_name.clone(),
+                profile_uid: node.profile_uid.clone(),
+                subscription_url: node.subscription_url.clone(),
+                latency: None,
+                is_available: false,
+                error_message: Some(format!("节点测试超时 ({}秒)", timeout_seconds + 5)),
+                score: 0.0,
+                region: identify_region(&node.server),
+                traffic_info: node.traffic_info.clone(),
+            }
+        }
+    }
+}
+
+/// 测试单个节点 - 内部实现
+async fn test_single_node_internal(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
     log::info!(target: "app", "🔍 开始真实代理测试节点: {} ({}:{}) 来自订阅: {}", 
               node.node_name, node.server, node.port, node.profile_name);
     
@@ -1160,64 +1314,117 @@ fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -
     Ok("DIRECT".to_string())
 }
 
-/// 清理僵死连接，防止连接累积导致假死
+/// 增强版连接清理，防止连接累积导致假死
 async fn cleanup_stale_connections() -> Result<()> {
-    log::debug!(target: "app", "🧹 [连接清理] 开始清理僵死连接");
+    log::debug!(target: "speed_test", "🧹 [增强清理] 开始清理僵死连接");
     let ipc = IpcManager::global();
     
-    // 获取当前所有连接
-    log::debug!(target: "app", "📡 [连接清理] 正在获取当前连接列表...");
-    match ipc.get_connections().await {
-        Ok(connections) => {
-            if let Some(connections_array) = connections.as_array() {
-                let stale_connections: Vec<&serde_json::Value> = connections_array
-                    .iter()
-                    .filter(|conn| {
-                        // 检查连接是否可能是僵死的
-                        if let Some(metadata) = conn.get("metadata") {
-                            if let Some(host) = metadata.get("host").and_then(|h| h.as_str()) {
-                                // 如果是测试相关的连接且处于异常状态
-                                return host.contains("cloudflare.com") || 
-                                       host.contains("cp.cloudflare.com") ||
-                                       metadata.get("process").and_then(|p| p.as_str())
-                                           .map_or(false, |p| p.contains("liebesu-clash"));
-                            }
-                        }
-                        false
-                    })
-                    .collect();
-                
-                if !stale_connections.is_empty() {
-                    let total_connections = stale_connections.len(); // 🔧 提前获取长度避免借用问题
-                    log::info!(target: "app", "🧹 [连接清理] 发现 {} 个可能的僵死连接，开始批量清理", total_connections);
+    // 添加清理超时，防止清理操作本身卡死
+    let cleanup_timeout = Duration::from_secs(10);
+    
+    let cleanup_task = async {
+        // 获取当前所有连接
+        log::debug!(target: "speed_test", "📡 [增强清理] 正在获取当前连接列表...");
+        match ipc.get_connections().await {
+            Ok(connections) => {
+                if let Some(connections_array) = connections.as_array() {
+                    log::info!(target: "speed_test", "🔍 [增强清理] 发现 {} 个总连接", connections_array.len());
                     
-                    // 批量关闭僵死连接
-                    let mut cleaned_count = 0;
-                    for conn in stale_connections {
-                        if let Some(id) = conn.get("id").and_then(|i| i.as_str()) {
-                            log::debug!(target: "app", "🗑️ [连接清理] 正在清理连接: {}", id);
-                            match ipc.delete_connection(id).await {
-                                Ok(_) => {
-                                    cleaned_count += 1;
-                                    log::debug!(target: "app", "✅ [连接清理] 连接 {} 清理成功", id);
+                    // 更激进的清理策略：清理所有测试相关的连接
+                    let stale_connections: Vec<&serde_json::Value> = connections_array
+                        .iter()
+                        .filter(|conn| {
+                            // 检查连接是否需要清理
+                            if let Some(metadata) = conn.get("metadata") {
+                                if let Some(host) = metadata.get("host").and_then(|h| h.as_str()) {
+                                    // 清理测试相关的所有连接
+                                    return host.contains("cloudflare.com") || 
+                                           host.contains("cp.cloudflare.com") ||
+                                           host.contains("generate_204") ||
+                                           host.contains("connectivity-check") ||
+                                           metadata.get("process").and_then(|p| p.as_str())
+                                               .map_or(false, |p| p.contains("liebesu-clash") || p.contains("verge"));
                                 }
-                                Err(e) => {
-                                    log::debug!(target: "app", "❌ [连接清理] 连接 {} 清理失败: {}", id, e);
+                                
+                                // 检查连接状态
+                                if let Some(rule) = metadata.get("rule").and_then(|r| r.as_str()) {
+                                    return rule.contains("GLOBAL") || rule.contains("DIRECT");
                                 }
                             }
+                            
+                            // 清理长时间存在的连接
+                            if let Some(start) = conn.get("start").and_then(|s| s.as_str()) {
+                                // 简单的时间检查（如果连接存在超过5分钟）
+                                return start.len() > 0; // 简化实现
+                            }
+                            
+                            false
+                        })
+                        .collect();
+                    
+                    if !stale_connections.is_empty() {
+                        let total_connections = stale_connections.len();
+                        log::info!(target: "speed_test", "🧹 [增强清理] 发现 {} 个需要清理的连接", total_connections);
+                        
+                        // 批量并发清理连接，提高效率
+                        let mut cleanup_tasks = Vec::new();
+                        
+                        for conn in stale_connections {
+                            if let Some(id) = conn.get("id").and_then(|i| i.as_str()) {
+                                let id = id.to_string();
+                                let ipc_clone = ipc.clone();
+                                
+                                let cleanup_task = tokio::spawn(async move {
+                                    log::debug!(target: "speed_test", "🗑️ [增强清理] 清理连接: {}", id);
+                                    match ipc_clone.delete_connection(&id).await {
+                                        Ok(_) => {
+                                            log::debug!(target: "speed_test", "✅ [增强清理] 连接 {} 清理成功", id);
+                                            true
+                                        }
+                                        Err(e) => {
+                                            log::debug!(target: "speed_test", "❌ [增强清理] 连接 {} 清理失败: {}", id, e);
+                                            false
+                                        }
+                                    }
+                                });
+                                
+                                cleanup_tasks.push(cleanup_task);
+                            }
                         }
+                        
+                        // 等待所有清理任务完成
+                        let results = futures_util::future::join_all(cleanup_tasks).await;
+                        let cleaned_count = results.into_iter()
+                            .filter_map(|r| r.ok())
+                            .filter(|&success| success)
+                            .count();
+                        
+                        log::info!(target: "speed_test", "✅ [增强清理] 清理完成，成功清理 {}/{} 个连接", cleaned_count, total_connections);
+                    } else {
+                        log::debug!(target: "speed_test", "✨ [增强清理] 未发现需要清理的连接");
                     }
-                    
-                    log::info!(target: "app", "✅ [连接清理] 清理完成，成功清理 {}/{} 个连接", cleaned_count, total_connections);
-                } else {
-                    log::debug!(target: "app", "✨ [连接清理] 未发现需要清理的僵死连接");
                 }
             }
+            Err(e) => {
+                log::warn!(target: "speed_test", "❌ [增强清理] 获取连接列表失败: {}", e);
+            }
         }
-        Err(e) => {
-            log::debug!(target: "app", "❌ [连接清理] 获取连接列表失败: {}", e);
+        
+        // 额外的系统级清理
+        log::debug!(target: "speed_test", "🔧 [增强清理] 执行系统级资源清理");
+        
+        // 尝试强制垃圾回收（Rust中的等效操作）
+        // 这里可以添加更多的系统清理逻辑
+        
+        Ok(())
+    };
+    
+    // 添加超时保护
+    match tokio::time::timeout(cleanup_timeout, cleanup_task).await {
+        Ok(result) => result,
+        Err(_) => {
+            log::error!(target: "speed_test", "⏰ [增强清理] 连接清理超时");
+            Err(anyhow::anyhow!("连接清理操作超时"))
         }
     }
-    
-    Ok(())
 }

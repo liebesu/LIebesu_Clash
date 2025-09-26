@@ -9,6 +9,7 @@ pub mod backup_restore;
 pub mod batch_import;
 pub mod clash;
 pub mod global_speed_test;
+pub mod speed_test_monitor;
 pub mod health_check;
 pub mod lightweight;
 pub mod media_unlock_checker;
