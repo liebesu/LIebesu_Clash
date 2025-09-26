@@ -2234,6 +2234,20 @@ export async function cancelGlobalSpeedTest(): Promise<string> {
 }
 
 /**
+ * 强制取消假死的测速
+ */
+export async function forceCancelFrozenSpeedTest(): Promise<string> {
+  return invoke<string>("force_cancel_frozen_speed_test");
+}
+
+/**
+ * 获取测速健康报告
+ */
+export async function getSpeedTestHealthReport(): Promise<any> {
+  return invoke<any>("get_speed_test_health_report");
+}
+
+/**
  * 切换到指定节点
  */
 export async function switchToNode(profileUid: string, nodeName: string): Promise<string> {

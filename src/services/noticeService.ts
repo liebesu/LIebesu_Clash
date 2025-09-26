@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 export interface NoticeItem {
   id: number;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "warning";
   message: ReactNode;
   duration: number;
   timerId?: ReturnType<typeof setTimeout>;
@@ -21,13 +21,13 @@ function notifyListeners() {
 // Shows a notification.
 
 export function showNotice(
-  type: "success" | "error" | "info",
+  type: "success" | "error" | "info" | "warning",
   message: ReactNode,
   duration?: number,
 ): number {
   const id = nextId++;
   const effectiveDuration =
-    duration ?? (type === "error" ? 8000 : type === "info" ? 5000 : 3000); // Longer defaults
+    duration ?? (type === "error" ? 8000 : type === "warning" ? 6000 : type === "info" ? 5000 : 3000); // Longer defaults
 
   const newNotice: NoticeItem = {
     id,

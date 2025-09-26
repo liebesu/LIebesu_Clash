@@ -149,6 +149,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     let progressUnlisten: (() => void) | null = null;
     let nodeUpdateUnlisten: (() => void) | null = null;
     let completeUnlisten: (() => void) | null = null;
+    let healthUnlisten: (() => void) | null = null;
+    let freezeUnlisten: (() => void) | null = null;
+    let forceCancelUnlisten: (() => void) | null = null;
 
     const setupListeners = async () => {
       // 监听进度更新
@@ -211,7 +214,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听健康报告
-      const healthUnlisten = await listen<HealthCheckReport>(
+      healthUnlisten = await listen<HealthCheckReport>(
         'speed-test-health-report',
         (event) => {
           setHealthReport(event.payload);
@@ -222,7 +225,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听假死检测
-      const freezeUnlisten = await listen<HealthCheckReport>(
+      freezeUnlisten = await listen<HealthCheckReport>(
         'speed-test-freeze-detected',
         (event) => {
           setFreezeDetected(true);
@@ -233,7 +236,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听强制取消事件
-      const forceCancelUnlisten = await listen(
+      forceCancelUnlisten = await listen(
         'global-speed-test-force-cancelled',
         () => {
           setTesting(false);
