@@ -306,7 +306,15 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         log::info!(target: "app", "🔄 [批次处理] 开始顺序测试批次 {}/{} 的 {} 个节点", 
                   batch_index + 1, total_batches, chunk.len());
         
+        // 🔧 修复：添加批次级别的错误处理
+        let batch_start_time = Instant::now();
         let mut batch_results: Vec<Result<SpeedTestResult, anyhow::Error>> = Vec::new();
+        
+        // 检查批次超时
+        if batch_start_time.elapsed() > Duration::from_secs(config.batch_timeout_seconds) {
+            log::warn!(target: "app", "⏰ [批次超时] 批次 {} 超时，跳过剩余节点", batch_index + 1);
+            continue;
+        }
         
         for (node_index, node) in chunk.iter().enumerate() {
             // 检查取消标志
@@ -333,18 +341,37 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             
             // 🔧 修复：顺序测试单个节点，避免并发竞争
             let node_start_time = Instant::now();
-            let result = test_single_node(node, config.node_timeout_seconds).await;
-            let node_duration = node_start_time.elapsed();
+            let result = match test_single_node(node, config.node_timeout_seconds).await {
+                Ok(test_result) => {
+                    let node_duration = node_start_time.elapsed();
+                    log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
+                              node.node_name, node_duration, 
+                              if test_result.is_available { 
+                                  format!("成功 ({}ms)", test_result.latency.unwrap_or(0)) 
+                              } else { 
+                                  "失败".to_string() 
+                              });
+                    Ok(test_result)
+                }
+                Err(e) => {
+                    let node_duration = node_start_time.elapsed();
+                    log::error!(target: "app", "❌ [节点测试] 节点 {} 测试失败，耗时: {:?}, 错误: {}", 
+                              node.node_name, node_duration, e);
+                    
+                    // 🔧 修复：创建失败结果而不是直接返回错误
+                    let failed_result = SpeedTestResult {
+                        node_name: node.node_name.clone(),
+                        profile_name: node.profile_name.clone(),
+                        is_available: false,
+                        latency: None,
+                        score: 0.0,
+                        error_message: Some(format!("测试失败: {}", e)),
+                    };
+                    Ok(failed_result)
+                }
+            };
             
-            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
-                      node.node_name, node_duration, 
-                      if result.is_available { 
-                          format!("成功 ({}ms)", result.latency.unwrap_or(0)) 
-                      } else { 
-                          "失败".to_string() 
-                      });
-            
-            batch_results.push(Ok(result));
+            batch_results.push(result);
             
             // 🔧 优化：减少节点间隔，提高1000+节点测速效率
             if node_index < chunk.len() - 1 {
@@ -353,13 +380,17 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             }
         }
         
-        log::info!(target: "app", "✅ [批次处理] 批次 {}/{} 测试完成，共处理 {} 个节点", 
-                  batch_index + 1, total_batches, batch_results.len());
+        let batch_duration = batch_start_time.elapsed();
+        log::info!(target: "app", "✅ [批次处理] 批次 {}/{} 测试完成，耗时: {:?}, 共处理 {} 个节点", 
+                  batch_index + 1, total_batches, batch_duration, batch_results.len());
         
         // 🔧 修复：直接处理顺序测试结果
         {
             // 处理所有测试结果
             let results_len = batch_results.len(); // 🔧 先保存长度
+            let mut batch_successful = 0;
+            let mut batch_failed = 0;
+            
             for result in batch_results {
                     // 检查取消标志
                     if CANCEL_FLAG.load(Ordering::SeqCst) {
@@ -371,8 +402,10 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                         Ok(test_result) => {
                             if test_result.is_available {
                                 successful_tests += 1;
+                                batch_successful += 1;
                             } else {
                                 failed_tests += 1;
+                                batch_failed += 1;
                             }
                             
                             // 发送节点完成事件（非阻塞）
@@ -392,10 +425,20 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                         Err(e) => {
                             log::error!(target: "app", "❌ 节点测试任务失败: {}", e);
                             failed_tests += 1;
+                            batch_failed += 1;
                         }
                     }
                 }
-                log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results_len);
+                
+                // 🔧 修复：详细的批次统计日志
+                log::info!(target: "app", "📊 [批次统计] 批次 {} 完成: 成功 {} 个, 失败 {} 个, 总耗时: {:?}", 
+                          batch_index + 1, batch_successful, batch_failed, batch_duration);
+                
+                // 🔧 修复：如果批次失败率过高，记录警告
+                if batch_failed > batch_successful && batch_failed > 0 {
+                    log::warn!(target: "app", "⚠️ [批次警告] 批次 {} 失败率过高: {}/{} 节点失败", 
+                              batch_index + 1, batch_failed, results_len);
+                }
         }
         
         let completed = all_results.len();

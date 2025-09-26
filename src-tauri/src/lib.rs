@@ -34,11 +34,22 @@ use log::LevelFilter;
 fn init_logger() {
     use std::env;
     use std::path::Path;
+    use std::fs;
     
     // 设置日志级别
     let log_level = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     unsafe {
         env::set_var("RUST_LOG", &log_level);
+    }
+    
+    // 🔧 修复：确保日志目录存在
+    let logs_dir = "logs";
+    if !Path::new(logs_dir).exists() {
+        if let Err(e) = fs::create_dir_all(logs_dir) {
+            eprintln!("⚠️ 创建日志目录失败: {}", e);
+        } else {
+            println!("✅ 创建日志目录: {}", logs_dir);
+        }
     }
     
     // 尝试使用log4rs配置文件
@@ -66,22 +77,28 @@ fn init_logger() {
         }
     }
     
-    // 如果没有配置文件，使用简单的控制台日志
+    // 如果没有配置文件，使用增强的控制台+文件日志
     if !logger_initialized {
         match log4rs::init_config(log4rs::config::Config::builder()
             .appender(log4rs::config::Appender::builder()
                 .build("console", Box::new(log4rs::append::console::ConsoleAppender::builder()
                     .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
                     .build())))
+            .appender(log4rs::config::Appender::builder()
+                .build("file", Box::new(log4rs::append::file::FileAppender::builder()
+                    .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
+                    .build("logs/app.log")
+                    .unwrap())))
             .logger(log4rs::config::Logger::builder()
                 .build("app", log_level.parse().unwrap_or(LevelFilter::Info)))
             .build(log4rs::config::Root::builder()
                 .appender("console")
+                .appender("file")
                 .build(log_level.parse().unwrap_or(LevelFilter::Info)))
             .unwrap())
         {
             Ok(_) => {
-                println!("✅ 日志系统已初始化 (控制台模式)");
+                println!("✅ 日志系统已初始化 (控制台+文件模式)");
             }
             Err(e) => {
                 eprintln!("⚠️ 日志系统初始化失败: {}", e);
