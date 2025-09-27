@@ -493,6 +493,18 @@ jobs:
             echo "Renamed APP to: $DIR/$NEW_NAME"
           fi
 
+      - name: Collect macOS fix scripts
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          set -e
+          mkdir -p artifacts-extra
+          # 收集后处理生成的修复脚本
+          find src-tauri/target -type f -name "fix-startup.sh" -exec cp -f {} artifacts-extra/ \; || true
+          find src-tauri/target -type f -name "enhanced-macos-fix.sh" -exec cp -f {} artifacts-extra/ \; || true
+          echo "收集到的脚本:"
+          ls -l artifacts-extra || true
+
       - name: Upload renamed assets to release
         uses: softprops/action-gh-release@v2
         with:
@@ -505,6 +517,7 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*_${{ github.run_number }}-setup.nsis.zip
             src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*_${{ github.run_number }}.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/macos/*_${{ github.run_number }}.app.tar.gz
+            artifacts-extra/*.sh
 
   # Linux ARM 构建已禁用
   autobuild-arm-linux:

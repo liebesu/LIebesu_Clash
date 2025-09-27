@@ -219,6 +219,29 @@ async function sendTelegramNotification() {
     );
     process.exit(1);
   }
+
+  // 附加：尝试作为文档附件推送 macOS 修复脚本（若存在）
+  try {
+    const { existsSync } = await import('fs');
+    const path = await import('path');
+    // 在 CI 中我们把脚本集中到 artifacts-extra
+    const scriptsDir = 'artifacts-extra';
+    const candidates = ['fix-startup.sh', 'enhanced-macos-fix.sh'];
+    for (const fname of candidates) {
+      const full = path.join(scriptsDir, fname);
+      if (existsSync(full)) {
+        const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendDocument`;
+        const form = new (await import('form-data')).default();
+        form.append('chat_id', chatId);
+        form.append('caption', `macOS 启动修复脚本：${fname}`);
+        form.append('document', readFileSync(full), { filename: fname, contentType: 'text/x-shellscript' });
+        await axios.post(url, form, { headers: form.getHeaders() });
+        log_success(`✅ 已附加推送脚本到 Telegram: ${fname}`);
+      }
+    }
+  } catch (err) {
+    log_error('⚠️ 推送脚本附件到 Telegram 失败（忽略）：', err?.response?.data || err?.message || err);
+  }
 }
 
 // 执行函数
