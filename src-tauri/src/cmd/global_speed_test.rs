@@ -330,6 +330,9 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     // 添加超时保护，防止整个测速过程卡死
     let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
     let start_time = Instant::now();
+    // 兼容模式上限：当 Clash 不可用时，限制最大扫描节点数量，避免长时间 TCP 扫描导致卡顿
+    let max_nodes_when_clash_down: usize = 60;
+    let mut processed_nodes_overall: usize = 0;
 
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
         // 检查取消标志
@@ -370,6 +373,8 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         // 🔧 修复：添加批次级别的错误处理
         let batch_start_time = Instant::now();
         let mut batch_results: Vec<Result<SpeedTestResult, anyhow::Error>> = Vec::new();
+        // 节流“testing”事件，避免高频事件导致前端渲染卡顿
+        let mut last_testing_emit = Instant::now() - Duration::from_millis(500);
         
         // 检查批次超时
         if batch_start_time.elapsed() > Duration::from_secs(config.batch_timeout_seconds) {
@@ -405,17 +410,20 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                 total_nodes
             );
             
-            // 发送节点测试开始事件
-            let update = NodeTestUpdate {
-                        node_name: node.node_name.clone(),
-                        profile_name: node.profile_name.clone(),
-                status: "testing".to_string(),
-                        latency_ms: None,
-                error_message: None,
-                completed: completed_count,
-                total: total_nodes,
-            };
-            let _ = app_handle.emit("node-test-update", update);
+            // 发送节点测试开始事件（节流，最多每150ms发一次）
+            if last_testing_emit.elapsed() > Duration::from_millis(150) {
+                last_testing_emit = Instant::now();
+                let update = NodeTestUpdate {
+                    node_name: node.node_name.clone(),
+                    profile_name: node.profile_name.clone(),
+                    status: "testing".to_string(),
+                    latency_ms: None,
+                    error_message: None,
+                    completed: completed_count,
+                    total: total_nodes,
+                };
+                let _ = app_handle.emit("node-test-update", update);
+            }
             
             // 🔧 修复：带状态跟踪的单节点测试
             let node_start_time = Instant::now();
@@ -450,6 +458,14 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             }
 
             batch_results.push(Ok(test_result));
+
+            // Clash 不可用时，达到上限则触发整体早退信号
+            processed_nodes_overall += 1;
+            if !CLASH_AVAILABLE.load(Ordering::SeqCst) && processed_nodes_overall >= max_nodes_when_clash_down {
+                log::warn!(target: "app", "🛑 [兼容模式上限] Clash 不可用，已扫描 {} 个节点，提前结束以保持流畅性", processed_nodes_overall);
+                consecutive_failures_overall = usize::MAX;
+                break;
+            }
             
             // 🔧 优化：减少节点间隔，提高1000+节点测速效率
             if node_index < chunk.len() - 1 {
