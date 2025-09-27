@@ -17,6 +17,9 @@ use tauri::Emitter;
 /// 取消标志，用于停止全局测速
 pub static CANCEL_FLAG: AtomicBool = AtomicBool::new(false);
 
+/// Clash 可用性标志：在一次测速过程中检测后缓存，用于避免反复调用失败的 Clash API 导致阻塞
+pub static CLASH_AVAILABLE: AtomicBool = AtomicBool::new(true);
+
 /// 最新测速结果，用于应用最佳节点
 static LATEST_RESULTS: Mutex<Option<GlobalSpeedTestSummary>> = Mutex::new(None);
 
@@ -302,6 +305,9 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     log::info!(target: "app", "🔍 检查Clash服务可用性...");
     if let Err(e) = check_clash_availability().await {
         log::warn!(target: "app", "⚠️ Clash服务不可用，将使用TCP连接测试: {}", e);
+        CLASH_AVAILABLE.store(false, Ordering::SeqCst);
+    } else {
+        CLASH_AVAILABLE.store(true, Ordering::SeqCst);
     }
     
     // 第三步：批量测试所有节点
@@ -946,7 +952,7 @@ async fn test_single_node_internal(node: &NodeInfo, timeout_seconds: u64) -> Spe
         Err(e) => {
             log::warn!(target: "app", "❌ 节点 {} 代理测试失败: {}", node.node_name, e);
             
-            // 如果Clash API测试失败，降级到TCP连接测试作为备用
+            // 如果Clash API测试失败或不可用，降级到TCP连接测试作为备用
             log::info!(target: "app", "🔄 节点 {} 降级到TCP连接测试", node.node_name);
             
             match test_tcp_connection(&node.server, node.port, timeout_seconds).await {
@@ -1035,6 +1041,10 @@ async fn check_clash_availability() -> Result<()> {
 
 /// 通过临时切换节点进行真实代理延迟测试（修复测速逻辑）
 async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u64> {
+    // 若检测到 Clash 不可用，直接返回错误让上层走 TCP 降级，避免反复占用连接池
+    if !CLASH_AVAILABLE.load(Ordering::SeqCst) {
+        return Err(anyhow::anyhow!("Clash 不可用，跳过代理测速"));
+    }
     
     // 获取IPC管理器实例
     let ipc = IpcManager::global();
@@ -1316,6 +1326,11 @@ fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -
 
 /// 增强版连接清理，防止连接累积导致假死
 async fn cleanup_stale_connections() -> Result<()> {
+    // Clash 不可用时，跳过连接清理，避免反复打 API 导致连接池耗尽
+    if !CLASH_AVAILABLE.load(Ordering::SeqCst) {
+        log::debug!(target: "speed_test", "⏭️ [增强清理] Clash 不可用，跳过连接清理");
+        return Ok(());
+    }
     log::debug!(target: "speed_test", "🧹 [增强清理] 开始清理僵死连接");
     let ipc = IpcManager::global();
     

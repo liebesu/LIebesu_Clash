@@ -2222,6 +2222,18 @@ export async function startGlobalSpeedTest(config?: {
   });
 }
 
+// 兼容模式：使用更保守的参数并在后端自动跳过 Clash API
+export async function startGlobalSpeedTestCompat(): Promise<string> {
+  const cfg = {
+    batch_size: 1,
+    node_timeout_seconds: 2,
+    batch_timeout_seconds: 5,
+    overall_timeout_seconds: 600,
+    max_concurrent: 1,
+  };
+  return invoke<string>("start_global_speed_test", { config: cfg });
+}
+
 /**
  * 切换到最佳节点
  */
