@@ -176,9 +176,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
         'node-test-update',
         (event) => {
           const now = Date.now();
+          const update = event.payload;
           if (now - lastNodeUpdateTsRef.current >= NODE_THROTTLE_MS) {
             lastNodeUpdateTsRef.current = now;
-            const update = event.payload;
             setRecentTests(prev => {
               const newTests = [update, ...prev].slice(0, 20); // 保留最近20个测试
               return newTests;
