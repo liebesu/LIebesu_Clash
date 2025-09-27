@@ -35,6 +35,7 @@ import {
   Timer,
   Settings,
   Save,
+  FastForward,
 } from '@mui/icons-material';
 import { 
   startGlobalSpeedTest, 

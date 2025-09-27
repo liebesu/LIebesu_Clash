@@ -331,7 +331,8 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
     let start_time = Instant::now();
     // 兼容模式上限：当 Clash 不可用时，限制最大扫描节点数量，避免长时间 TCP 扫描导致卡顿
-    let max_nodes_when_clash_down: usize = 60;
+    // 将上限提升到 500，以兼顾完整需求与稳定性；若仍不足，可进一步提升或转前端配置
+    let max_nodes_when_clash_down: usize = 500;
     let mut processed_nodes_overall: usize = 0;
 
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
