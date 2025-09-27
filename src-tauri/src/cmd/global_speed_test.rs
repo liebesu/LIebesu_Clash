@@ -321,6 +321,11 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     let total_batches = (total_nodes + batch_size - 1) / batch_size;
     let mut successful_tests = 0;
     let mut failed_tests = 0;
+    // 早退保护：当 Clash 不可用且连续失败过多，或长时间无进度时提前结束
+    let mut consecutive_failures_overall: usize = 0;
+    let consecutive_failures_limit_when_clash_down: usize = 30;
+    let mut last_progress_instant = Instant::now();
+    let idle_threshold = Duration::from_secs(25);
     
     // 添加超时保护，防止整个测速过程卡死
     let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
@@ -378,6 +383,14 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                 log::info!(target: "app", "⏹️ [取消检查] 用户取消测速，停止当前批次");
                 break;
             }
+
+            // 空转保护：若超过阈值未产生新结果，提前结束
+            if last_progress_instant.elapsed() > idle_threshold {
+                log::warn!(target: "app", "⏰ [空转保护] 超过 {:?} 未产生新结果，提前结束测速", idle_threshold);
+                // 通过设置一个信号值让外层循环也结束
+                consecutive_failures_overall = usize::MAX;
+                break;
+            }
             
             log::info!(target: "speed_test", "🎯 [节点测试] 开始测试节点 {}/{}: {} (来自: {})", 
                       node_index + 1, chunk.len(), node.node_name, node.profile_name);
@@ -426,6 +439,16 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                           "失败".to_string() 
                       });
             
+            // 结果到达即刷新进度时间戳
+            last_progress_instant = Instant::now();
+            if !test_result.is_available { consecutive_failures_overall += 1; } else { consecutive_failures_overall = 0; }
+            if !CLASH_AVAILABLE.load(Ordering::SeqCst) && consecutive_failures_overall >= consecutive_failures_limit_when_clash_down {
+                log::warn!(target: "app", "⛔ [提前结束] Clash 不可用且连续失败达到 {}，提前结束测速", consecutive_failures_overall);
+                batch_results.push(Ok(test_result));
+                consecutive_failures_overall = usize::MAX;
+                break;
+            }
+
             batch_results.push(Ok(test_result));
             
             // 🔧 优化：减少节点间隔，提高1000+节点测速效率
@@ -501,6 +524,12 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         log::info!(target: "app", "📊 进度: {}/{} ({:.1}%) - 成功: {}, 失败: {}", 
                   completed, total_nodes, percentage, successful_tests, failed_tests);
         
+        // 若已触发提前结束信号，结束所有批次
+        if consecutive_failures_overall == usize::MAX {
+            log::warn!(target: "app", "🛑 [整体结束] 触发早退条件，停止后续批次");
+            break;
+        }
+
         // 🚀 添加批次间延迟和连接清理，避免资源耗尽和连接堆积
         if batch_index + 1 < total_batches {
             log::debug!(target: "app", "⏸️ 批次间休息和清理，避免资源耗尽");
