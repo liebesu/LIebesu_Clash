@@ -112,6 +112,7 @@ pub struct SpeedTestConfig {
     pub batch_timeout_seconds: u64,
     pub overall_timeout_seconds: u64,
     pub max_concurrent: usize,
+    pub max_when_clash_down: Option<usize>,
 }
 
 /// 全局节点测速 - 增强版（防假死）
@@ -158,6 +159,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         batch_timeout_seconds: 5,         // 🔧 批次超时进一步减少，防止长时间等待
         overall_timeout_seconds: 900,     // 🔧 总超时减少到15分钟，避免无限等待
         max_concurrent: 1,                // 🔧 严格禁用并发，避免资源竞争
+        max_when_clash_down: None,
     });
     
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
@@ -332,7 +334,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     let start_time = Instant::now();
     // 兼容模式上限：当 Clash 不可用时，限制最大扫描节点数量，避免长时间 TCP 扫描导致卡顿
     // 将上限提升到 500，以兼顾完整需求与稳定性；若仍不足，可进一步提升或转前端配置
-    let max_nodes_when_clash_down: usize = 500;
+    let max_nodes_when_clash_down: usize = config.max_when_clash_down.unwrap_or(500);
     let mut processed_nodes_overall: usize = 0;
 
     for (batch_index, chunk) in all_nodes_with_profile.chunks(batch_size).enumerate() {
@@ -374,7 +376,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
         // 🔧 修复：添加批次级别的错误处理
         let batch_start_time = Instant::now();
         let mut batch_results: Vec<Result<SpeedTestResult, anyhow::Error>> = Vec::new();
-        // 节流“testing”事件，避免高频事件导致前端渲染卡顿
+        // 节流"testing"事件，避免高频事件导致前端渲染卡顿
         let mut last_testing_emit = Instant::now() - Duration::from_millis(500);
         
         // 检查批次超时

@@ -2210,6 +2210,7 @@ export async function startGlobalSpeedTest(config?: {
   batchTimeout: number;
   overallTimeout: number;
   maxConcurrent: number;
+  maxWhenClashDown?: number;
 }): Promise<string> {
   return invoke<string>("start_global_speed_test", { 
     config: config ? {
@@ -2218,6 +2219,7 @@ export async function startGlobalSpeedTest(config?: {
       batch_timeout_seconds: config.batchTimeout,
       overall_timeout_seconds: config.overallTimeout,
       max_concurrent: config.maxConcurrent,
+      max_when_clash_down: config.maxWhenClashDown,
     } : undefined
   });
 }
