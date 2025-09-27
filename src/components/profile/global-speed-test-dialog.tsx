@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -145,6 +145,12 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     maxConcurrent: 6,       // 🚀 优化后的最大并发数
   });
 
+  // 节流更新，避免 UI 在最大化时频繁重绘导致卡顿
+  const lastProgressTsRef = useRef<number>(0);
+  const lastNodeUpdateTsRef = useRef<number>(0);
+  const PROGRESS_THROTTLE_MS = 150;
+  const NODE_THROTTLE_MS = 120;
+
   useEffect(() => {
     let progressUnlisten: (() => void) | null = null;
     let nodeUpdateUnlisten: (() => void) | null = null;
@@ -158,6 +164,9 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       progressUnlisten = await listen<GlobalSpeedTestProgress>(
         'global-speed-test-progress',
         (event) => {
+          const now = Date.now();
+          if (now - lastProgressTsRef.current < PROGRESS_THROTTLE_MS) return;
+          lastProgressTsRef.current = now;
           setProgress(event.payload);
         }
       );
@@ -166,11 +175,15 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       nodeUpdateUnlisten = await listen<NodeTestUpdate>(
         'node-test-update',
         (event) => {
-          const update = event.payload;
-          setRecentTests(prev => {
-            const newTests = [update, ...prev].slice(0, 20); // 保留最近20个测试
-            return newTests;
-          });
+          const now = Date.now();
+          if (now - lastNodeUpdateTsRef.current >= NODE_THROTTLE_MS) {
+            lastNodeUpdateTsRef.current = now;
+            const update = event.payload;
+            setRecentTests(prev => {
+              const newTests = [update, ...prev].slice(0, 20); // 保留最近20个测试
+              return newTests;
+            });
+          }
 
           // 更新当前测试中的节点
           if (update.status === 'testing') {
@@ -952,6 +965,38 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
                 </Box>
               )}
             </CardContent>
+          </Card>
+        )}
+
+        {/* 滚动排行（恢复） */}
+        {summary && summary.top_10_nodes.length > 0 && (
+          <Card sx={{ mb: 2, overflow: 'hidden' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                whiteSpace: 'nowrap',
+                py: 1,
+                px: 2,
+                animation: 'scrollLeft 25s linear infinite',
+                '@keyframes scrollLeft': {
+                  '0%': { transform: 'translateX(0)' },
+                  '100%': { transform: 'translateX(-50%)' },
+                },
+              }}
+            >
+              {[...summary.top_10_nodes, ...summary.top_10_nodes].map((node, idx) => (
+                <Box key={`${node.profile_uid}-${node.node_name}-${idx}`} sx={{ display: 'inline-flex', alignItems: 'center', mr: 3 }}>
+                  <Star sx={{ color: idx % summary.top_10_nodes.length === 0 ? '#ffd700' : 'primary.main', fontSize: 18, mr: 0.5 }} />
+                  <Typography variant="body2" sx={{ fontWeight: 'bold', mr: 1 }}>
+                    {node.node_name}
+                  </Typography>
+                  <Chip size="small" label={formatLatency(node.latency)} sx={{ mr: 1, borderColor: getLatencyColor(node.latency), color: getLatencyColor(node.latency) }} variant="outlined" />
+                  <Chip size="small" label={`${node.score.toFixed(1)}分`} sx={{ borderColor: getQualityColor(node.score), color: getQualityColor(node.score) }} variant="outlined" />
+                </Box>
+              ))}
+            </Box>
           </Card>
         )}
 
