@@ -254,6 +254,12 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             
         log::info!(target: "app", "🔍 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
             
+        // 跳过增强模板类占位配置，避免无有效节点浪费时间
+        if profile_data.starts_with("# Profile Enhancement ") {
+            log::info!(target: "app", "⏭️ 跳过增强模板占位配置: {}", profile_name);
+            continue;
+        }
+
         match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
                 Ok(nodes) => {
                     if nodes.is_empty() {
