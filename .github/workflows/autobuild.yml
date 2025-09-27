@@ -298,11 +298,18 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           NODE_OPTIONS: "--max_old_space_size=8192"  # 优化：大幅增加内存限制
-          # 移除GITHUB_TOKEN，禁用所有GitHub相关操作
-          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 使用 ad-hoc 签名，避免证书导入
-          APPLE_SIGNING_IDENTITY: "-"
           VITE_BUILD_VERSION: "${{ github.run_number }}"
+          # 优先使用 Developer ID 证书与公证（若仓库已配置 secrets），否则 Tauri 将退回 ad-hoc
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # 使用 Apple ID 或 API Key 进行公证（二选一，按 secrets 可用性自动匹配）
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         with:
           # 完全移除release相关配置，只进行构建
           # tagName: ${{ env.TAG_NAME }}
@@ -340,40 +347,46 @@ jobs:
             chmod -R 755 "$APP_PATH"
             chmod +x "$APP_PATH/Contents/MacOS/"* 2>/dev/null || true
             
-          # 3. 检查和修复Info.plist（确保 CFBundleExecutable 与实际二进制一致）
-          INFO_PLIST="$APP_PATH/Contents/Info.plist"
-          if [[ -f "$INFO_PLIST" ]]; then
-            echo "检查Info.plist..."
-            # 读取实际二进制名
-            ACTUAL_EXEC="$(basename "$(ls \"$APP_PATH/Contents/MacOS\" | head -1)")"
-            echo "实际二进制: $ACTUAL_EXEC"
-            # 强制对齐 CFBundleExecutable
-            plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
-            # 仅设置高分屏标志，不再写入 LSMinimumSystemVersion（由打包器生成）
-            plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" || true
-            # 验证 CFBundleExecutable 指向的文件是否存在
-            BUNDLE_EXEC="$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")"
-            if [[ -n "$BUNDLE_EXEC" && ! -f "$APP_PATH/Contents/MacOS/$BUNDLE_EXEC" ]]; then
-              echo "⚠️ CFBundleExecutable 指向不存在的文件: $BUNDLE_EXEC"
-              echo "回退到实际二进制: $ACTUAL_EXEC"
-              plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
+          # 3/4. 当存在 Developer ID 证书时，避免修改 Info.plist 与 ad-hoc 重新签名
+          DEV_ID="${{ secrets.APPLE_SIGNING_IDENTITY }}"
+          if [[ -n "$DEV_ID" && "$DEV_ID" != "-" ]]; then
+            echo "检测到 Developer ID 签名配置，跳过 Info.plist 修改与 ad-hoc 重签。"
+            # 附加：尝试 staple（若 tauri-action 已完成公证则会成功，否则忽略错误）
+            if command -v xcrun >/dev/null 2>&1; then
+              xcrun stapler staple -q "$APP_PATH" || true
             fi
-            echo "最终 CFBundleExecutable: $(plutil -extract CFBundleExecutable raw \"$INFO_PLIST\" 2>/dev/null || echo \"\")"
-          fi
-            
-            # 4. 重新签名
-            echo "重新签名应用程序..."
-            codesign --force --deep --sign - "$APP_PATH" || true
-            
-            # 5. 验证签名
+          else
+            echo "未检测到 Developer ID，执行最小修复以保证本地可运行（可能仍被 Gatekeeper 拦截）。"
+            INFO_PLIST="$APP_PATH/Contents/Info.plist"
+            if [[ -f "$INFO_PLIST" ]]; then
+              echo "检查Info.plist..."
+              ACTUAL_EXEC="$(basename "$(ls \"$APP_PATH/Contents/MacOS\" | head -1)")"
+              echo "实际二进制: $ACTUAL_EXEC"
+              plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
+              plutil -replace NSHighResolutionCapable -bool true "$INFO_PLIST" || true
+              BUNDLE_EXEC="$(plutil -extract CFBundleExecutable raw "$INFO_PLIST" 2>/dev/null || echo "")"
+              if [[ -n "$BUNDLE_EXEC" && ! -f "$APP_PATH/Contents/MacOS/$BUNDLE_EXEC" ]]; then
+                echo "⚠️ CFBundleExecutable 指向不存在的文件: $BUNDLE_EXEC"
+                echo "回退到实际二进制: $ACTUAL_EXEC"
+                plutil -replace CFBundleExecutable -string "$ACTUAL_EXEC" "$INFO_PLIST" || true
+              fi
+              echo "最终 CFBundleExecutable: $(plutil -extract CFBundleExecutable raw \"$INFO_PLIST\" 2>/dev/null || echo \"\")"
+            fi
+            echo "使用 ad-hoc 重签以确保包内元数据一致（注意：未公证仍可能被 Gatekeeper 拒绝）..."
+            codesign --force --deep --options runtime --sign - "$APP_PATH" || true
             echo "验证签名..."
             codesign --verify --verbose=2 "$APP_PATH" || echo "⚠️ 签名验证失败"
+          fi
             
             # 6. 注册到Launch Services
             echo "注册到Launch Services..."
             /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" || true
             
-            # 7. 创建修复脚本
+            # 7. Gatekeeper 评估（仅输出用于诊断，不作为失败条件）
+            echo "Gatekeeper 评估:"
+            spctl -a -vv "$APP_PATH" || true
+
+            # 8. 创建修复脚本
             echo "创建修复脚本..."
             cat > "$(dirname "$APP_PATH")/fix-startup.sh" << 'EOF'
           #!/bin/bash
@@ -398,7 +411,7 @@ jobs:
           EOF
             chmod +x "$(dirname "$APP_PATH")/fix-startup.sh"
             
-            # 8. 更新时间戳
+            # 9. 更新时间戳
             touch "$APP_PATH"
             
             echo "✅ 应用程序处理完成"
@@ -408,6 +421,10 @@ jobs:
             echo "🔧 处理DMG文件..."
             # 移除DMG隔离属性
             sudo xattr -cr "$DMG_PATH" || xattr -cr "$DMG_PATH" || true
+            # 若已签名并公证，尝试 staple DMG
+            if [[ -n "$DEV_ID" && "$DEV_ID" != "-" ]] && command -v xcrun >/dev/null 2>&1; then
+              xcrun stapler staple -q "$DMG_PATH" || true
+            fi
             
             # 复制修复脚本
             if [[ -f "$(dirname "$APP_PATH")/fix-startup.sh" ]]; then
