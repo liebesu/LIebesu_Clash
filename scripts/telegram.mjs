@@ -191,9 +191,32 @@ async function sendTelegramNotification() {
 
   const formattedContent = convertMarkdownToTelegramHTML(releaseContent);
 
+  // 追加：macOS 放行脚本链接与使用说明（若存在）
+  let fixSectionHTML = "";
+  try {
+    const fixNames = ["fix-startup.sh", "enhanced-macos-fix.sh"];
+    const foundFixes = releaseAssets.filter((n) => fixNames.some((x) => n.endsWith(x)));
+    if (foundFixes.length > 0) {
+      const links = foundFixes
+        .map((asset) => {
+          const enc = asset.includes('%') ? asset : encodeURIComponent(asset);
+          const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${enc}`;
+          return `- <a href="${url}">${asset}</a>`;
+        })
+        .join("\n");
+      const usage = [
+        "下载脚本后在终端执行：",
+        "<pre><code>chmod +x ~/Downloads/fix-startup.sh && bash ~/Downloads/fix-startup.sh</code></pre>",
+      ].join("\n");
+      fixSectionHTML = `\n\n<b>macOS 一键放行脚本</b>\n${links}\n${usage}`;
+    }
+  } catch (e) {
+    // 忽略构建 fixSection 失败
+  }
+
   const releaseTitle = isAutobuild ? "滚动更新版发布" : "正式发布";
   const encodedVersion = encodeURIComponent(version);
-  const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag}">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}`;
+  const content = `<b>🎉 <a href="https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag}">LIebesu_Clash v${version}</a> ${releaseTitle}</b>\n\n${formattedContent}${fixSectionHTML}`;
 
   // 发送到 Telegram
   try {
@@ -222,7 +245,7 @@ async function sendTelegramNotification() {
 
   // 附加：尝试作为文档附件推送 macOS 修复脚本（若存在）
   try {
-    const { existsSync } = await import('fs');
+    const { existsSync, readFileSync: readFs } = await import('fs');
     const path = await import('path');
     // 在 CI 中我们把脚本集中到 artifacts-extra
     const scriptsDir = 'artifacts-extra';
@@ -234,9 +257,24 @@ async function sendTelegramNotification() {
         const form = new (await import('form-data')).default();
         form.append('chat_id', chatId);
         form.append('caption', `macOS 启动修复脚本：${fname}`);
-        form.append('document', readFileSync(full), { filename: fname, contentType: 'text/x-shellscript' });
+        form.append('document', readFs(full), { filename: fname, contentType: 'text/x-shellscript' });
         await axios.post(url, form, { headers: form.getHeaders() });
         log_success(`✅ 已附加推送脚本到 Telegram: ${fname}`);
+      } else {
+        // 若本地文件不存在，尝试从 Release 直接下载并转发为附件
+        const assetName = releaseAssets.find((n) => n.endsWith(fname));
+        if (assetName) {
+          const enc = assetName.includes('%') ? assetName : encodeURIComponent(assetName);
+          const assetUrl = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${enc}`;
+          const resp = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+          const url = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendDocument`;
+          const form = new (await import('form-data')).default();
+          form.append('chat_id', chatId);
+          form.append('caption', `macOS 启动修复脚本：${fname}`);
+          form.append('document', Buffer.from(resp.data), { filename: fname, contentType: 'text/x-shellscript' });
+          await axios.post(url, form, { headers: form.getHeaders() });
+          log_success(`✅ 已从 Release 下载并附加推送脚本到 Telegram: ${fname}`);
+        }
       }
     }
   } catch (err) {
