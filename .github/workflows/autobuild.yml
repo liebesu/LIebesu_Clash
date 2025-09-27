@@ -21,6 +21,7 @@ jobs:
   check_commit:
     name: Check Commit Needs Build
     runs-on: ubuntu-latest
+    if: ${{ github.actor != 'github-actions[bot]' }}
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
@@ -294,32 +295,47 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tauri build for Windows-macOS-Linux
+      # Windows 构建
+      - name: Tauri build (Windows)
+        if: matrix.os == 'windows-latest'
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=8192"  # 优化：大幅增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=8192"
           VITE_BUILD_VERSION: "${{ github.run_number }}"
-          # 优先使用 Developer ID 证书与公证（若仓库已配置 secrets），否则 Tauri 将退回 ad-hoc
+        with:
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
+
+      # macOS 构建（签名+公证，条件：提供了证书与公证凭据）
+      - name: Tauri build (macOS signed + notarized)
+        if: matrix.os == 'macos-latest' && ((secrets.APPLE_SIGNING_IDENTITY || secrets.APPLE_CERTIFICATE) && (secrets.APPLE_ID || secrets.APPLE_API_KEY))
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=8192"
+          VITE_BUILD_VERSION: "${{ github.run_number }}"
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # 使用 Apple ID 或 API Key 进行公证（二选一，按 secrets 可用性自动匹配）
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         with:
-          # 完全移除release相关配置，只进行构建
-          # tagName: ${{ env.TAG_NAME }}
-          # releaseName: "LIebesu_Clash ${{ env.TAG_CHANNEL }}"
-          # releaseBody: "More new features are now supported."
-          # releaseDraft: false
-          # prerelease: true
           tauriScript: pnpm
           args: --target ${{ matrix.target }}
-          # includeUpdaterJson: true
+
+      # macOS 构建（无证书时走 ad-hoc，不因证书缺失而失败）
+      - name: Tauri build (macOS adhoc)
+        if: matrix.os == 'macos-latest' && !((secrets.APPLE_SIGNING_IDENTITY || secrets.APPLE_CERTIFICATE) && (secrets.APPLE_ID || secrets.APPLE_API_KEY))
+        uses: tauri-apps/tauri-action@v0
+        env:
+          NODE_OPTIONS: "--max_old_space_size=8192"
+          VITE_BUILD_VERSION: "${{ github.run_number }}"
+        with:
+          tauriScript: pnpm
+          args: --target ${{ matrix.target }}
 
       - name: Enhanced macOS Post-Build Processing
         if: matrix.os == 'macos-latest'
