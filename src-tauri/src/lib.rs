@@ -33,8 +33,8 @@ use log::LevelFilter;
 /// 🔧 修复：初始化日志系统
 fn init_logger() {
     use std::env;
-    use std::path::Path;
     use std::fs;
+    use std::path::{Path, PathBuf};
     
     // 设置日志级别
     let log_level = env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
@@ -42,14 +42,28 @@ fn init_logger() {
         env::set_var("RUST_LOG", &log_level);
     }
     
-    // 🔧 修复：确保日志目录存在
-    let logs_dir = "logs";
-    if !Path::new(logs_dir).exists() {
-        if let Err(e) = fs::create_dir_all(logs_dir) {
-            eprintln!("⚠️ 创建日志目录失败: {}", e);
-        } else {
-            println!("✅ 创建日志目录: {}", logs_dir);
+    // 🔧 修复：将日志目录放到用户可写目录，避免 Finder 启动时权限问题导致崩溃
+    let mut logs_dir: PathBuf = {
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(home) = dirs::home_dir() {
+                home.join("Library/Logs/liebesu-clash")
+            } else {
+                PathBuf::from("logs")
+            }
         }
+        #[cfg(not(target_os = "macos"))]
+        {
+            PathBuf::from("logs")
+        }
+    };
+    if let Err(e) = fs::create_dir_all(&logs_dir) {
+        eprintln!("⚠️ 创建日志目录失败: {}", e);
+        // 回退到工作目录下的 logs
+        logs_dir = PathBuf::from("logs");
+        let _ = fs::create_dir_all(&logs_dir);
+    } else {
+        println!("✅ 创建日志目录: {}", logs_dir.display());
     }
     
     // 尝试使用log4rs配置文件
@@ -77,31 +91,64 @@ fn init_logger() {
         }
     }
     
-    // 如果没有配置文件，使用增强的控制台+文件日志
+    // 如果没有配置文件，使用增强的控制台+文件日志（失败则降级到仅控制台）
     if !logger_initialized {
-        match log4rs::init_config(log4rs::config::Config::builder()
-            .appender(log4rs::config::Appender::builder()
-                .build("console", Box::new(log4rs::append::console::ConsoleAppender::builder()
-                    .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
-                    .build())))
-            .appender(log4rs::config::Appender::builder()
-                .build("file", Box::new(log4rs::append::file::FileAppender::builder()
-                    .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
-                    .build("logs/app.log")
-                    .unwrap())))
-            .logger(log4rs::config::Logger::builder()
-                .build("app", log_level.parse().unwrap_or(LevelFilter::Info)))
-            .build(log4rs::config::Root::builder()
-                .appender("console")
-                .appender("file")
-                .build(log_level.parse().unwrap_or(LevelFilter::Info)))
-            .unwrap())
-        {
-            Ok(_) => {
-                println!("✅ 日志系统已初始化 (控制台+文件模式)");
+        let console_appender = Box::new(
+            log4rs::append::console::ConsoleAppender::builder()
+                .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
+                .build(),
+        );
+
+        let file_path = logs_dir.join("app.log");
+        let file_appender_result = log4rs::append::file::FileAppender::builder()
+            .encoder(Box::new(log4rs::encode::pattern::PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S%.3f)} [{l}] {t}: {m}{n}")))
+            .build(&file_path);
+
+        let logger_level = log_level.parse().unwrap_or(LevelFilter::Info);
+
+        match file_appender_result {
+            Ok(file_appender) => {
+                let built = log4rs::config::Config::builder()
+                    .appender(log4rs::config::Appender::builder().build("console", console_appender))
+                    .appender(log4rs::config::Appender::builder().build("file", Box::new(file_appender)))
+                    .logger(log4rs::config::Logger::builder().build("app", logger_level))
+                    .build(
+                        log4rs::config::Root::builder()
+                            .appender("console")
+                            .appender("file")
+                            .build(logger_level),
+                    );
+                match built {
+                    Ok(cfg) => {
+                        if let Err(e) = log4rs::init_config(cfg) {
+                            eprintln!("⚠️ 日志系统初始化失败(文件+控制台): {}", e);
+                        } else {
+                            println!("✅ 日志系统已初始化 (控制台+文件模式，路径: {})", file_path.display());
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("⚠️ 构建日志配置失败(文件+控制台): {}", e);
+                    }
+                }
             }
             Err(e) => {
-                eprintln!("⚠️ 日志系统初始化失败: {}", e);
+                eprintln!("⚠️ 文件日志初始化失败({}), 降级为仅控制台", e);
+                let built = log4rs::config::Config::builder()
+                    .appender(log4rs::config::Appender::builder().build("console", console_appender))
+                    .logger(log4rs::config::Logger::builder().build("app", logger_level))
+                    .build(log4rs::config::Root::builder().appender("console").build(logger_level));
+                match built {
+                    Ok(cfg) => {
+                        if let Err(e2) = log4rs::init_config(cfg) {
+                            eprintln!("⚠️ 日志系统初始化失败(仅控制台): {}", e2);
+                        } else {
+                            println!("✅ 日志系统已初始化 (仅控制台)");
+                        }
+                    }
+                    Err(e2) => {
+                        eprintln!("⚠️ 构建日志配置失败(仅控制台): {}", e2);
+                    }
+                }
             }
         }
     }
