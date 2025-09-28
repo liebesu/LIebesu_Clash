@@ -20,7 +20,7 @@ use crate::{
     utils::{resolve, server},
 };
 use config::Config;
-use tauri::{AppHandle, Listener};
+use tauri::{AppHandle, Listener, Manager};
 #[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
