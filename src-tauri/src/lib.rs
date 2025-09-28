@@ -15,13 +15,12 @@ use crate::utils::window_manager::WindowManager;
 use crate::{
     core::handle,
     core::hotkey,
-    feat,
     module::lightweight,
     process::AsyncHandler,
     utils::{resolve, server},
 };
 use config::Config;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Listener};
 #[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -634,20 +633,14 @@ pub fn run() {
                     AsyncHandler::spawn(move || async move {
                         match action {
                             "system_proxy" => {
-                                if let Err(e) = feat::toggle_system_proxy().await {
-                                    log::error!("Failed to toggle system proxy: {}", e);
-                                }
+                                feat::toggle_system_proxy().await;
                             }
                             "tun_mode" => {
-                                if let Err(e) = feat::toggle_tun_mode(None).await {
-                                    log::error!("Failed to toggle tun mode: {}", e);
-                                }
+                                feat::toggle_tun_mode(None).await;
                             }
                             "main_window" => {
                                 if !lightweight::exit_lightweight_mode().await {
-                                    if let Err(e) = WindowManager::show_main_window().await {
-                                        log::error!("Failed to show main window: {}", e);
-                                    }
+                                    let _ = WindowManager::show_main_window().await;
                                 }
                             }
                             _ => {}
