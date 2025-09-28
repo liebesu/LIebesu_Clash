@@ -29,8 +29,8 @@ export const ClashModeCard = () => {
         `${currentMode[0].toLocaleUpperCase()}${currentMode.slice(1)} Mode Description`,
       );
     }
-    return t("Core communication error");
-  }, [currentMode]);
+    return t("Initializing clash core...");
+  }, [currentMode, t]);
 
   // 模式图标映射
   const modeIcons = useMemo(

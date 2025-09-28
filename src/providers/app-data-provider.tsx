@@ -449,7 +449,8 @@ export const AppDataProvider = ({
           msg.includes("core-down") ||
           msg.includes("Connection refused") ||
           msg.includes("Broken pipe") ||
-          msg.includes("Failed to get fresh connection");
+          msg.includes("Failed to get fresh connection") ||
+          msg.includes("failed to get runtime config");
         
         if (!isTransient) {
           console.error("[Connections] IPC 获取数据错误:", error);
@@ -475,7 +476,8 @@ export const AppDataProvider = ({
           msg.includes("core-down") ||
           msg.includes("Connection refused") ||
           msg.includes("Broken pipe") ||
-          msg.includes("Failed to get fresh connection");
+          msg.includes("Failed to get fresh connection") ||
+          msg.includes("failed to get runtime config");
         
         if (!isTransient) {
           console.error("[Traffic][AppDataProvider] IPC 获取数据错误:", error);
@@ -498,7 +500,8 @@ export const AppDataProvider = ({
           msg.includes("core-down") ||
           msg.includes("Connection refused") ||
           msg.includes("Broken pipe") ||
-          msg.includes("Failed to get fresh connection");
+          msg.includes("Failed to get fresh connection") ||
+          msg.includes("failed to get runtime config");
         
         if (!isTransient) {
           console.error("[Memory] IPC 获取数据错误:", error);

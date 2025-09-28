@@ -318,6 +318,16 @@ export const ProxyGroups = (props: Props) => {
     );
   }
 
+  // 检查数据是否加载完成
+  if (!renderList || renderList.length === 0) {
+    return (
+      <BaseEmpty 
+        text={t("Loading proxy groups...")}
+        extra={t("Please wait while loading clash configuration")}
+      />
+    );
+  }
+
   return (
     <div
       style={{ position: "relative", height: "100%", willChange: "transform" }}
