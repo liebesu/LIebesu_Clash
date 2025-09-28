@@ -5,6 +5,7 @@ import { check } from "@tauri-apps/plugin-updater";
 import { UpdateViewer } from "../setting/mods/update-viewer";
 import { DialogRef } from "../base";
 import { useVerge } from "@/hooks/use-verge";
+import { portableFlag } from "@/pages/_layout";
 
 interface Props {
   className?: string;
@@ -18,7 +19,7 @@ export const UpdateButton = (props: Props) => {
   const viewerRef = useRef<DialogRef>(null);
 
   const { data: updateInfo } = useSWR(
-    auto_check_update || auto_check_update === null ? "checkUpdate" : null,
+    (auto_check_update || auto_check_update === null) && !portableFlag ? "checkUpdate" : null,
     check,
     {
       errorRetryCount: 2,

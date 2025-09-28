@@ -15,7 +15,7 @@ export const useClash = () => {
   );
 
   const { data: versionData, mutate: mutateVersion } = useSWR(
-    "getVersion",
+    clash ? "getVersion" : null,
     getVersion,
   );
 

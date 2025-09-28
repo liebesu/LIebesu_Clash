@@ -200,11 +200,8 @@ mod app_init {
             .plugin(tauri_plugin_shell::init())
             .plugin(tauri_plugin_deep_link::init());
 
-        // Enable updater plugin only on non-macOS targets to avoid missing config issues
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-        {
-            builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-        }
+        // 启用 updater 插件（所有桌面平台），配合 capabilities 放行 updater 权限
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
 
         #[cfg(all(debug_assertions, not(feature = "tokio-trace")))]
         {

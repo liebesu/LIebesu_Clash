@@ -31,11 +31,15 @@ export const UpdateViewer = forwardRef<DialogRef>((props, ref) => {
   const setUpdateState = useSetUpdateState();
   const { addListener } = useListen();
 
-  const { data: updateInfo } = useSWR("checkUpdate", checkUpdate, {
-    errorRetryCount: 2,
-    revalidateIfStale: false,
-    focusThrottleInterval: 36e5, // 1 hour
-  });
+  const { data: updateInfo } = useSWR(
+    !portableFlag ? "checkUpdate" : null, 
+    checkUpdate, 
+    {
+      errorRetryCount: 2,
+      revalidateIfStale: false,
+      focusThrottleInterval: 36e5, // 1 hour
+    }
+  );
 
   const [downloaded, setDownloaded] = useState(0);
   const [buffer, setBuffer] = useState(0);

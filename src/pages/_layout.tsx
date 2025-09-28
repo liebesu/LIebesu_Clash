@@ -496,9 +496,19 @@ const Layout = () => {
         errorRetryCount: 3,
         errorRetryInterval: 5000,
         onError: (error, key) => {
-          console.error(`[SWR Error] Key: ${key}, Error:`, error);
-          if (key !== "getAutotemProxy") {
-            console.error(`SWR Error for ${key}:`, error);
+          const msg = String(error || "");
+          const isTransient =
+            msg.includes("core-down") ||
+            msg.includes("Connection refused") ||
+            msg.includes("Broken pipe") ||
+            msg.includes("Failed to get fresh connection") ||
+            msg.includes("not allowed by ACL");
+
+          if (!isTransient) {
+            console.error(`[SWR Error] Key: ${key}, Error:`, error);
+            if (key !== "getAutotemProxy") {
+              console.error(`SWR Error for ${key}:`, error);
+            }
           }
         },
         dedupingInterval: 2000,

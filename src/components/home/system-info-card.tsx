@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { check as checkUpdate } from "@tauri-apps/plugin-updater";
 import { useLockFn } from "ahooks";
 import { showNotice } from "@/services/noticeService";
+import { portableFlag } from "@/pages/_layout";
 import { useSystemState } from "@/hooks/use-system-state";
 import { useServiceInstaller } from "@/hooks/useServiceInstaller";
 
@@ -89,7 +90,7 @@ export const SystemInfoCard = () => {
       }));
 
       setTimeout(() => {
-        if (verge?.auto_check_update) {
+        if (verge?.auto_check_update && !portableFlag) {
           checkUpdate().catch(console.error);
         }
       }, 5000);
@@ -98,7 +99,7 @@ export const SystemInfoCard = () => {
 
   // 自动检查更新逻辑
   useSWR(
-    verge?.auto_check_update ? "checkUpdate" : null,
+    verge?.auto_check_update && !portableFlag ? "checkUpdate" : null,
     async () => {
       const now = Date.now();
       localStorage.setItem("last_check_update", now.toString());
