@@ -131,7 +131,8 @@ impl IpcManager {
         path: &str,
         body: Option<&serde_json::Value>,
     ) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) && !(method == "GET" && path == "/version") {
+        // 仅对写操作进行熔断拦截；允许所有 GET 请求继续尝试，以便界面状态可见
+        if CORE_DOWN.load(Ordering::SeqCst) && method != "GET" {
             return Err(create_error("core-down: ipc temporarily unavailable"));
         }
         let response = match IpcManager::global().request(method, path, body).await {
@@ -177,27 +178,23 @@ impl IpcManager {
 
     // 基础代理信息获取
     pub async fn get_proxies(&self) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/proxies";
         self.send_request("GET", url, None).await
     }
 
     // 代理提供者信息获取
     pub async fn get_providers_proxies(&self) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/providers/proxies";
         self.send_request("GET", url, None).await
     }
 
     // 连接管理
     pub async fn get_connections(&self) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/connections";
         self.send_request("GET", url, None).await
     }
 
     pub async fn delete_connection(&self, id: &str) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let encoded_id = utf8_percent_encode(id, URL_PATH_ENCODE_SET).to_string();
         let url = format!("/connections/{encoded_id}");
         let response = self.send_request("DELETE", &url, None).await?;
@@ -211,7 +208,6 @@ impl IpcManager {
     }
 
     pub async fn close_all_connections(&self) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/connections";
         let response = self.send_request("DELETE", url, None).await?;
         if response["code"] == 204 {
@@ -236,7 +232,6 @@ impl IpcManager {
     }
 
     pub async fn put_configs_force(&self, clash_config_path: &str) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/configs?force=true";
         let payload = serde_json::json!({
             "path": clash_config_path,
@@ -246,7 +241,6 @@ impl IpcManager {
     }
 
     pub async fn patch_configs(&self, config: serde_json::Value) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/configs";
         let response = self.send_request("PATCH", url, Some(&config)).await?;
         if response["code"] == 204 {
@@ -267,7 +261,6 @@ impl IpcManager {
         test_url: Option<String>,
         timeout: i32,
     ) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let test_url =
             test_url.unwrap_or_else(|| "https://cp.cloudflare.com/generate_204".to_string());
 
@@ -285,13 +278,11 @@ impl IpcManager {
     }
 
     pub async fn get_config(&self) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/configs";
         self.send_request("GET", url, None).await
     }
 
     pub async fn update_geo_data(&self) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/configs/geo";
         let response = self.send_request("POST", url, None).await?;
         if response["code"] == 204 {
@@ -307,7 +298,6 @@ impl IpcManager {
     }
 
     pub async fn upgrade_core(&self) -> AnyResult<()> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let url = "/upgrade";
         let response = self.send_request("POST", url, None).await?;
         if response["code"] == 204 {
@@ -411,7 +401,6 @@ impl IpcManager {
         url: Option<String>,
         timeout: i32,
     ) -> AnyResult<serde_json::Value> {
-        if CORE_DOWN.load(Ordering::SeqCst) { return Err(create_error("core-down")); }
         let test_url = url.unwrap_or_else(|| "https://cp.cloudflare.com/generate_204".to_string());
 
         let encoded_group_name = utf8_percent_encode(group_name, URL_PATH_ENCODE_SET).to_string();

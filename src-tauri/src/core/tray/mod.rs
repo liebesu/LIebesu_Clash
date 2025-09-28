@@ -250,7 +250,21 @@ impl Tray {
         // 设置更新状态
         self.menu_updating.store(true, Ordering::Release);
 
-        let result = self.update_menu_internal(&app_handle).await;
+        let mut result = self.update_menu_internal(&app_handle).await;
+        if result.is_err() {
+            // 当托盘不存在时尝试自修复：重建托盘后重试一次
+            if let Some(tray) = app_handle.tray_by_id("main") {
+                let _ = tray; // 占位，已存在则不处理
+            } else {
+                log::warn!(target: "app", "检测到托盘不存在，尝试重建托盘...");
+                if let Err(e) = self.create_tray_from_handle(&app_handle).await {
+                    log::warn!(target: "app", "重建托盘失败: {e}");
+                } else {
+                    log::info!(target: "app", "托盘已重建，重试更新菜单");
+                    result = self.update_menu_internal(&app_handle).await;
+                }
+            }
+        }
 
         {
             let mut last_update = self.last_menu_update.lock();
@@ -330,8 +344,15 @@ impl Tray {
         let tray = match app_handle.tray_by_id("main") {
             Some(tray) => tray,
             None => {
-                log::warn!(target: "app", "更新托盘图标失败: 托盘不存在");
-                return Ok(());
+                log::warn!(target: "app", "更新托盘图标失败: 托盘不存在，尝试自修复");
+                if let Err(e) = self.create_tray_from_handle(&app_handle).await {
+                    log::warn!(target: "app", "重建托盘失败: {e}");
+                    return Ok(());
+                }
+                match app_handle.tray_by_id("main") {
+                    Some(tray) => tray,
+                    None => return Ok(())
+                }
             }
         };
 
@@ -367,8 +388,15 @@ impl Tray {
         let tray = match app_handle.tray_by_id("main") {
             Some(tray) => tray,
             None => {
-                log::warn!(target: "app", "更新托盘图标失败: 托盘不存在");
-                return Ok(());
+                log::warn!(target: "app", "更新托盘图标失败: 托盘不存在，尝试自修复");
+                if let Err(e) = self.create_tray_from_handle(&app_handle).await {
+                    log::warn!(target: "app", "重建托盘失败: {e}");
+                    return Ok(());
+                }
+                match app_handle.tray_by_id("main") {
+                    Some(tray) => tray,
+                    None => return Ok(())
+                }
             }
         };
 
@@ -454,7 +482,22 @@ impl Tray {
                 current_profile_name
             )));
         } else {
-            log::warn!(target: "app", "更新托盘提示失败: 托盘不存在");
+            log::warn!(target: "app", "更新托盘提示失败: 托盘不存在，尝试自修复");
+            if let Some(app_handle) = handle::Handle::global().app_handle() {
+                if self.create_tray_from_handle(&app_handle).await.is_ok() {
+                    if let Some(tray) = app_handle.tray_by_id("main") {
+                        let _ = tray.set_tooltip(Some(&format!(
+                            "Clash Verge {version}\n{}: {}\n{}: {}\n{}: {}",
+                            sys_proxy_text,
+                            switch_map[system_proxy],
+                            tun_text,
+                            switch_map[tun_mode],
+                            profile_text,
+                            current_profile_name
+                        )));
+                    }
+                }
+            }
         }
 
         Ok(())
