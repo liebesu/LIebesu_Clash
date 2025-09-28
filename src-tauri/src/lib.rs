@@ -11,18 +11,17 @@ mod module;
 mod process;
 mod state;
 mod utils;
-#[cfg(target_os = "macos")]
 use crate::utils::window_manager::WindowManager;
 use crate::{
     core::handle,
     core::hotkey,
+    feat,
+    module::lightweight,
     process::AsyncHandler,
     utils::{resolve, server},
 };
 use config::Config;
-use tauri::AppHandle;
-#[cfg(target_os = "macos")]
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 #[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -627,6 +626,35 @@ pub fn run() {
             
             println!("设置同步解析器...");
             resolve::resolve_setup_sync();
+
+            println!("设置托盘事件监听器...");
+            // Setup tray action event listener
+            app_handle.listen("verge://tray-action", move |event| {
+                if let Some(action) = event.payload().as_str() {
+                    AsyncHandler::spawn(move || async move {
+                        match action {
+                            "system_proxy" => {
+                                if let Err(e) = feat::toggle_system_proxy().await {
+                                    log::error!("Failed to toggle system proxy: {}", e);
+                                }
+                            }
+                            "tun_mode" => {
+                                if let Err(e) = feat::toggle_tun_mode(None).await {
+                                    log::error!("Failed to toggle tun mode: {}", e);
+                                }
+                            }
+                            "main_window" => {
+                                if !lightweight::exit_lightweight_mode().await {
+                                    if let Err(e) = WindowManager::show_main_window().await {
+                                        log::error!("Failed to show main window: {}", e);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    });
+                }
+            });
 
             println!("Tauri 初始化完成");
             logging!(info, Type::Setup, true, "初始化完成，继续执行");

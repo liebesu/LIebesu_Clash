@@ -562,26 +562,20 @@ impl Tray {
                         return;
                     }
 
-                    // 使用 spawn 来避免 Send 要求问题
-                    match tray_event.as_str() {
-                        "system_proxy" => {
-                            AsyncHandler::spawn(|| async {
-                                feat::toggle_system_proxy().await;
-                            });
+                    // 使用事件发送机制来避免 Send trait 问题
+                    if let Some(app_handle) = handle::Handle::global().app_handle() {
+                        match tray_event.as_str() {
+                            "system_proxy" => {
+                                let _ = app_handle.emit("verge://tray-action", "system_proxy");
+                            }
+                            "tun_mode" => {
+                                let _ = app_handle.emit("verge://tray-action", "tun_mode");
+                            }
+                            "main_window" => {
+                                let _ = app_handle.emit("verge://tray-action", "main_window");
+                            }
+                            _ => {}
                         }
-                        "tun_mode" => {
-                            AsyncHandler::spawn(|| async {
-                                feat::toggle_tun_mode(None).await;
-                            });
-                        }
-                        "main_window" => {
-                            AsyncHandler::spawn(|| async {
-                                if !lightweight::exit_lightweight_mode().await {
-                                    WindowManager::show_main_window().await;
-                                };
-                            });
-                        }
-                        _ => {}
                     }
                 }
             });
