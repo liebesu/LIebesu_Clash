@@ -122,7 +122,7 @@ const pulseAnimation = keyframes`
 `;
 
 // 样式化通知容器
-const NotificationContainer = styled(Box)<{ 
+const StyledNotificationContainer = styled(Box)<{ 
   priority: NotificationPriority;
   type: NotificationType;
 }>(({ theme, priority, type }) => ({
@@ -182,7 +182,7 @@ export const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
   const isIndeterminate = type === "loading" || progress === undefined;
 
   return (
-    <NotificationContainer priority={priority} type={type}>
+    <StyledNotificationContainer priority={priority} type={type}>
       <Alert
         severity={type === "loading" || type === "progress" ? "info" : type}
         variant="filled"
@@ -285,7 +285,7 @@ export const EnhancedNotification: React.FC<EnhancedNotificationProps> = ({
           </Stack>
         )}
       </Alert>
-    </NotificationContainer>
+    </StyledNotificationContainer>
   );
 };
 
@@ -320,7 +320,7 @@ export interface NotificationContainerProps {
   onAction?: (id: string, actionIndex: number) => void;
 }
 
-export const NotificationContainer: React.FC<NotificationContainerProps> = ({
+export const EnhancedNotificationContainer: React.FC<NotificationContainerProps> = ({
   notifications,
   position = "top-right",
   animation = "slide",
@@ -519,13 +519,13 @@ export const useNotification = (options: UseNotificationOptions = {}) => {
     loading,
     progress,
     NotificationContainer: () => (
-      <NotificationContainer
+      <EnhancedNotificationContainer
         notifications={notifications}
         position={position}
         animation={animation}
         maxNotifications={maxNotifications}
         onClose={removeNotification}
-        onAction={(id, actionIndex) => {
+        onAction={(id: string, actionIndex: number) => {
           const notification = notifications.find(n => n.id === id);
           if (notification?.actions?.[actionIndex]) {
             notification.actions[actionIndex].action();

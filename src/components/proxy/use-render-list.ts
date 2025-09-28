@@ -247,20 +247,20 @@ export const useRenderList = (mode: string, isChainMode?: boolean) => {
 
           // 返回节点列表（不显示组头）
           if (col > 1) {
-            result = groupProxies(proxiesWithDelay, col).map(
-              (proxyCol, colIndex) => ({
-                type: 4,
-                key: `chain-col-${colIndex}`,
-                group: virtualGroup,
-                headState: DEFAULT_STATE,
-                col,
-                proxyCol,
-                provider: proxyCol[0]?.provider,
-              }),
-            );
+          result = groupProxies(proxiesWithDelay, col).map(
+            (proxyCol, colIndex) => ({
+              type: 4 as const,
+              key: `chain-col-${colIndex}`,
+              group: virtualGroup,
+              headState: DEFAULT_STATE,
+              col,
+              proxyCol,
+              provider: proxyCol[0]?.provider,
+            }),
+          );
           } else {
             result = proxiesWithDelay.map((proxy) => ({
-              type: 2,
+              type: 2 as const,
               key: `chain-${proxy.name}`,
               group: virtualGroup,
               proxy,
@@ -316,21 +316,21 @@ export const useRenderList = (mode: string, isChainMode?: boolean) => {
                   headState,
                 });
               } else if (col > 1) {
-                // 性能优化：批量创建列项目
-                const colItems = groupProxies(proxies, col).map((proxyCol, colIndex) => ({
-                  type: 4,
-                  key: `col-${group.name}-${proxyCol[0].name}-${colIndex}`,
-                  group,
-                  headState,
-                  col,
-                  proxyCol,
-                  provider: proxyCol[0].provider,
-                }));
+            // 性能优化：批量创建列项目
+            const colItems = groupProxies(proxies, col).map((proxyCol, colIndex) => ({
+              type: 4 as const,
+              key: `col-${group.name}-${proxyCol[0].name}-${colIndex}`,
+              group,
+              headState,
+              col,
+              proxyCol,
+              provider: proxyCol[0].provider,
+            }));
                 groupItems.push(...colItems);
               } else {
                 // 性能优化：批量创建代理项目
                 const proxyItems = proxies.map((proxy) => ({
-                  type: 2,
+                  type: 2 as const,
                   key: `${group.name}-${proxy!.name}`,
                   group,
                   proxy,

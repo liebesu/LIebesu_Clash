@@ -40,8 +40,9 @@ import { useTranslation } from "react-i18next";
 import { useAutoUpdate, UpdateInfo, UpdateConfig, UpdateHistoryItem } from "@/services/auto-update";
 import { useUIStateContext } from "@/providers/ui-state-provider";
 import { EnhancedLoading } from "@/components/base/enhanced-loading";
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
+// 临时移除date-fns依赖，使用简单的时间格式化
+// import { formatDistanceToNow } from "date-fns";
+// import { zhCN } from "date-fns/locale";
 
 export const AutoUpdateSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -161,10 +162,14 @@ export const AutoUpdateSettings: React.FC = () => {
   // 格式化时间
   const formatTime = (timestamp?: number) => {
     if (!timestamp) return "从未";
-    return formatDistanceToNow(new Date(timestamp * 1000), {
-      addSuffix: true,
-      locale: zhCN,
-    });
+    const now = Date.now();
+    const time = timestamp * 1000;
+    const diff = now - time;
+    
+    if (diff < 60 * 1000) return "刚刚";
+    if (diff < 60 * 60 * 1000) return `${Math.floor(diff / (60 * 1000))}分钟前`;
+    if (diff < 24 * 60 * 60 * 1000) return `${Math.floor(diff / (60 * 60 * 1000))}小时前`;
+    return `${Math.floor(diff / (24 * 60 * 60 * 1000))}天前`;
   };
 
   // 获取状态图标

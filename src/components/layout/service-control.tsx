@@ -49,7 +49,7 @@ export const ServiceControl: React.FC = () => {
     
     if (!isRunning) {
       console.log('[ServiceControl] ⚠️ 服务已停止，无需重复操作');
-      uiState.success('服务已停止');
+      // 使用简单的成功提示，不需要复杂的状态管理
       return;
     }
     

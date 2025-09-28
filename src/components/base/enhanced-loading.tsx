@@ -83,10 +83,10 @@ export const EnhancedLoading: React.FC<EnhancedLoadingProps> = ({
   const [startTime] = React.useState(Date.now());
 
   React.useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: number;
     
     if (delay > 0) {
-      timer = setTimeout(() => setShow(true), delay);
+      timer = setTimeout(() => setShow(true), delay) as unknown as number;
     }
 
     return () => {
