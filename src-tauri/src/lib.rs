@@ -619,7 +619,7 @@ pub fn run() {
             logging!(info, Type::Setup, true, "执行主要设置操作...");
 
             println!("设置应用句柄...");
-            resolve::resolve_setup_handle(app_handle);
+            resolve::resolve_setup_handle(app_handle.clone());
             
             println!("设置异步解析器...");
             resolve::resolve_setup_async();
