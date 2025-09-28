@@ -119,48 +119,8 @@ impl IpcManager {
         path: &str,
         body: Option<&serde_json::Value>,
     ) -> AnyResult<LegacyResponse> {
-        if CORE_DOWN.load(Ordering::SeqCst) && !(method == "GET" && path == "/version") {
-            return Err(create_error("core-down: ipc temporarily unavailable"));
-        }
-        let response = match IpcManager::global().request(method, path, body).await {
-            Ok(resp) => resp,
-            Err(e) => {
-                if is_core_comm_error(&e) { mark_core_down_and_spawn_watchdog(); }
-                return Err(e);
-            }
-        };
-        match method {
-            "GET" => Ok(response.json()?),
-            "PATCH" => {
-                if response.status == 204 {
-                    Ok(serde_json::json!({"code": 204}))
-                } else {
-                    Ok(response.json()?)
-                }
-            }
-            "PUT" | "DELETE" => {
-                if response.status == 204 {
-                    Ok(serde_json::json!({"code": 204}))
-                } else {
-                    match response.json() {
-                        Ok(json) => Ok(json),
-                        Err(_) => Ok(serde_json::json!({
-                            "code": response.status,
-                            "message": response.body,
-                            "error": "failed to parse response as JSON"
-                        })),
-                    }
-                }
-            }
-            _ => match response.json() {
-                Ok(json) => Ok(json),
-                Err(_) => Ok(serde_json::json!({
-                    "code": response.status,
-                    "message": response.body,
-                    "error": "failed to parse response as JSON"
-                })),
-            },
-        }
+        // 保持底层 request 仅做透传，返回 LegacyResponse
+        self.client.request(method, path, body).await
     }
 }
 
