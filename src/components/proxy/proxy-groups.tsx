@@ -28,6 +28,20 @@ interface ProxyChainItem {
   delay?: number;
 }
 
+// 性能优化：创建记忆化的ProxyRender组件
+const MemoizedProxyRender = memo(ProxyRender, (prevProps, nextProps) => {
+  // 自定义比较函数，只在关键属性变化时重新渲染
+  return (
+    prevProps.item.key === nextProps.item.key &&
+    prevProps.indent === nextProps.indent &&
+    prevProps.isChainMode === nextProps.isChainMode &&
+    // 对于代理项，检查延迟状态
+    (prevProps.item.type !== 2 || 
+     (prevProps.item.proxy?.history === nextProps.item.proxy?.history &&
+      prevProps.item.proxy?.name === nextProps.item.proxy?.name))
+  );
+});
+
 export const ProxyGroups = (props: Props) => {
   const { t } = useTranslation();
   const { mode, isChainMode = false, chainConfigData } = props;
@@ -264,8 +278,13 @@ export const ProxyGroups = (props: Props) => {
               ref={virtuosoRef}
               style={{ height: "calc(100% - 14px)" }}
               totalCount={renderList.length}
-              increaseViewportBy={{ top: 200, bottom: 200 }}
-              overscan={150}
+              // 性能优化：根据节点数量动态调整预渲染区域
+              increaseViewportBy={{ 
+                top: renderList.length > 500 ? 100 : 200, 
+                bottom: renderList.length > 500 ? 100 : 200 
+              }}
+              // 性能优化：大量节点时减少overscan，避免过度渲染
+              overscan={renderList.length > 500 ? 50 : 150}
               defaultItemHeight={56}
               scrollerRef={(ref) => {
                 scrollerRef.current = ref as Element;
@@ -275,8 +294,9 @@ export const ProxyGroups = (props: Props) => {
               }}
               initialScrollTop={scrollPositionRef.current[mode]}
               computeItemKey={(index) => renderList[index].key}
+              // 性能优化：使用React.memo包装的渲染函数
               itemContent={(index) => (
-                <ProxyRender
+                <MemoizedProxyRender
                   key={renderList[index].key}
                   item={renderList[index]}
                   indent={mode === "rule" || mode === "script"}
@@ -336,8 +356,13 @@ export const ProxyGroups = (props: Props) => {
         ref={virtuosoRef}
         style={{ height: "calc(100% - 14px)" }}
         totalCount={renderList.length}
-        increaseViewportBy={{ top: 200, bottom: 200 }}
-        overscan={150}
+        // 性能优化：根据节点数量动态调整预渲染区域
+        increaseViewportBy={{ 
+          top: renderList.length > 500 ? 100 : 200, 
+          bottom: renderList.length > 500 ? 100 : 200 
+        }}
+        // 性能优化：大量节点时减少overscan，避免过度渲染
+        overscan={renderList.length > 500 ? 50 : 150}
         defaultItemHeight={56}
         scrollerRef={(ref) => {
           scrollerRef.current = ref as Element;
@@ -348,8 +373,9 @@ export const ProxyGroups = (props: Props) => {
         // 添加平滑滚动设置
         initialScrollTop={scrollPositionRef.current[mode]}
         computeItemKey={(index) => renderList[index].key}
+        // 性能优化：使用React.memo包装的渲染函数
         itemContent={(index) => (
-          <ProxyRender
+          <MemoizedProxyRender
             key={renderList[index].key}
             item={renderList[index]}
             indent={mode === "rule" || mode === "script"}

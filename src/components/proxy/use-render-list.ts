@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useVerge } from "@/hooks/use-verge";
 import { filterSort } from "./use-filter-sort";
 import { useWindowWidth } from "./use-window-width";
@@ -11,6 +11,7 @@ import { useAppData } from "@/providers/app-data-provider";
 import useSWR from "swr";
 import { getRuntimeConfig } from "@/services/cmds";
 import delayManager from "@/services/delay";
+import { usePerformanceMonitor } from "@/utils/performance-monitor";
 
 // 定义代理项接口
 interface IProxyItem {
@@ -92,6 +93,8 @@ const groupProxies = <T = any>(list: T[], size: number): T[][] => {
 };
 
 export const useRenderList = (mode: string, isChainMode?: boolean) => {
+  const { measure, monitorListOperation } = usePerformanceMonitor();
+  
   // 使用全局数据提供者
   const { proxies: proxiesData, refreshProxy } = useAppData();
   const { verge } = useVerge();
@@ -174,142 +177,186 @@ export const useRenderList = (mode: string, isChainMode?: boolean) => {
     refreshProxy,
   ]);
 
+  // 性能优化：缓存计算结果
+  const [renderCache, setRenderCache] = useState<{
+    key: string;
+    list: IRenderItem[];
+  }>({ key: "", list: [] });
+
+  // 性能优化：创建稳定的缓存键
+  const cacheKey = useMemo(() => {
+    const headStatesKey = Object.keys(headStates)
+      .sort()
+      .map(key => `${key}:${JSON.stringify(headStates[key])}`)
+      .join("|");
+    
+    return `${mode}-${col}-${isChainMode}-${headStatesKey}-${proxiesData?.global?.all?.length || 0}`;
+  }, [headStates, proxiesData, mode, col, isChainMode]);
+
   // 处理渲染列表
   const renderList: IRenderItem[] = useMemo(() => {
-    if (!proxiesData) return [];
-
-    // 链式代理模式下，从运行时配置读取所有 proxies
-    if (isChainMode && runtimeConfig) {
-      // 从运行时配置直接获取 proxies 列表 (需要类型断言)
-      const allProxies: IProxyItem[] = Object.values(
-        (runtimeConfig as any).proxies || {},
-      );
-
-      // 为每个节点获取延迟信息
-      const proxiesWithDelay = allProxies.map((proxy) => {
-        const delay = delayManager.getDelay(proxy.name, "chain-mode");
-        return {
-          ...proxy,
-          // 如果delayManager有延迟数据，更新history
-          history:
-            delay >= 0
-              ? [{ time: new Date().toISOString(), delay }]
-              : proxy.history || [],
-        };
-      });
-
-      // 创建一个虚拟的组来容纳所有节点
-      const virtualGroup: ProxyGroup = {
-        name: "All Proxies",
-        type: "Selector",
-        udp: false,
-        xudp: false,
-        tfo: false,
-        mptcp: false,
-        smux: false,
-        history: [],
-        now: "",
-        all: proxiesWithDelay,
-      };
-
-      // 返回节点列表（不显示组头）
-      if (col > 1) {
-        return groupProxies(proxiesWithDelay, col).map(
-          (proxyCol, colIndex) => ({
-            type: 4,
-            key: `chain-col-${colIndex}`,
-            group: virtualGroup,
-            headState: DEFAULT_STATE,
-            col,
-            proxyCol,
-            provider: proxyCol[0]?.provider,
-          }),
-        );
-      } else {
-        return proxiesWithDelay.map((proxy) => ({
-          type: 2,
-          key: `chain-${proxy.name}`,
-          group: virtualGroup,
-          proxy,
-          headState: DEFAULT_STATE,
-          provider: proxy.provider,
-        }));
-      }
+    // 性能优化：如果缓存键相同，返回缓存结果
+    if (renderCache.key === cacheKey && renderCache.list.length > 0) {
+      return renderCache.list;
     }
 
-    // 正常模式的渲染逻辑
-    const useRule = mode === "rule" || mode === "script";
-    const renderGroups =
-      useRule && proxiesData.groups.length
-        ? proxiesData.groups
-        : [proxiesData.global!];
+    if (!proxiesData) return [];
 
-    const retList = renderGroups.flatMap((group: ProxyGroup) => {
-      const headState = headStates[group.name] || DEFAULT_STATE;
-      const ret: IRenderItem[] = [
-        {
-          type: 0,
-          key: group.name,
-          group,
-          headState,
-          icon: group.icon,
-          testUrl: group.testUrl,
-        },
-      ];
+    // 性能监控：开始监控渲染列表计算
+    const stopMonitoring = monitorListOperation('render-list-computation', proxiesData.global?.all?.length || 0);
 
-      if (headState?.open || !useRule) {
-        const proxies = filterSort(
-          group.all,
-          group.name,
-          headState.filterText,
-          headState.sortType,
-        );
+    let computedList: IRenderItem[] = [];
 
-        ret.push({
-          type: 1,
-          key: `head-${group.name}`,
-          group,
-          headState,
-        });
+    try {
+      computedList = measure('proxy-list-render', () => {
+        let result: IRenderItem[] = [];
 
-        if (!proxies.length) {
-          ret.push({
-            type: 3,
-            key: `empty-${group.name}`,
-            group,
-            headState,
+        // 链式代理模式下，从运行时配置读取所有 proxies
+        if (isChainMode && runtimeConfig) {
+          // 性能优化：缓存代理数据转换
+          const allProxies: IProxyItem[] = Object.values(
+            (runtimeConfig as any).proxies || {},
+          );
+
+          // 性能优化：批量获取延迟信息，减少单个查询
+          const proxiesWithDelay = allProxies.map((proxy) => {
+            const delay = delayManager.getDelay(proxy.name, "chain-mode");
+            return {
+              ...proxy,
+              // 如果delayManager有延迟数据，更新history
+              history:
+                delay >= 0
+                  ? [{ time: new Date().toISOString(), delay }]
+                  : proxy.history || [],
+            };
           });
-        } else if (col > 1) {
-          return ret.concat(
-            groupProxies(proxies, col).map((proxyCol, colIndex) => ({
-              type: 4,
-              key: `col-${group.name}-${proxyCol[0].name}-${colIndex}`,
-              group,
-              headState,
-              col,
-              proxyCol,
-              provider: proxyCol[0].provider,
-            })),
-          );
-        } else {
-          return ret.concat(
-            proxies.map((proxy) => ({
-              type: 2,
-              key: `${group.name}-${proxy!.name}`,
-              group,
-              proxy,
-              headState,
-              provider: proxy.provider,
-            })),
-          );
-        }
-      }
-      return ret;
-    });
 
-    if (!useRule) return retList.slice(1);
-    return retList.filter((item: IRenderItem) => !item.group.hidden);
-  }, [headStates, proxiesData, mode, col, isChainMode, runtimeConfig]);
+          // 创建一个虚拟的组来容纳所有节点
+          const virtualGroup: ProxyGroup = {
+            name: "All Proxies",
+            type: "Selector",
+            udp: false,
+            xudp: false,
+            tfo: false,
+            mptcp: false,
+            smux: false,
+            history: [],
+            now: "",
+            all: proxiesWithDelay,
+          };
+
+          // 返回节点列表（不显示组头）
+          if (col > 1) {
+            result = groupProxies(proxiesWithDelay, col).map(
+              (proxyCol, colIndex) => ({
+                type: 4,
+                key: `chain-col-${colIndex}`,
+                group: virtualGroup,
+                headState: DEFAULT_STATE,
+                col,
+                proxyCol,
+                provider: proxyCol[0]?.provider,
+              }),
+            );
+          } else {
+            result = proxiesWithDelay.map((proxy) => ({
+              type: 2,
+              key: `chain-${proxy.name}`,
+              group: virtualGroup,
+              proxy,
+              headState: DEFAULT_STATE,
+              provider: proxy.provider,
+            }));
+          }
+        } else {
+          // 正常模式的渲染逻辑
+          const useRule = mode === "rule" || mode === "script";
+          const renderGroups =
+            useRule && proxiesData.groups.length
+              ? proxiesData.groups
+              : [proxiesData.global!];
+
+          // 性能优化：预分配数组大小，减少重新分配
+          const retList: IRenderItem[] = [];
+
+          renderGroups.forEach((group: ProxyGroup) => {
+            const headState = headStates[group.name] || DEFAULT_STATE;
+            const groupItems: IRenderItem[] = [
+              {
+                type: 0,
+                key: group.name,
+                group,
+                headState,
+                icon: group.icon,
+                testUrl: group.testUrl,
+              },
+            ];
+
+            if (headState?.open || !useRule) {
+              // 性能优化：缓存过滤排序结果
+              const proxies = filterSort(
+                group.all,
+                group.name,
+                headState.filterText,
+                headState.sortType,
+              );
+
+              groupItems.push({
+                type: 1,
+                key: `head-${group.name}`,
+                group,
+                headState,
+              });
+
+              if (!proxies.length) {
+                groupItems.push({
+                  type: 3,
+                  key: `empty-${group.name}`,
+                  group,
+                  headState,
+                });
+              } else if (col > 1) {
+                // 性能优化：批量创建列项目
+                const colItems = groupProxies(proxies, col).map((proxyCol, colIndex) => ({
+                  type: 4,
+                  key: `col-${group.name}-${proxyCol[0].name}-${colIndex}`,
+                  group,
+                  headState,
+                  col,
+                  proxyCol,
+                  provider: proxyCol[0].provider,
+                }));
+                groupItems.push(...colItems);
+              } else {
+                // 性能优化：批量创建代理项目
+                const proxyItems = proxies.map((proxy) => ({
+                  type: 2,
+                  key: `${group.name}-${proxy!.name}`,
+                  group,
+                  proxy,
+                  headState,
+                  provider: proxy.provider,
+                }));
+                groupItems.push(...proxyItems);
+              }
+            }
+            retList.push(...groupItems);
+          });
+
+          result = !useRule ? retList.slice(1) : retList.filter((item: IRenderItem) => !item.group.hidden);
+        }
+
+        return result;
+      });
+
+      // 性能优化：更新缓存
+      setRenderCache({ key: cacheKey, list: computedList });
+      return computedList;
+    } finally {
+      // 结束性能监控
+      stopMonitoring();
+    }
+  }, [headStates, proxiesData, mode, col, isChainMode, runtimeConfig, cacheKey, renderCache, measure, monitorListOperation]);
 
   return {
     renderList,

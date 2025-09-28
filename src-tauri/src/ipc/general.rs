@@ -1,11 +1,13 @@
-use std::time::Duration;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 
 use kode_bridge::{
     ClientConfig, IpcHttpClient, LegacyResponse,
     errors::{AnyError, AnyResult},
 };
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
+use tokio::sync::RwLock;
 
 use crate::{
     logging, singleton_with_logging,
@@ -28,8 +30,64 @@ fn create_error(msg: impl Into<String>) -> AnyError {
     Box::new(std::io::Error::other(msg.into()))
 }
 
+// 连接健康状况统计
+#[derive(Debug, Default)]
+struct ConnectionStats {
+    total_requests: AtomicU64,
+    failed_requests: AtomicU64,
+    last_success_time: RwLock<Option<Instant>>,
+    last_failure_time: RwLock<Option<Instant>>,
+    consecutive_failures: AtomicU64,
+}
+
+impl ConnectionStats {
+    async fn record_success(&self) {
+        self.total_requests.fetch_add(1, Ordering::Relaxed);
+        self.consecutive_failures.store(0, Ordering::Relaxed);
+        *self.last_success_time.write().await = Some(Instant::now());
+    }
+
+    async fn record_failure(&self) {
+        self.total_requests.fetch_add(1, Ordering::Relaxed);
+        self.failed_requests.fetch_add(1, Ordering::Relaxed);
+        self.consecutive_failures.fetch_add(1, Ordering::Relaxed);
+        *self.last_failure_time.write().await = Some(Instant::now());
+    }
+
+    fn get_failure_rate(&self) -> f64 {
+        let total = self.total_requests.load(Ordering::Relaxed) as f64;
+        let failed = self.failed_requests.load(Ordering::Relaxed) as f64;
+        if total > 0.0 { failed / total } else { 0.0 }
+    }
+
+    fn get_consecutive_failures(&self) -> u64 {
+        self.consecutive_failures.load(Ordering::Relaxed)
+    }
+
+    async fn is_healthy(&self) -> bool {
+        // 健康判断条件：
+        // 1. 连续失败次数 < 5
+        // 2. 失败率 < 50%
+        // 3. 如果有成功记录，最近3分钟内有成功
+        let consecutive = self.get_consecutive_failures();
+        let failure_rate = self.get_failure_rate();
+        
+        if consecutive >= 5 || failure_rate > 0.5 {
+            return false;
+        }
+
+        if let Some(last_success) = *self.last_success_time.read().await {
+            last_success.elapsed() < Duration::from_secs(180)
+        } else {
+            // 如果从未成功过，但失败次数少，还是认为可能健康
+            consecutive < 3
+        }
+    }
+}
+
 pub struct IpcManager {
     client: IpcHttpClient,
+    stats: Arc<ConnectionStats>,
 }
 
 impl IpcManager {
@@ -39,19 +97,25 @@ impl IpcManager {
             std::path::PathBuf::from("/tmp/clash-verge-ipc") // fallback path
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
-        // 更保守的默认配置，避免核心离线时放大请求压力
+        // 优化的稳定性配置，提高响应速度和错误恢复能力
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(20),
+            default_timeout: Duration::from_secs(10),  // 减少超时时间，提高响应性
             enable_pooling: true,
-            max_retries: 1,
-            retry_delay: Duration::from_millis(300),
-            max_concurrent_requests: 16,
-            max_requests_per_second: Some(32.0),
+            max_retries: 2,  // 增加重试次数
+            retry_delay: Duration::from_millis(200),  // 减少重试延迟
+            max_concurrent_requests: 12,  // 减少并发数，避免资源竞争
+            max_requests_per_second: Some(24.0),  // 降低请求频率，减轻核心压力
+            connection_keep_alive: Duration::from_secs(30),  // 保持连接活跃
+            pool_idle_timeout: Duration::from_secs(60),  // 连接池闲置超时
+            health_check_interval: Duration::from_secs(5),  // 健康检查间隔
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
         let client = IpcHttpClient::with_config(ipc_path, config).unwrap();
-        Self { client }
+        Self { 
+            client,
+            stats: Arc::new(ConnectionStats::default()),
+        }
     }
 }
 
@@ -63,11 +127,30 @@ static CORE_DOWN: AtomicBool = AtomicBool::new(false);
 static RESTART_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 fn is_core_comm_error(err: &AnyError) -> bool {
-    let msg = err.to_string();
-    msg.contains("Connection refused")
-        || msg.contains("Broken pipe")
+    let msg = err.to_string().to_lowercase();
+    msg.contains("connection refused")
+        || msg.contains("broken pipe") 
         || msg.contains("pool exhausted")
-        || msg.contains("Failed to get fresh connection")
+        || msg.contains("failed to get fresh connection")
+        || msg.contains("connection reset")
+        || msg.contains("timeout")
+        || msg.contains("no route to host")
+        || msg.contains("network unreachable")
+}
+
+fn is_critical_error(err: &AnyError) -> bool {
+    let msg = err.to_string().to_lowercase();
+    msg.contains("connection refused")
+        || msg.contains("no route to host") 
+        || msg.contains("network unreachable")
+}
+
+fn is_temporary_error(err: &AnyError) -> bool {
+    let msg = err.to_string().to_lowercase();
+    msg.contains("timeout")
+        || msg.contains("broken pipe")
+        || msg.contains("connection reset")
+        || msg.contains("pool exhausted")
 }
 
 fn mark_core_down_and_spawn_watchdog() {
@@ -131,17 +214,53 @@ impl IpcManager {
         path: &str,
         body: Option<&serde_json::Value>,
     ) -> AnyResult<serde_json::Value> {
-        // 仅对写操作进行熔断拦截；允许所有 GET 请求继续尝试，以便界面状态可见
-        if CORE_DOWN.load(Ordering::SeqCst) && method != "GET" {
-            return Err(create_error("core-down: ipc temporarily unavailable"));
+        // 智能熔断逻辑：考虑连接健康状况和错误类型
+        if CORE_DOWN.load(Ordering::SeqCst) {
+            if method != "GET" {
+                return Err(create_error("core-down: ipc temporarily unavailable"));
+            }
+            // 对于 GET 请求，检查连接健康状况
+            if !self.stats.is_healthy().await {
+                return Err(create_error("core-down: connection unhealthy"));
+            }
         }
+
+        let start_time = Instant::now();
         let response = match IpcManager::global().request(method, path, body).await {
-            Ok(resp) => resp,
+            Ok(resp) => {
+                // 记录成功
+                self.stats.record_success().await;
+                
+                // 如果核心之前是down状态，现在成功了，恢复正常
+                if CORE_DOWN.load(Ordering::SeqCst) {
+                    CORE_DOWN.store(false, Ordering::SeqCst);
+                    logging!(info, Type::Ipc, "核心通信恢复正常，解除熔断状态");
+                }
+                
+                resp
+            },
             Err(e) => {
-                if is_core_comm_error(&e) { mark_core_down_and_spawn_watchdog(); }
+                // 记录失败
+                self.stats.record_failure().await;
+                
+                let elapsed = start_time.elapsed();
+                logging!(warn, Type::Ipc, "IPC请求失败 [{}] {} (耗时: {:?}): {}", 
+                         method, path, elapsed, e);
+
+                // 根据错误类型决定处理策略
+                if is_core_comm_error(&e) {
+                    if is_critical_error(&e) {
+                        // 严重错误立即触发熔断
+                        mark_core_down_and_spawn_watchdog();
+                    } else if is_temporary_error(&e) && self.stats.get_consecutive_failures() >= 3 {
+                        // 临时错误连续出现多次也触发熔断
+                        mark_core_down_and_spawn_watchdog();
+                    }
+                }
                 return Err(e);
             }
         };
+        
         match method {
             "GET" => Ok(response.json()?),
             "PATCH" => {
@@ -238,6 +357,52 @@ impl IpcManager {
         });
         let _response = self.send_request("PUT", url, Some(&payload)).await?;
         Ok(())
+    }
+
+    // 连接健康检查和统计信息
+    pub async fn get_connection_stats(&self) -> (f64, u64, bool) {
+        let failure_rate = self.stats.get_failure_rate();
+        let consecutive_failures = self.stats.get_consecutive_failures();
+        let is_healthy = self.stats.is_healthy().await;
+        (failure_rate, consecutive_failures, is_healthy)
+    }
+
+    // 强制重置连接统计（用于手动恢复）
+    pub async fn reset_connection_stats(&self) {
+        self.stats.consecutive_failures.store(0, Ordering::Relaxed);
+        *self.stats.last_success_time.write().await = Some(Instant::now());
+        CORE_DOWN.store(false, Ordering::SeqCst);
+        logging!(info, Type::Ipc, "连接统计已重置，强制解除熔断状态");
+    }
+
+    // 定期清理过期的统计数据（防止内存泄漏）
+    pub async fn cleanup_stats(&self) {
+        let total = self.stats.total_requests.load(Ordering::Relaxed);
+        // 如果请求总数过多，重置计数器但保留比率
+        if total > 100000 {
+            let failure_rate = self.stats.get_failure_rate();
+            let new_total = 1000u64;
+            let new_failed = (new_total as f64 * failure_rate) as u64;
+            
+            self.stats.total_requests.store(new_total, Ordering::Relaxed);
+            self.stats.failed_requests.store(new_failed, Ordering::Relaxed);
+            
+            logging!(info, Type::Ipc, "IPC统计数据已清理，保持失败率: {:.2}%", failure_rate * 100.0);
+        }
+    }
+
+    // 主动健康检查
+    pub async fn health_check(&self) -> AnyResult<bool> {
+        match self.send_request("GET", "/version", None).await {
+            Ok(_) => {
+                logging!(debug, Type::Ipc, "健康检查通过");
+                Ok(true)
+            },
+            Err(e) => {
+                logging!(warn, Type::Ipc, "健康检查失败: {}", e);
+                Ok(false)
+            }
+        }
     }
 
     pub async fn patch_configs(&self, config: serde_json::Value) -> AnyResult<()> {
@@ -435,4 +600,129 @@ impl IpcManager {
     }
 
     // 日志相关功能已迁移到 logs.rs 模块，使用流式处理
+
+    // ===== 连接健康监控和管理方法 =====
+    
+    /// 获取连接统计信息 (失败率, 连续失败次数, 健康状态)
+    pub async fn get_connection_stats(&self) -> (f64, u64, bool) {
+        let failure_rate = self.stats.get_failure_rate();
+        let consecutive_failures = self.stats.get_consecutive_failures();
+        let is_healthy = self.stats.is_healthy().await;
+        (failure_rate, consecutive_failures, is_healthy)
+    }
+
+    /// 重置连接统计信息
+    pub async fn reset_connection_stats(&self) {
+        self.stats.total_requests.store(0, Ordering::Relaxed);
+        self.stats.failed_requests.store(0, Ordering::Relaxed);
+        self.stats.consecutive_failures.store(0, Ordering::Relaxed);
+        *self.stats.last_success_time.write().await = None;
+        *self.stats.last_failure_time.write().await = None;
+        
+        // 重置熔断状态
+        CORE_DOWN.store(false, Ordering::SeqCst);
+        logging!(info, Type::Ipc, "连接统计信息已重置，熔断状态已清除");
+    }
+
+    /// 执行连接健康检查
+    pub async fn health_check(&self) -> AnyResult<bool> {
+        match tokio::time::timeout(
+            Duration::from_secs(3),
+            self.get_version()
+        ).await {
+            Ok(Ok(_)) => {
+                // 健康检查成功，更新统计
+                self.stats.record_success().await;
+                if CORE_DOWN.load(Ordering::SeqCst) {
+                    CORE_DOWN.store(false, Ordering::SeqCst);
+                    logging!(info, Type::Ipc, "健康检查成功，核心通信恢复");
+                }
+                Ok(true)
+            }
+            Ok(Err(e)) => {
+                self.stats.record_failure().await;
+                logging!(warn, Type::Ipc, "健康检查失败: {}", e);
+                Ok(false)
+            }
+            Err(_) => {
+                self.stats.record_failure().await;
+                logging!(warn, Type::Ipc, "健康检查超时");
+                Ok(false)
+            }
+        }
+    }
+
+    /// 强制解除熔断状态 (慎用，仅用于调试或手动恢复)
+    pub fn force_unbreak_circuit(&self) {
+        CORE_DOWN.store(false, Ordering::SeqCst);
+        RESTART_IN_PROGRESS.store(false, Ordering::SeqCst);
+        logging!(warn, Type::Ipc, "强制解除熔断状态 (手动操作)");
+    }
+
+    /// 获取当前熔断状态
+    pub fn is_circuit_open(&self) -> bool {
+        CORE_DOWN.load(Ordering::SeqCst)
+    }
+
+    /// 是否正在重启
+    pub fn is_restart_in_progress(&self) -> bool {
+        RESTART_IN_PROGRESS.load(Ordering::SeqCst)
+    }
+
+    /// 带重试的稳定请求方法 (用于关键操作)
+    pub async fn stable_request(
+        &self,
+        method: &str,
+        path: &str,
+        body: Option<&serde_json::Value>,
+        max_retries: u32,
+        retry_delay_ms: u64,
+    ) -> AnyResult<serde_json::Value> {
+        let mut last_error = None;
+        
+        for attempt in 0..=max_retries {
+            if attempt > 0 {
+                logging!(warn, Type::Ipc, "重试请求 {} {} (第 {}/{} 次)", method, path, attempt, max_retries);
+                tokio::time::sleep(Duration::from_millis(retry_delay_ms * attempt as u64)).await;
+            }
+
+            match self.send_request(method, path, body).await {
+                Ok(response) => return Ok(response),
+                Err(e) => {
+                    last_error = Some(e);
+                    
+                    // 如果是临时错误，继续重试
+                    if let Some(ref err) = last_error {
+                        if !is_temporary_error(err) && attempt > 0 {
+                            // 非临时错误，不再重试
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| create_error("stable_request failed after all retries")))
+    }
+
+    /// 清理连接池和统计信息 (用于长时间运行后的维护)
+    pub async fn cleanup_stats(&self) {
+        // 如果失败率过高且总请求数很多，重置统计避免永久熔断
+        let total_requests = self.stats.total_requests.load(Ordering::Relaxed);
+        let failure_rate = self.stats.get_failure_rate();
+        
+        if total_requests > 1000 && failure_rate > 0.8 {
+            logging!(warn, Type::Ipc, "检测到高失败率 ({:.1}%) 且请求数量大 ({}), 重置统计信息", 
+                     failure_rate * 100.0, total_requests);
+            self.reset_connection_stats().await;
+        } else if total_requests > 10000 {
+            // 定期清理，避免计数器溢出
+            logging!(info, Type::Ipc, "定期清理连接统计 (总请求数: {})", total_requests);
+            
+            // 保持最近的成功/失败时间，但重置计数器
+            self.stats.total_requests.store(100, Ordering::Relaxed);
+            self.stats.failed_requests.store((failure_rate * 100.0) as u64, Ordering::Relaxed);
+            self.stats.consecutive_failures.store(0, Ordering::Relaxed);
+        }
+    }
 }

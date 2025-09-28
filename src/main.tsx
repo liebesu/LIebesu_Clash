@@ -20,6 +20,7 @@ import {
   UpdateStateProvider,
 } from "./services/states";
 import { AppDataProvider } from "./providers/app-data-provider";
+import { UIStateProvider } from "./providers/ui-state-provider";
 
 const mainElementId = "root";
 const container = document.getElementById(mainElementId);
@@ -60,9 +61,11 @@ const initializeApp = async () => {
         <ComposeContextProvider contexts={contexts}>
           <BaseErrorBoundary>
             <AppDataProvider>
-              <BrowserRouter>
-                <Layout />
-              </BrowserRouter>
+              <UIStateProvider>
+                <BrowserRouter>
+                  <Layout />
+                </BrowserRouter>
+              </UIStateProvider>
             </AppDataProvider>
           </BaseErrorBoundary>
         </ComposeContextProvider>
@@ -87,5 +90,29 @@ window.addEventListener("error", (event) => {
 });
 
 window.addEventListener("unhandledrejection", (event) => {
-  console.error("[main.tsx] 未处理的Promise拒绝:", event.reason);
+  const reason = event.reason;
+  const msg = String(reason || "");
+  
+  // 检查是否是已知的临时错误
+  const isTransientError = 
+    msg.includes("core-down") ||
+    msg.includes("ipc temporarily unavailable") ||
+    msg.includes("Connection refused") ||
+    msg.includes("Broken pipe") ||
+    msg.includes("Failed to get fresh connection") ||
+    msg.includes("not allowed by ACL") ||
+    msg.includes("endpoints set") ||
+    msg.includes("Updater does not have") ||
+    msg.includes("failed to get runtime config") ||
+    msg.includes("自动关闭TUN模式失败");
+
+  if (isTransientError) {
+    // 对于临时错误，使用静默日志记录
+    console.debug("[main.tsx] 临时性Promise拒绝 (已过滤):", reason);
+    // 阻止默认的控制台错误输出
+    event.preventDefault();
+  } else {
+    // 对于其他错误，正常记录
+    console.error("[main.tsx] 未处理的Promise拒绝:", reason);
+  }
 });

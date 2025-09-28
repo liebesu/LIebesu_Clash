@@ -315,3 +315,84 @@ pub async fn get_ip_info() -> CmdResult<IpInfo> {
     log::error!(target: "app", "所有IP检测服务都失败了: {}", last_error);
     Err(format!("获取IP信息失败: {}", last_error))
 }
+
+// ===== IPC健康监控相关命令 =====
+
+use crate::ipc::IpcManager;
+
+/// IPC连接健康状态
+#[derive(Debug, Serialize)]
+pub struct IpcHealthStatus {
+    pub is_healthy: bool,
+    pub failure_rate: f64,
+    pub consecutive_failures: u64,
+    pub is_circuit_open: bool,
+    pub is_restart_in_progress: bool,
+}
+
+/// 获取IPC连接健康状态
+#[tauri::command]
+pub async fn get_ipc_health_status() -> CmdResult<IpcHealthStatus> {
+    log::debug!(target: "app", "获取IPC连接健康状态");
+    
+    let ipc_manager = IpcManager::global();
+    let (failure_rate, consecutive_failures, is_healthy) = ipc_manager.get_connection_stats().await;
+    
+    let status = IpcHealthStatus {
+        is_healthy,
+        failure_rate,
+        consecutive_failures,
+        is_circuit_open: ipc_manager.is_circuit_open(),
+        is_restart_in_progress: ipc_manager.is_restart_in_progress(),
+    };
+    
+    log::debug!(target: "app", "IPC健康状态: healthy={}, failure_rate={:.2}%, consecutive_failures={}, circuit_open={}", 
+              status.is_healthy, status.failure_rate * 100.0, status.consecutive_failures, status.is_circuit_open);
+    
+    Ok(status)
+}
+
+/// 执行IPC健康检查
+#[tauri::command]
+pub async fn perform_ipc_health_check() -> CmdResult<bool> {
+    log::debug!(target: "app", "执行IPC健康检查");
+    
+    let ipc_manager = IpcManager::global();
+    let is_healthy = wrap_err!(ipc_manager.health_check().await)?;
+    
+    log::debug!(target: "app", "IPC健康检查结果: {}", is_healthy);
+    Ok(is_healthy)
+}
+
+/// 重置IPC连接统计信息
+#[tauri::command]
+pub async fn reset_ipc_connection_stats() -> CmdResult<()> {
+    log::info!(target: "app", "重置IPC连接统计信息");
+    
+    let ipc_manager = IpcManager::global();
+    ipc_manager.reset_connection_stats().await;
+    
+    Ok(())
+}
+
+/// 强制解除IPC熔断状态 (慎用)
+#[tauri::command]
+pub async fn force_unbreak_ipc_circuit() -> CmdResult<()> {
+    log::warn!(target: "app", "强制解除IPC熔断状态 (手动操作)");
+    
+    let ipc_manager = IpcManager::global();
+    ipc_manager.force_unbreak_circuit();
+    
+    Ok(())
+}
+
+/// 清理IPC连接统计信息 (维护操作)
+#[tauri::command]
+pub async fn cleanup_ipc_stats() -> CmdResult<()> {
+    log::debug!(target: "app", "清理IPC连接统计信息");
+    
+    let ipc_manager = IpcManager::global();
+    ipc_manager.cleanup_stats().await;
+    
+    Ok(())
+}

@@ -167,20 +167,20 @@ export const AppDataProvider = ({
           lastProfileId = newProfileId;
           lastUpdateTime = now;
 
-          setTimeout(() => {
-            // 先执行 forceRefreshProxies，完成后稍延迟再刷新前端数据，避免页面一直 loading
-            forceRefreshProxies()
-              .catch((e) =>
-                console.warn("[AppDataProvider] forceRefreshProxies 失败:", e),
-              )
-              .finally(() => {
-                setTimeout(() => {
-                  refreshProxy().catch((e) =>
-                    console.warn("[AppDataProvider] 普通刷新也失败:", e),
-                  );
-                }, 200); // 200ms 延迟，保证后端缓存已清理
-              });
-          }, 0);
+            setTimeout(() => {
+              // 先执行 forceRefreshProxies，完成后稍延迟再刷新前端数据，避免页面一直 loading
+              Promise.resolve(forceRefreshProxies())
+                .catch((e) => {
+                  console.warn("[AppDataProvider] forceRefreshProxies 失败:", e);
+                })
+                .finally(() => {
+                  setTimeout(() => {
+                    Promise.resolve(refreshProxy()).catch((e) =>
+                      console.warn("[AppDataProvider] 普通刷新也失败:", e),
+                    );
+                  }, 200); // 200ms 延迟，保证后端缓存已清理
+                });
+            }, 0);
         });
 
         // 监听Clash配置刷新事件(enhance操作等)
@@ -213,7 +213,7 @@ export const AppDataProvider = ({
                   "[AppDataProvider] Clash刷新时强制刷新代理缓存失败:",
                   error,
                 );
-                refreshProxy().catch((e) =>
+                Promise.resolve(refreshProxy()).catch((e) =>
                   console.warn("[AppDataProvider] Clash刷新普通刷新也失败:", e),
                 );
               }
@@ -230,7 +230,7 @@ export const AppDataProvider = ({
             lastUpdateTime = now;
 
             setTimeout(() => {
-              refreshProxy().catch((e) =>
+              Promise.resolve(refreshProxy()).catch((e) =>
                 console.warn("[AppDataProvider] 代理刷新失败:", e),
               );
             }, 100);
@@ -242,7 +242,7 @@ export const AppDataProvider = ({
           console.log("[AppDataProvider] 强制代理刷新事件");
 
           // 立即刷新，无延迟，无防抖
-          forceRefreshProxies()
+          Promise.resolve(forceRefreshProxies())
             .then(() => {
               console.log("[AppDataProvider] 强制刷新代理缓存完成");
               // 强制刷新完成后，立即刷新前端显示
@@ -254,7 +254,7 @@ export const AppDataProvider = ({
             .catch((e) => {
               console.warn("[AppDataProvider] 强制代理刷新失败:", e);
               // 如果强制刷新失败，尝试普通刷新
-              refreshProxy().catch((e2) =>
+              Promise.resolve(refreshProxy()).catch((e2) =>
                 console.warn("[AppDataProvider] 普通代理刷新也失败:", e2),
               );
             });
@@ -330,8 +330,18 @@ export const AppDataProvider = ({
     const cleanupPromise = setupEventListeners();
 
     return () => {
-      profileUnlisten?.then((unlisten) => unlisten()).catch(console.error);
-      cleanupPromise.then((cleanup) => cleanup());
+      if (profileUnlisten) {
+        Promise.resolve(profileUnlisten)
+          .then((unlisten) => unlisten())
+          .catch((error) => {
+            console.warn("[AppDataProvider] 清理profile监听器失败:", error);
+          });
+      }
+      Promise.resolve(cleanupPromise)
+        .then((cleanup) => cleanup())
+        .catch((error) => {
+          console.warn("[AppDataProvider] 清理事件监听器失败:", error);
+        });
     };
   }, [refreshProxy]);
 

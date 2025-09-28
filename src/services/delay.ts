@@ -154,14 +154,104 @@ class DelayManager {
       `[DelayManager] 批量测试延迟开始，组: ${group}, 数量: ${nameList.length}, 并发数: ${concurrency}`,
     );
     const names = nameList.filter(Boolean);
+    
+    if (names.length === 0) {
+      console.log(`[DelayManager] 没有需要测试的节点`);
+      return;
+    }
+
+    // 性能优化：根据节点数量动态调整并发数和策略
+    let optimizedConcurrency = concurrency;
+    let batchSize = names.length;
+    let useProgressiveLoading = false;
+
+    if (names.length > 500) {
+      // 超大量节点：分批处理，减少内存占用
+      optimizedConcurrency = Math.min(15, concurrency);
+      batchSize = 100;
+      useProgressiveLoading = true;
+      console.log(`[DelayManager] 超大量节点模式：批量大小=${batchSize}, 并发数=${optimizedConcurrency}`);
+    } else if (names.length > 100) {
+      // 大量节点：适度减少并发
+      optimizedConcurrency = Math.min(25, concurrency);
+      console.log(`[DelayManager] 大量节点模式：并发数=${optimizedConcurrency}`);
+    } else {
+      // 正常数量：使用原有逻辑
+      optimizedConcurrency = Math.min(concurrency, names.length, 36);
+    }
+
+    const startTime = Date.now();
+    const listener = this.groupListenerMap.get(group);
+    let completedCount = 0;
+
+    if (useProgressiveLoading) {
+      // 分批处理模式
+      await this.processInBatches(names, group, timeout, batchSize, optimizedConcurrency, listener);
+    } else {
+      // 原有并发处理模式（优化版）
+      await this.processConcurrently(names, group, timeout, optimizedConcurrency, listener);
+    }
+
+    const totalTime = Date.now() - startTime;
+    console.log(
+      `[DelayManager] 批量测试延迟完成，组: ${group}, 总耗时: ${totalTime}ms, 平均: ${(totalTime / names.length).toFixed(1)}ms/节点`,
+    );
+  }
+
+  // 分批处理模式 - 用于超大量节点
+  private async processInBatches(
+    names: string[],
+    group: string,
+    timeout: number,
+    batchSize: number,
+    concurrency: number,
+    listener?: () => void,
+  ) {
+    const batches = [];
+    for (let i = 0; i < names.length; i += batchSize) {
+      batches.push(names.slice(i, i + batchSize));
+    }
+
+    console.log(`[DelayManager] 分批处理：${batches.length} 个批次，每批 ${batchSize} 个节点`);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`[DelayManager] 处理批次 ${batchIndex + 1}/${batches.length}，包含 ${batch.length} 个节点`);
+
+      // 设置批次中所有节点为测试中状态
+      batch.forEach((name) => this.setDelay(name, group, -2));
+
+      // 并发处理当前批次
+      await this.processConcurrently(batch, group, timeout, concurrency);
+
+      // 批次完成后触发UI更新
+      if (listener) {
+        listener();
+      }
+
+      // 批次间添加短暂延迟，避免过度占用资源
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+
+  // 并发处理模式 - 优化版
+  private async processConcurrently(
+    names: string[],
+    group: string,
+    timeout: number,
+    concurrency: number,
+    listener?: () => void,
+  ) {
     // 设置正在延迟测试中
     names.forEach((name) => this.setDelay(name, group, -2));
 
     let index = 0;
-    const startTime = Date.now();
-    const listener = this.groupListenerMap.get(group);
+    let completedCount = 0;
+    const totalCount = names.length;
 
-    const help = async (): Promise<void> => {
+    const processNext = async (): Promise<void> => {
       const currName = names[index++];
       if (!currName) return;
 
@@ -169,16 +259,21 @@ class DelayManager {
         // 确保API调用前状态为测试中
         this.setDelay(currName, group, -2);
 
-        // 添加一些随机延迟，避免所有请求同时发出和返回
-        if (index > 1) {
-          // 第一个不延迟，保持响应性
-          await new Promise((resolve) =>
-            setTimeout(resolve, Math.random() * 200),
-          );
+        // 性能优化：减少随机延迟，使用更精确的间隔控制
+        if (index > 1 && totalCount > 50) {
+          // 只有在大量节点时才添加延迟，避免请求风暴
+          const delayMs = Math.min(50 + Math.random() * 100, 200);
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
         await this.checkDelay(currName, group, timeout);
-        if (listener) listener();
+        
+        completedCount++;
+        
+        // 性能优化：减少UI更新频率
+        if (listener && (completedCount % Math.max(1, Math.floor(totalCount / 20)) === 0 || completedCount === totalCount)) {
+          listener();
+        }
       } catch (error) {
         console.error(
           `[DelayManager] 批量测试单个代理出错，代理: ${currName}`,
@@ -186,25 +281,31 @@ class DelayManager {
         );
         // 设置为错误状态
         this.setDelay(currName, group, 1e6);
+        completedCount++;
       }
 
-      return help();
+      return processNext();
     };
 
-    // 限制并发数，避免发送太多请求
-    const actualConcurrency = Math.min(concurrency, names.length, 10);
+    // 性能优化：动态调整实际并发数
+    const actualConcurrency = Math.min(concurrency, names.length, this.getOptimalConcurrency(names.length));
     console.log(`[DelayManager] 实际并发数: ${actualConcurrency}`);
 
     const promiseList: Promise<void>[] = [];
     for (let i = 0; i < actualConcurrency; i++) {
-      promiseList.push(help());
+      promiseList.push(processNext());
     }
 
     await Promise.all(promiseList);
-    const totalTime = Date.now() - startTime;
-    console.log(
-      `[DelayManager] 批量测试延迟完成，组: ${group}, 总耗时: ${totalTime}ms`,
-    );
+  }
+
+  // 根据节点数量获取最优并发数
+  private getOptimalConcurrency(nodeCount: number): number {
+    if (nodeCount <= 10) return nodeCount;
+    if (nodeCount <= 50) return 15;
+    if (nodeCount <= 200) return 25;
+    if (nodeCount <= 500) return 20;
+    return 15; // 超大量节点时降低并发，避免资源竞争
   }
 
   formatDelay(delay: number, timeout = 10000) {

@@ -7,6 +7,8 @@ pub mod init;
 pub mod logging;
 pub mod network;
 pub mod notification;
+pub mod platform_compat;
+pub mod memory_guard;
 pub mod resolve;
 pub mod server;
 pub mod singleton;

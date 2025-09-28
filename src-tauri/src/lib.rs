@@ -274,6 +274,12 @@ mod app_init {
             cmd::get_network_interfaces,
             cmd::get_ip_info,
             cmd::get_system_hostname,
+            // IPC health monitoring commands
+            cmd::get_ipc_health_status,
+            cmd::perform_ipc_health_check,
+            cmd::reset_ipc_connection_stats,
+            cmd::force_unbreak_ipc_circuit,
+            cmd::cleanup_ipc_stats,
             cmd::restart_app,
             // Core management
             cmd::start_core,
@@ -287,6 +293,35 @@ mod app_init {
             cmd::get_app_uptime,
             cmd::get_auto_launch_status,
             cmd::is_admin,
+            // Auto-update commands
+            cmd::auto_update::check_for_updates,
+            cmd::auto_update::download_and_install_update,
+            cmd::auto_update::get_update_config,
+            cmd::auto_update::set_update_config,
+            cmd::auto_update::skip_update_version,
+            cmd::auto_update::get_update_history,
+            // Cross-platform compatibility commands
+            cmd::get_platform_details,
+            cmd::check_platform_features,
+            cmd::get_system_limits,
+            cmd::get_memory_limits,
+            cmd::check_memory_usage,
+            cmd::cleanup_platform_memory,
+            cmd::set_platform_process_priority,
+            cmd::optimize_platform_network,
+            cmd::ensure_platform_app_dirs,
+            cmd::setup_platform_environment,
+            cmd::initialize_platform_compatibility,
+            // Memory leak protection commands
+            cmd::enable_memory_monitoring,
+            cmd::disable_memory_monitoring,
+            cmd::set_memory_threshold,
+            cmd::get_memory_health_status,
+            cmd::check_current_memory,
+            cmd::cleanup_leaked_resources,
+            cmd::force_garbage_collection,
+            cmd::get_tracked_resources_info,
+            cmd::initialize_memory_protection,
             // Lightweight mode
             cmd::entry_lightweight_mode,
             cmd::exit_lightweight_mode,
@@ -871,6 +906,42 @@ pub fn run() {
         match e {
             tauri::RunEvent::Ready => {
                 println!("🚀 应用程序就绪事件");
+                
+                // 初始化内存防护系统
+                let app_handle_clone = app_handle.clone();
+                AsyncHandler::spawn(move || async move {
+                    println!("🛡️ 初始化内存防护系统...");
+                    
+                    // 启用内存监控
+                    crate::utils::memory_guard::MemoryGuard::global().enable_monitoring();
+                    
+                    // 设置内存阈值 (200MB)
+                    crate::utils::memory_guard::MemoryGuard::global().set_memory_threshold(200);
+                    
+                    // 启动自动清理任务
+                    crate::utils::memory_guard::MemoryGuard::global().start_auto_cleanup();
+                    
+                    // 执行初始内存检查
+                    if let Some(usage) = crate::utils::memory_guard::MemoryGuard::global().check_memory_usage().await {
+                        println!("📊 初始内存使用: RSS={}MB, Virtual={}MB", 
+                                usage.rss / 1024 / 1024, usage.virtual_mem / 1024 / 1024);
+                    }
+                    
+                    println!("✅ 内存防护系统初始化完成");
+                });
+                
+                // 初始化自动更新系统
+                let app_handle_auto_update = app_handle.clone();
+                AsyncHandler::spawn(move || async move {
+                    println!("🔄 初始化自动更新系统...");
+                    
+                    // 延迟初始化，避免影响应用启动性能
+                    tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+                    
+                    crate::cmd::auto_update::initialize_auto_updater(app_handle_auto_update).await;
+                    
+                    println!("✅ 自动更新系统初始化完成");
+                });
             },
             tauri::RunEvent::Resumed => {
                 println!("🔄 应用程序恢复事件");

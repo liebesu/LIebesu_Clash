@@ -34,6 +34,7 @@ import { showNotice } from "@/services/noticeService";
 import { NoticeManager } from "@/components/base/NoticeManager";
 import { useLocalStorage } from "foxact/use-local-storage";
 import { LogLevel } from "@/hooks/use-log-data";
+import { autoUpdateService } from "@/services/auto-update";
 
 const appWindow = getCurrentWebviewWindow();
 export let portableFlag = false;
@@ -192,6 +193,28 @@ const Layout = () => {
       initGlobalLogService(enableLog, logLevel);
     }
   }, [clashInfo, enableLog, logLevel]);
+
+  // 初始化自动更新服务
+  useEffect(() => {
+    const initAutoUpdate = async () => {
+      try {
+        console.log("[Layout] 🔄 初始化自动更新服务...");
+        await autoUpdateService.startAutoCheck();
+        console.log("[Layout] ✅ 自动更新服务初始化完成");
+      } catch (error) {
+        console.error("[Layout] ❌ 自动更新服务初始化失败:", error);
+      }
+    };
+
+    // 延迟10秒初始化，避免影响应用启动性能
+    const timer = setTimeout(initAutoUpdate, 10000);
+    
+    return () => {
+      clearTimeout(timer);
+      // 清理自动更新服务
+      autoUpdateService.destroy();
+    };
+  }, []);
 
   // 设置监听器
   useEffect(() => {

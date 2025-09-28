@@ -5,6 +5,7 @@ pub type CmdResult<T = ()> = Result<T, String>;
 // Command modules
 pub mod advanced_search;
 pub mod app;
+pub mod auto_update;
 pub mod backup_restore;
 pub mod batch_import;
 pub mod clash;
