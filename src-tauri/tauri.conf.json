@@ -57,6 +57,12 @@
       "desktop": {
         "schemes": ["liebesu-clash"]
       }
+    },
+    "updater": {
+      "active": false,
+      "dialog": false,
+      "endpoints": [],
+      "pubkey": ""
     }
   },
   "app": {
