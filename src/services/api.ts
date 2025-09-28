@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import { getClashInfo } from "./cmds";
+import { invoke } from "@tauri-apps/api/core";
 
 let instancePromise: Promise<AxiosInstance> = null!;
 
@@ -184,74 +185,15 @@ function createPrng(seed: number): () => number {
   };
 }
 
-// 获取当前IP和地理位置信息
+// 获取当前IP和地理位置信息 - 使用Tauri后端命令
 export const getIpInfo = async (): Promise<IpInfo> => {
-  // 配置参数
-  const maxRetries = 3;
-  const serviceTimeout = 5000;
-  const overallTimeout = 20000; // 增加总超时时间以容纳延迟
-
-  const overallTimeoutController = new AbortController();
-  const overallTimeoutId = setTimeout(() => {
-    overallTimeoutController.abort();
-  }, overallTimeout);
-
   try {
-    const shuffledServices = shuffleServices();
-    let lastError: Error | null = null;
-
-    for (const service of shuffledServices) {
-      console.log(`尝试IP检测服务: ${service.url}`);
-
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-        try {
-          const timeoutController = new AbortController();
-          timeoutId = setTimeout(() => {
-            timeoutController.abort();
-          }, service.timeout || serviceTimeout);
-
-          const response = await axios.get(service.url, {
-            signal: timeoutController.signal,
-            timeout: service.timeout || serviceTimeout,
-            // 移除了headers参数（默认会使用axios的默认User-Agent）
-          });
-
-          if (timeoutId) clearTimeout(timeoutId);
-
-          if (response.data && response.data.ip) {
-            console.log(`IP检测成功，使用服务: ${service.url}`);
-            return service.mapping(response.data);
-          } else {
-            throw new Error(`无效的响应格式 from ${service.url}`);
-          }
-        } catch (error: any) {
-          if (timeoutId) clearTimeout(timeoutId);
-
-          lastError = error;
-          console.log(
-            `尝试 ${attempt + 1}/${maxRetries} 失败 (${service.url}):`,
-            error.message,
-          );
-
-          if (error.name === "AbortError") {
-            throw error;
-          }
-
-          if (attempt < maxRetries - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          }
-        }
-      }
-    }
-
-    if (lastError) {
-      throw new Error(`所有IP检测服务都失败: ${lastError.message}`);
-    } else {
-      throw new Error("没有可用的IP检测服务");
-    }
-  } finally {
-    clearTimeout(overallTimeoutId);
+    console.log("通过Tauri后端获取IP信息...");
+    const ipInfo = await invoke<IpInfo>("get_ip_info");
+    console.log("IP检测成功:", ipInfo);
+    return ipInfo;
+  } catch (error) {
+    console.error("获取IP信息失败:", error);
+    throw new Error(`获取IP信息失败: ${error}`);
   }
 };
