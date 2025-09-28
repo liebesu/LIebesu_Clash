@@ -502,7 +502,9 @@ const Layout = () => {
             msg.includes("Connection refused") ||
             msg.includes("Broken pipe") ||
             msg.includes("Failed to get fresh connection") ||
-            msg.includes("not allowed by ACL");
+            msg.includes("not allowed by ACL") ||
+            msg.includes("endpoints set") ||
+            msg.includes("Updater does not have");
 
           if (!isTransient) {
             console.error(`[SWR Error] Key: ${key}, Error:`, error);

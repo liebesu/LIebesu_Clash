@@ -444,7 +444,16 @@ export const AppDataProvider = ({
       fallbackData: { connections: [], uploadTotal: 0, downloadTotal: 0 },
       keepPreviousData: true,
       onError: (error) => {
-        console.error("[Connections] IPC 获取数据错误:", error);
+        const msg = String(error || "");
+        const isTransient =
+          msg.includes("core-down") ||
+          msg.includes("Connection refused") ||
+          msg.includes("Broken pipe") ||
+          msg.includes("Failed to get fresh connection");
+        
+        if (!isTransient) {
+          console.error("[Connections] IPC 获取数据错误:", error);
+        }
       },
     },
   );
@@ -461,7 +470,16 @@ export const AppDataProvider = ({
         // console.log("[Traffic][AppDataProvider] IPC 获取到流量数据:", data);
       },
       onError: (error) => {
-        console.error("[Traffic][AppDataProvider] IPC 获取数据错误:", error);
+        const msg = String(error || "");
+        const isTransient =
+          msg.includes("core-down") ||
+          msg.includes("Connection refused") ||
+          msg.includes("Broken pipe") ||
+          msg.includes("Failed to get fresh connection");
+        
+        if (!isTransient) {
+          console.error("[Traffic][AppDataProvider] IPC 获取数据错误:", error);
+        }
       },
     },
   );
@@ -475,7 +493,16 @@ export const AppDataProvider = ({
       fallbackData: { inuse: 0 },
       keepPreviousData: true,
       onError: (error) => {
-        console.error("[Memory] IPC 获取数据错误:", error);
+        const msg = String(error || "");
+        const isTransient =
+          msg.includes("core-down") ||
+          msg.includes("Connection refused") ||
+          msg.includes("Broken pipe") ||
+          msg.includes("Failed to get fresh connection");
+        
+        if (!isTransient) {
+          console.error("[Memory] IPC 获取数据错误:", error);
+        }
       },
     },
   );
