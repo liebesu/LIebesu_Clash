@@ -27,6 +27,7 @@ use tauri_plugin_deep_link::DeepLinkExt;
 use tokio::time::{Duration, timeout};
 use utils::logging::Type;
 use log::LevelFilter;
+use serde_json;
 
 /// 🔧 修复：初始化日志系统
 fn init_logger() {
@@ -629,9 +630,9 @@ pub fn run() {
             println!("设置托盘事件监听器...");
             // Setup tray action event listener
             app_handle.listen("verge://tray-action", move |event| {
-                if let Some(action) = event.payload().as_str() {
+                if let Ok(action) = serde_json::from_str::<String>(event.payload()) {
                     AsyncHandler::spawn(move || async move {
-                        match action {
+                        match action.as_str() {
                             "system_proxy" => {
                                 feat::toggle_system_proxy().await;
                             }
