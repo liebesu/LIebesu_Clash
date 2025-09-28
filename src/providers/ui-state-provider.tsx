@@ -25,7 +25,7 @@ export const UIStateProvider: React.FC<UIStateProviderProps> = ({
     maxRetries: 3,
     retryDelay: 1500,
     notificationPosition: "top-right",
-    debug: process.env.NODE_ENV === "development",
+    debug: typeof window !== 'undefined' && window.location.hostname === 'localhost',
     ...options,
   };
 

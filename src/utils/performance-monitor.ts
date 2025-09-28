@@ -3,6 +3,8 @@
  * 用于监控大量节点时的前端性能表现
  */
 
+import React from "react";
+
 interface PerformanceMetric {
   name: string;
   startTime: number;
@@ -30,8 +32,8 @@ class PerformanceMonitor {
   private maxMetrics = 1000; // 防止内存泄漏
 
   constructor() {
-    // 在开发环境下自动启用
-    this.isEnabled = process.env.NODE_ENV === 'development';
+    // 在开发环境下自动启用 (使用简单的检测方式)
+    this.isEnabled = typeof window !== 'undefined' && window.location.hostname === 'localhost';
   }
 
   enable() {
@@ -213,18 +215,18 @@ class PerformanceMonitor {
 
     const name = componentName || Component.displayName || Component.name || 'UnknownComponent';
     
-    return (props: P) => {
+    return React.forwardRef<any, P>((props, ref) => {
       this.startTimer(`${name}-render`, { propsKeys: Object.keys(props) });
       
       try {
-        const result = Component(props);
+        const result = React.createElement(Component, { ...props, ref });
         this.endTimer(`${name}-render`);
         return result;
       } catch (error) {
         this.endTimer(`${name}-render`);
         throw error;
       }
-    };
+    }) as React.ComponentType<P>;
   }
 
   /**

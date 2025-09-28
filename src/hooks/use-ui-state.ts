@@ -69,7 +69,7 @@ export const useUIState = (options: UseUIStateOptions = {}) => {
   const [globalState, setGlobalState] = useState<UIState>("idle");
   
   // 引用
-  const timeoutRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutRefs = useRef<Map<string, number>>(new Map());
   const loadingStartTimes = useRef<Map<string, number>>(new Map());
 
   // 通知和错误处理
@@ -160,7 +160,7 @@ export const useUIState = (options: UseUIStateOptions = {}) => {
         })) {
           debugLog(`Failed to show loading notification for ${id}`);
         }
-      }, showLoadingAfter);
+      }, showLoadingAfter) as unknown as number;
       
       timeoutRefs.current.set(id, timeout);
     } else {
