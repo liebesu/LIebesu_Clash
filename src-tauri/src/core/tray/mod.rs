@@ -562,24 +562,27 @@ impl Tray {
                         return;
                     }
 
-                    use std::future::Future;
-                    use std::pin::Pin;
-
-                    let fut: Pin<Box<dyn Future<Output = ()> + Send>> = match tray_event.as_str() {
-                        "system_proxy" => Box::pin(async move {
-                            feat::toggle_system_proxy().await;
-                        }),
-                        "tun_mode" => Box::pin(async move {
-                            feat::toggle_tun_mode(None).await;
-                        }),
-                        "main_window" => Box::pin(async move {
-                            if !lightweight::exit_lightweight_mode().await {
-                                WindowManager::show_main_window().await;
-                            };
-                        }),
-                        _ => Box::pin(async move {}),
-                    };
-                    fut.await;
+                    // 使用 spawn 来避免 Send 要求问题
+                    match tray_event.as_str() {
+                        "system_proxy" => {
+                            AsyncHandler::spawn(|| async {
+                                feat::toggle_system_proxy().await;
+                            });
+                        }
+                        "tun_mode" => {
+                            AsyncHandler::spawn(|| async {
+                                feat::toggle_tun_mode(None).await;
+                            });
+                        }
+                        "main_window" => {
+                            AsyncHandler::spawn(|| async {
+                                if !lightweight::exit_lightweight_mode().await {
+                                    WindowManager::show_main_window().await;
+                                };
+                            });
+                        }
+                        _ => {}
+                    }
                 }
             });
         });
