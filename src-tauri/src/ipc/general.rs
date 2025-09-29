@@ -597,4 +597,21 @@ impl IpcManager {
     }
 
     // 日志相关功能已迁移到 logs.rs 模块，使用流式处理
+
+    /// 检查熔断器是否开启
+    pub fn is_circuit_open(&self) -> bool {
+        CORE_DOWN.load(Ordering::SeqCst)
+    }
+
+    /// 检查是否正在重启
+    pub fn is_restart_in_progress(&self) -> bool {
+        RESTART_IN_PROGRESS.load(Ordering::SeqCst)
+    }
+
+    /// 强制解除熔断状态
+    pub fn force_unbreak_circuit(&self) {
+        CORE_DOWN.store(false, Ordering::SeqCst);
+        RESTART_IN_PROGRESS.store(false, Ordering::SeqCst);
+        logging!(warn, Type::Ipc, "强制解除熔断状态 (手动操作)");
+    }
 }
