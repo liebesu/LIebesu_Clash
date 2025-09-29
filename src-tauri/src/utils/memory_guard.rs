@@ -63,6 +63,14 @@ pub struct MemoryGuard {
 }
 
 impl MemoryGuard {
+    /// 获取全局单例实例
+    pub fn instance() -> &'static MemoryGuard {
+        static INSTANCE: once_cell::sync::Lazy<MemoryGuard> = once_cell::sync::Lazy::new(|| {
+            MemoryGuard::new()
+        });
+        &*INSTANCE
+    }
+
     /// 创建新的内存守护实例
     fn new() -> Self {
         Self {

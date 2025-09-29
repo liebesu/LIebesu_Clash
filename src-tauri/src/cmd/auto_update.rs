@@ -1,8 +1,10 @@
 use super::CmdResult;
-use anyhow::{Context, Result as AnyResult};
+use anyhow::Result as AnyResult;
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
+use tauri_plugin_updater::UpdaterExt;
+use crate::{logging, utils::logging::Type};
 
 /// 更新信息
 #[derive(Debug, Clone, Serialize, Deserialize)]

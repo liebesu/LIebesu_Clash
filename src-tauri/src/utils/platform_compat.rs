@@ -172,14 +172,14 @@ impl MemoryManager {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryLimits {
     pub max_connection_pool: usize,
     pub max_cache_size: usize,
     pub gc_threshold: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryUsage {
     pub rss: u64,         // 物理内存使用
     pub virtual_mem: u64, // 虚拟内存使用  
