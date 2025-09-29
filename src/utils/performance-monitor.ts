@@ -215,18 +215,24 @@ class PerformanceMonitor {
 
     const name = componentName || Component.displayName || Component.name || 'UnknownComponent';
     
-    return React.forwardRef<any, P>((props, ref) => {
+    // 使用简单的高阶组件模式，避免复杂的forwardRef类型问题
+    const WrappedComponent: React.ComponentType<P> = (props: P) => {
       this.startTimer(`${name}-render`, { propsKeys: Object.keys(props) });
       
       try {
-        const result = React.createElement(Component, { ...props, ref });
+        const result = React.createElement(Component, props);
         this.endTimer(`${name}-render`);
         return result;
       } catch (error) {
         this.endTimer(`${name}-render`);
         throw error;
       }
-    }) as React.ComponentType<P>;
+    };
+
+    // 保持组件名称便于调试
+    WrappedComponent.displayName = `PerformanceMonitor(${name})`;
+    
+    return WrappedComponent;
   }
 
   /**
