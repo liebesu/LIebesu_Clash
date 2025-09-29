@@ -695,6 +695,7 @@ pub fn run() {
     /// Event handling helper functions
     mod event_handlers {
         use crate::core::handle;
+        use tauri::Manager;
 
         use super::*;
 

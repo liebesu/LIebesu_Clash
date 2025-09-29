@@ -1441,7 +1441,7 @@ async fn cleanup_stale_connections() -> Result<()> {
                         for conn in stale_connections {
                             if let Some(id) = conn.get("id").and_then(|i| i.as_str()) {
                                 let id = id.to_string();
-                                let ipc_clone = ipc.clone();
+                                let ipc_clone = ipc;
                                 
                                 let cleanup_task = tokio::spawn(async move {
                                     log::debug!(target: "speed_test", "🗑️ [增强清理] 清理连接: {}", id);
