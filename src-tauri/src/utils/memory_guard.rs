@@ -312,22 +312,14 @@ impl MemoryGuard {
                 }
                 
                 // 检查内存使用
-                match guard.check_memory_usage().await {
-                    Ok(_) => {},
-                    Err(e) => {
-                        logging!(warn, Type::System, "自动内存检查失败: {}", e);
-                    }
+                if guard.check_memory_usage().await.is_none() {
+                    logging!(warn, Type::System, "自动内存检查失败: 无法获取内存信息");
                 }
                 
                 // 检查是否需要清理
                 let last_cleanup = *guard.last_cleanup.read().await;
                 if last_cleanup.elapsed() >= guard.cleanup_interval {
-                    match guard.cleanup_leaked_resources().await {
-                        Ok(_) => {},
-                        Err(e) => {
-                            logging!(warn, Type::System, "自动内存清理失败: {}", e);
-                        }
-                    }
+                    guard.cleanup_leaked_resources().await;
                 }
             }
         });

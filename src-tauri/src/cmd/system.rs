@@ -288,15 +288,15 @@ pub async fn check_current_memory() -> CmdResult<String> {
     log::debug!(target: "app", "检查当前内存使用情况");
     
     match MemoryGuard::instance().check_memory_usage().await {
-        Ok(usage) => {
+        Some(usage) => {
             let usage_info = format!("RSS: {}MB, Virtual: {}MB, CPU: {:.1}%", 
                                    usage.rss / 1024 / 1024, usage.virtual_mem / 1024 / 1024, usage.cpu_usage);
             log::debug!(target: "app", "当前内存使用: {}", usage_info);
             Ok(usage_info)
         }
-        Err(e) => {
-            log::warn!(target: "app", "检查内存使用失败: {}", e);
-            Err(format!("检查内存使用失败: {}", e))
+        None => {
+            log::warn!(target: "app", "无法获取内存使用情况");
+            Err("无法获取内存使用情况".to_string())
         }
     }
 }

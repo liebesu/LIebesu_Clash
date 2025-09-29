@@ -163,8 +163,6 @@ pub async fn download_and_install_update(app: AppHandle) -> CmdResult<()> {
             return Err(format!("创建更新器失败: {}", e));
         }
     }
-
-    Ok(())
 }
 
 /// 获取更新配置
