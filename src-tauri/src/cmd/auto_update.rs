@@ -1,10 +1,8 @@
 use super::CmdResult;
-use crate::{config::Config, logging, utils::logging::Type};
 use anyhow::{Context, Result as AnyResult};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Manager};
-use tauri_plugin_updater::{Update, UpdaterExt};
+use tauri::{AppHandle, Emitter};
 
 /// 更新信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,7 +76,7 @@ pub async fn check_for_updates(app: AppHandle) -> CmdResult<UpdateInfo> {
                     update_info.available = true;
                     update_info.latest_version = Some(update.version.clone());
                     update_info.release_notes = update.body.clone();
-                    update_info.published_at = update.date.clone();
+                    update_info.published_at = update.date.map(|d| d.to_string());
                     
                     // 保存检查时间戳
                     save_last_check_timestamp(&app).await;
@@ -122,13 +120,19 @@ pub async fn download_and_install_update(app: AppHandle) -> CmdResult<()> {
                     let _ = app.emit("update-download-started", update.version.clone());
                     
                     // 下载并安装
-                    match update.download_and_install(|chunk_length, content_length| {
-                        // 发送下载进度事件
-                        if let Some(total) = content_length {
-                            let progress = (chunk_length as f64 / total as f64 * 100.0) as u32;
-                            let _ = app.emit("update-download-progress", progress);
+                    match update.download_and_install(
+                        |chunk_length, content_length| {
+                            // 发送下载进度事件
+                            if let Some(total) = content_length {
+                                let progress = (chunk_length as f64 / total as f64 * 100.0) as u32;
+                                let _ = app.emit("update-download-progress", progress);
+                            }
+                        },
+                        || {
+                            // 下载完成回调
+                            println!("Update download completed");
                         }
-                    }).await {
+                    ).await {
                         Ok(()) => {
                             logging!(info, Type::System, "更新下载并安装成功");
                             let _ = app.emit("update-install-success", ());
@@ -176,7 +180,7 @@ pub async fn set_update_config(app: AppHandle, config: UpdateConfig) -> CmdResul
     logging!(info, Type::System, "保存更新配置");
     
     save_update_config(&app, &config).await
-        .context("保存更新配置失败")?;
+        .map_err(|e| format!("保存更新配置失败: {}", e))?;
     
     // 如果启用了自动检查，立即开始检查
     if config.auto_check_enabled {
@@ -200,7 +204,7 @@ pub async fn skip_update_version(app: AppHandle, version: String) -> CmdResult<(
     config.skip_version = Some(version.clone());
     
     save_update_config(&app, &config).await
-        .context("保存跳过版本配置失败")?;
+        .map_err(|e| format!("保存跳过版本配置失败: {}", e))?;
     
     Ok(())
 }
@@ -276,7 +280,7 @@ pub async fn start_auto_update_checker(app: AppHandle) {
 
 // === 辅助函数 ===
 
-async fn is_auto_update_enabled(app: &AppHandle) -> bool {
+async fn is_auto_update_enabled(_app: &AppHandle) -> bool {
     // 检查Tauri配置中是否启用了自动更新
     // 这里需要根据实际的Tauri配置来实现
     true // 默认启用
@@ -296,13 +300,13 @@ async fn should_check_for_updates(config: &UpdateConfig) -> bool {
     }
 }
 
-async fn load_update_config(app: &AppHandle) -> UpdateConfig {
+async fn load_update_config(_app: &AppHandle) -> UpdateConfig {
     // 从配置文件加载更新配置
     // 这里可以集成到现有的Config系统中
     UpdateConfig::default()
 }
 
-async fn save_update_config(app: &AppHandle, config: &UpdateConfig) -> AnyResult<()> {
+async fn save_update_config(_app: &AppHandle, _config: &UpdateConfig) -> AnyResult<()> {
     // 保存更新配置到文件
     // 这里可以集成到现有的Config系统中
     Ok(())
@@ -314,7 +318,7 @@ async fn save_last_check_timestamp(app: &AppHandle) {
     let _ = save_update_config(app, &config).await;
 }
 
-async fn load_update_history(app: &AppHandle) -> Vec<UpdateHistoryItem> {
+async fn load_update_history(_app: &AppHandle) -> Vec<UpdateHistoryItem> {
     // 从文件加载更新历史
     // 这里可以实现持久化存储
     vec![]

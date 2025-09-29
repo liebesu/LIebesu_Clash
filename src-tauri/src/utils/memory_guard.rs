@@ -290,27 +290,36 @@ impl MemoryGuard {
             return;
         }
 
-        let guard = Arc::new(self);
-        let guard_weak = Arc::downgrade(&guard);
-
-        tokio::spawn(async move {
+        // 使用单例模式避免生命周期问题
+        tokio::spawn(async {
             let mut interval = tokio::time::interval(Duration::from_secs(300)); // 5分钟间隔
             
             loop {
                 interval.tick().await;
                 
-                if let Some(guard) = guard_weak.upgrade() {
-                    // 检查内存使用
-                    guard.check_memory_usage().await;
-                    
-                    // 检查是否需要清理
-                    let last_cleanup = *guard.last_cleanup.read().await;
-                    if last_cleanup.elapsed() >= guard.cleanup_interval {
-                        guard.cleanup_leaked_resources().await;
-                    }
-                } else {
-                    // 守护者已被释放，退出循环
+                let guard = MemoryGuard::instance();
+                
+                if !guard.monitoring_enabled.load(Ordering::Relaxed) {
                     break;
+                }
+                
+                // 检查内存使用
+                match guard.check_memory_usage().await {
+                    Ok(_) => {},
+                    Err(e) => {
+                        logging!(warn, Type::System, "自动内存检查失败: {}", e);
+                    }
+                }
+                
+                // 检查是否需要清理
+                let last_cleanup = *guard.last_cleanup.read().await;
+                if last_cleanup.elapsed() >= guard.cleanup_interval {
+                    match guard.cleanup_leaked_resources().await {
+                        Ok(_) => {},
+                        Err(e) => {
+                            logging!(warn, Type::System, "自动内存清理失败: {}", e);
+                        }
+                    }
                 }
             }
         });

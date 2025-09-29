@@ -129,14 +129,14 @@ pub async fn get_system_limits() -> CmdResult<SystemLimits> {
 
 /// 获取内存限制配置
 #[tauri::command]
-pub async fn get_memory_limits() -> CmdResult<MemoryLimits> {
+pub fn get_memory_limits() -> CmdResult<MemoryLimits> {
     log::debug!(target: "app", "获取内存限制配置");
     Ok(MemoryManager::get_memory_limits())
 }
 
 /// 检查当前内存使用情况
 #[tauri::command]
-pub async fn check_memory_usage() -> CmdResult<MemoryUsage> {
+pub fn check_memory_usage() -> CmdResult<MemoryUsage> {
     log::debug!(target: "app", "检查当前内存使用情况");
     
     match MemoryManager::check_memory_usage() {
@@ -284,16 +284,21 @@ pub async fn get_memory_health_status() -> CmdResult<MemoryHealthStatus> {
 
 /// 检查当前内存使用情况
 #[tauri::command]
-pub async fn check_current_memory() -> CmdResult<Option<crate::utils::platform_compat::MemoryUsage>> {
+pub async fn check_current_memory() -> CmdResult<String> {
     log::debug!(target: "app", "检查当前内存使用情况");
-    let usage = MemoryGuard::global().check_memory_usage().await;
     
-    if let Some(ref usage) = usage {
-        log::debug!(target: "app", "当前内存使用: RSS={}MB, Virtual={}MB, CPU={:.1}%", 
-                  usage.rss / 1024 / 1024, usage.virtual_mem / 1024 / 1024, usage.cpu_usage);
+    match MemoryGuard::instance().check_memory_usage().await {
+        Ok(usage) => {
+            let usage_info = format!("RSS: {}MB, Virtual: {}MB, CPU: {:.1}%", 
+                                   usage.rss / 1024 / 1024, usage.virtual_mem / 1024 / 1024, usage.cpu_usage);
+            log::debug!(target: "app", "当前内存使用: {}", usage_info);
+            Ok(usage_info)
+        }
+        Err(e) => {
+            log::warn!(target: "app", "检查内存使用失败: {}", e);
+            Err(format!("检查内存使用失败: {}", e))
+        }
     }
-    
-    Ok(usage)
 }
 
 /// 清理泄漏的资源

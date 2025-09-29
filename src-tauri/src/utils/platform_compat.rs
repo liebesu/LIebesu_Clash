@@ -144,8 +144,8 @@ impl MemoryManager {
     }
 
     /// 检查内存使用情况
-    pub fn check_memory_usage() -> Result<MemoryUsage, Box<dyn std::error::Error>> {
-        use sysinfo::{System, SystemExt, ProcessExt, Pid};
+    pub fn check_memory_usage() -> Result<MemoryUsage, Box<dyn std::error::Error + Send + Sync>> {
+        use sysinfo::{System, Pid};
         
         let mut sys = System::new_all();
         sys.refresh_all();
@@ -230,21 +230,21 @@ pub fn optimize_network_settings() {
     #[cfg(target_os = "windows")]
     {
         // Windows TCP优化
-        std::env::set_var("RUST_NET_BUFFER_SIZE", "65536");
+        unsafe { std::env::set_var("RUST_NET_BUFFER_SIZE", "65536"); }
         logging!(debug, Type::System, "Windows网络设置已优化");
     }
     
     #[cfg(target_os = "linux")]
     {
         // Linux网络优化
-        std::env::set_var("RUST_NET_BUFFER_SIZE", "131072");
+        unsafe { std::env::set_var("RUST_NET_BUFFER_SIZE", "131072"); }
         logging!(debug, Type::System, "Linux网络设置已优化");
     }
     
     #[cfg(target_os = "macos")]
     {
         // macOS网络优化
-        std::env::set_var("RUST_NET_BUFFER_SIZE", "98304");
+        unsafe { std::env::set_var("RUST_NET_BUFFER_SIZE", "98304"); }
         logging!(debug, Type::System, "macOS网络设置已优化");
     }
 }
@@ -260,7 +260,7 @@ impl PlatformInfo {
             arch: std::env::consts::ARCH.to_string(),
             family: std::env::consts::FAMILY.to_string(),
             is_debug: cfg!(debug_assertions),
-            rust_version: env!("RUSTC_VERSION").to_string(),
+            rust_version: std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".to_string()),
         }
     }
 
@@ -278,7 +278,7 @@ impl PlatformInfo {
 
     /// 获取系统资源限制
     pub fn get_system_limits() -> SystemLimits {
-        use sysinfo::{System, SystemExt};
+        use sysinfo::System;
         
         let sys = System::new_all();
         
@@ -404,15 +404,15 @@ impl EnvironmentManager {
     /// 设置平台特定的环境变量
     pub fn setup_platform_env() {
         // 通用环境变量
-        std::env::set_var("RUST_BACKTRACE", "1");
+        unsafe { std::env::set_var("RUST_BACKTRACE", "1"); }
         
         #[cfg(target_os = "windows")]
         {
             // Windows特定环境变量
-            std::env::set_var("RUST_LOG_STYLE", "always");
+            unsafe { std::env::set_var("RUST_LOG_STYLE", "always"); }
             if std::env::var("TMPDIR").is_err() {
                 if let Ok(temp) = std::env::var("TEMP") {
-                    std::env::set_var("TMPDIR", temp);
+                    unsafe { std::env::set_var("TMPDIR", temp); }
                 }
             }
         }
@@ -420,18 +420,18 @@ impl EnvironmentManager {
         #[cfg(target_os = "macos")]
         {
             // macOS特定环境变量
-            std::env::set_var("RUST_LOG_STYLE", "auto");
+            unsafe { std::env::set_var("RUST_LOG_STYLE", "auto"); }
             if std::env::var("TMPDIR").is_err() {
-                std::env::set_var("TMPDIR", "/tmp");
+                unsafe { std::env::set_var("TMPDIR", "/tmp"); }
             }
         }
         
         #[cfg(target_os = "linux")]
         {
             // Linux特定环境变量
-            std::env::set_var("RUST_LOG_STYLE", "auto");
+            unsafe { std::env::set_var("RUST_LOG_STYLE", "auto"); }
             if std::env::var("TMPDIR").is_err() {
-                std::env::set_var("TMPDIR", "/tmp");
+                unsafe { std::env::set_var("TMPDIR", "/tmp"); }
             }
         }
         

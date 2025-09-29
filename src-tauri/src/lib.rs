@@ -908,21 +908,21 @@ pub fn run() {
                 println!("🚀 应用程序就绪事件");
                 
                 // 初始化内存防护系统
-                let app_handle_clone = app_handle.clone();
+                let _app_handle_clone = app_handle.clone();
                 AsyncHandler::spawn(move || async move {
                     println!("🛡️ 初始化内存防护系统...");
                     
                     // 启用内存监控
-                    crate::utils::memory_guard::MemoryGuard::global().enable_monitoring();
+                    crate::utils::memory_guard::MemoryGuard::instance().enable_monitoring();
                     
                     // 设置内存阈值 (200MB)
-                    crate::utils::memory_guard::MemoryGuard::global().set_memory_threshold(200);
+                    crate::utils::memory_guard::MemoryGuard::instance().set_memory_threshold(200);
                     
                     // 启动自动清理任务
-                    crate::utils::memory_guard::MemoryGuard::global().start_auto_cleanup();
+                    crate::utils::memory_guard::MemoryGuard::instance().start_auto_cleanup();
                     
                     // 执行初始内存检查
-                    if let Some(usage) = crate::utils::memory_guard::MemoryGuard::global().check_memory_usage().await {
+                    if let Some(usage) = crate::utils::memory_guard::MemoryGuard::instance().check_memory_usage().await {
                         println!("📊 初始内存使用: RSS={}MB, Virtual={}MB", 
                                 usage.rss / 1024 / 1024, usage.virtual_mem / 1024 / 1024);
                     }
