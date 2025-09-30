@@ -37,12 +37,14 @@ impl IpcManager {
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(30),      // 🔧 大幅增加超时时间到30秒
+            default_timeout: Duration::from_secs(15),      // 🔧 超时15秒，避免长时间占用
             enable_pooling: true,                          // 🔧 启用连接池提高性能
-            max_retries: 2,                               // 🔧 减少重试次数避免堆积
-            retry_delay: Duration::from_millis(200),      // 🔧 增加重试间隔
-            max_concurrent_requests: 64,                  // 🔧 大幅增加并发限制到64
-            max_requests_per_second: Some(128.0),         // 🔧 提高请求速率限制
+            max_retries: 1,                                // 🔧 最多重试1次，快速失败
+            retry_delay: Duration::from_millis(100),       // 🔧 减少重试延迟
+            max_concurrent_requests: 128,                  // 🔧 大幅增加并发限制到128
+            max_requests_per_second: Some(256.0),          // 🔧 大幅提高请求速率限制到256
+            connection_pool_size: Some(32),                // 🔧 连接池大小32
+            connection_idle_timeout: Some(Duration::from_secs(30)), // 🔧 空闲连接30秒后释放
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
@@ -366,4 +368,37 @@ impl IpcManager {
     }
 
     // 日志相关功能已迁移到 logs.rs 模块，使用流式处理
+
+    /// 🔧 连接池健康检查和清理
+    /// 定期调用以确保连接池健康
+    pub async fn check_pool_health(&self) -> AnyResult<()> {
+        // 简单的健康检查：尝试获取版本信息
+        match self.get_version().await {
+            Ok(_) => {
+                logging!(debug, Type::Ipc, false, "连接池健康检查通过");
+                Ok(())
+            }
+            Err(e) => {
+                logging!(warning, Type::Ipc, true, "连接池健康检查失败: {}", e);
+                Err(e)
+            }
+        }
+    }
+
+    /// 🔧 强制清理僵死连接
+    /// 当检测到连接池问题时调用
+    pub async fn force_cleanup_connections(&self) -> AnyResult<()> {
+        logging!(info, Type::Ipc, true, "开始强制清理僵死连接");
+        
+        match self.close_all_connections().await {
+            Ok(_) => {
+                logging!(success, Type::Ipc, true, "成功清理所有连接");
+                Ok(())
+            }
+            Err(e) => {
+                logging!(error, Type::Ipc, true, "清理连接失败: {}", e);
+                Err(e)
+            }
+        }
+    }
 }

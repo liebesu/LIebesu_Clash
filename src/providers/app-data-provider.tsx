@@ -16,6 +16,7 @@ import {
   getConnections,
   getTrafficData,
   getMemoryData,
+  closeAllConnections,
 } from "@/services/cmds";
 import {
   getSystemProxy,
@@ -86,6 +87,33 @@ export const AppDataProvider = ({
   const previousConnectionsRef = useRef<Map<string, ConnectionSpeedData>>(
     new Map(),
   );
+
+  // 🔧 连接池健康监控：错误计数器
+  const connectionErrorCountRef = useRef(0);
+  const lastCleanupTimeRef = useRef(Date.now());
+
+  // 🔧 连接池健康检查和自动清理
+  useEffect(() => {
+    const checkInterval = setInterval(async () => {
+      const now = Date.now();
+      const timeSinceLastCleanup = now - lastCleanupTimeRef.current;
+
+      // 每5分钟或连续错误超过5次时，清理一次僵死连接
+      if (timeSinceLastCleanup > 5 * 60 * 1000 || connectionErrorCountRef.current > 5) {
+        try {
+          console.log("[连接池监控] 执行定期清理，错误计数:", connectionErrorCountRef.current);
+          await closeAllConnections();
+          connectionErrorCountRef.current = 0;
+          lastCleanupTimeRef.current = now;
+          console.log("[连接池监控] 清理完成");
+        } catch (error) {
+          console.error("[连接池监控] 清理失败:", error);
+        }
+      }
+    }, 60 * 1000); // 每分钟检查一次
+
+    return () => clearInterval(checkInterval);
+  }, []);
 
   // 计算连接速度的函数
   const calculateConnectionSpeeds = (
@@ -440,11 +468,29 @@ export const AppDataProvider = ({
       };
     },
     {
-      refreshInterval: 1000, // 1秒刷新一次
+      refreshInterval: 2000, // 🔧 改为2秒刷新一次，减少IPC压力
       fallbackData: { connections: [], uploadTotal: 0, downloadTotal: 0 },
       keepPreviousData: true,
+      dedupingInterval: 1000, // 🔧 1秒内不重复请求，避免多组件同时请求
+      revalidateOnFocus: false, // 🔧 禁用焦点时重新验证，减少不必要的请求
+      revalidateOnReconnect: true, // 🔧 重连时重新验证
+      shouldRetryOnError: false, // 🔧 错误时不自动重试，避免请求堆积
+      errorRetryInterval: 5000, // 🔧 错误重试间隔5秒
+      errorRetryCount: 2, // 🔧 最多重试2次
+      onSuccess: () => {
+        // 🔧 成功时重置错误计数
+        connectionErrorCountRef.current = 0;
+      },
       onError: (error) => {
-        console.error("[Connections] IPC 获取数据错误:", error);
+        // 🔧 错误时增加计数器，触发自动清理
+        connectionErrorCountRef.current += 1;
+        console.error("[Connections] IPC 获取数据错误:", error, "错误计数:", connectionErrorCountRef.current);
+        
+        // 如果是连接池耗尽错误，立即触发清理
+        if (error?.message?.includes("pool exhausted") || error?.message?.includes("Connection pool")) {
+          console.warn("[Connections] 检测到连接池耗尽，立即触发清理");
+          closeAllConnections().catch(e => console.error("[Connections] 紧急清理失败:", e));
+        }
       },
     },
   );
