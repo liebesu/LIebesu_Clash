@@ -24,13 +24,19 @@ export const ClashModeCard = () => {
   const currentMode = clashConfig?.mode?.toLowerCase();
 
   const modeDescription = useMemo(() => {
+    // 如果配置对象为空，表示核心未启动
+    if (!clashConfig) {
+      return t("Clash core is not running");
+    }
+    // 如果模式有效，显示模式描述
     if (typeof currentMode === "string" && currentMode.length > 0) {
       return t(
         `${currentMode[0].toLocaleUpperCase()}${currentMode.slice(1)} Mode Description`,
       );
     }
+    // 配置存在但mode字段缺失，可能是IPC通信问题
     return t("Core communication error");
-  }, [currentMode]);
+  }, [currentMode, clashConfig]);
 
   // 模式图标映射
   const modeIcons = useMemo(
