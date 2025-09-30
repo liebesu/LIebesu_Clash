@@ -37,12 +37,12 @@ impl IpcManager {
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(30),      // 🔧 大幅增加超时时间到30秒
-            enable_pooling: true,                          // 🔧 启用连接池提高性能
-            max_retries: 2,                               // 🔧 减少重试次数避免堆积
-            retry_delay: Duration::from_millis(200),      // 🔧 增加重试间隔
-            max_concurrent_requests: 64,                  // 🔧 大幅增加并发限制到64
-            max_requests_per_second: Some(128.0),         // 🔧 提高请求速率限制
+            default_timeout: Duration::from_secs(15),         // ⚡ 超时15秒，快速失败
+            enable_pooling: true,                             // ⚡ 启用连接池提高性能
+            max_retries: 1,                                   // ⚡ 最多重试1次
+            retry_delay: Duration::from_millis(100),          // ⚡ 重试延迟100ms
+            max_concurrent_requests: 256,                     // ⚡ 大幅增加并发到256
+            max_requests_per_second: Some(512.0),             // ⚡ 提高速率限制到512/s
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
