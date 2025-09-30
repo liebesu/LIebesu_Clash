@@ -11,6 +11,10 @@ export function log_info(message, ...args) {
   console.log(`ℹ️ ${message}`, ...args);
 }
 
+export function log_debug(message, ...args) {
+  console.log(`🔍 ${message}`, ...args);
+}
+
 export function log_warning(message, ...args) {
   console.warn(`⚠️ ${message}`, ...args);
 }
