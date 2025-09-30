@@ -21,9 +21,17 @@ export const UpdateButton = (props: Props) => {
     auto_check_update || auto_check_update === null ? "checkUpdate" : null,
     check,
     {
-      errorRetryCount: 2,
+      errorRetryCount: 0,                     // 🔧 ACL错误不重试
       revalidateIfStale: false,
-      focusThrottleInterval: 36e5, // 1 hour
+      focusThrottleInterval: 36e5,            // 1 hour
+      onError: (error) => {
+        // 🔧 静默处理 ACL 错误，避免假死
+        if (error?.message?.includes("ACL") || error?.message?.includes("not allowed")) {
+          console.warn("[UpdateButton] Updater ACL权限未配置，跳过更新检查");
+          return;
+        }
+        console.error("[UpdateButton] 更新检查失败:", error);
+      },
     },
   );
 
