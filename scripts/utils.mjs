@@ -1,11 +1,16 @@
-import clc from "cli-color";
+// 通用工具函数
+export function log_success(message, ...args) {
+  console.log(`✅ ${message}`, ...args);
+}
 
-export const log_success = (msg, ...optionalParams) =>
-  console.log(clc.green(msg), ...optionalParams);
-export const log_error = (msg, ...optionalParams) =>
-  console.log(clc.red(msg), ...optionalParams);
-export const log_info = (msg, ...optionalParams) =>
-  console.log(clc.bgBlue(msg), ...optionalParams);
-var debugMsg = clc.xterm(245);
-export const log_debug = (msg, ...optionalParams) =>
-  console.log(debugMsg(msg), ...optionalParams);
+export function log_error(message, ...args) {
+  console.error(`❌ ${message}`, ...args);
+}
+
+export function log_info(message, ...args) {
+  console.log(`ℹ️ ${message}`, ...args);
+}
+
+export function log_warning(message, ...args) {
+  console.warn(`⚠️ ${message}`, ...args);
+}

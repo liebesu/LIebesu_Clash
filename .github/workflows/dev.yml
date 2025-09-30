@@ -129,3 +129,163 @@ jobs:
           name: ${{ matrix.target }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
           if-no-files-found: error
+
+  # 创建 Release 并上传构建产物
+  create-release:
+    needs: dev
+    runs-on: ubuntu-latest
+    if: always() && (needs.dev.result == 'success' || needs.dev.result == 'skipped')
+    outputs:
+      release-tag: ${{ steps.create-tag.outputs.tag }}
+      release-url: ${{ steps.create-release.outputs.release-url }}
+      windows-file: ${{ steps.organize-artifacts.outputs.windows-file }}
+      macos-file: ${{ steps.organize-artifacts.outputs.macos-file }}
+      windows-arm64-file: ${{ steps.organize-artifacts.outputs.windows-arm64-file }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Setup Release Tag
+        id: create-tag
+        run: |
+          TAG="dev-test-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "VERSION=$TAG" >> $GITHUB_ENV
+
+      - name: Organize artifacts
+        id: organize-artifacts
+        run: |
+          mkdir -p release-files
+          # 移动所有构建产物到统一目录
+          find ./artifacts -name "*.exe" -exec cp {} release-files/ \;
+          find ./artifacts -name "*.msi" -exec cp {} release-files/ \;
+          find ./artifacts -name "*.dmg" -exec cp {} release-files/ \;
+          find ./artifacts -name "*.deb" -exec cp {} release-files/ \;
+          find ./artifacts -name "*.AppImage" -exec cp {} release-files/ \;
+          
+          echo "=== Release Files ==="
+          ls -la release-files/
+          
+          # 获取真实的文件名并存储到环境变量
+          WINDOWS_FILE=$(find release-files -name "*x86_64*" -name "*.exe" | head -1 | xargs basename 2>/dev/null || echo "")
+          MACOS_FILE=$(find release-files -name "*aarch64*" -name "*.dmg" | head -1 | xargs basename 2>/dev/null || echo "")
+          WINDOWS_ARM64_FILE=$(find release-files -name "*aarch64*" -name "*.exe" | head -1 | xargs basename 2>/dev/null || echo "")
+          
+          echo "WINDOWS_FILE=$WINDOWS_FILE" >> $GITHUB_ENV
+          echo "MACOS_FILE=$MACOS_FILE" >> $GITHUB_ENV  
+          echo "WINDOWS_ARM64_FILE=$WINDOWS_ARM64_FILE" >> $GITHUB_ENV
+          
+          # 也设置为step outputs以便在job outputs中使用
+          echo "windows-file=$WINDOWS_FILE" >> $GITHUB_OUTPUT
+          echo "macos-file=$MACOS_FILE" >> $GITHUB_OUTPUT
+          echo "windows-arm64-file=$WINDOWS_ARM64_FILE" >> $GITHUB_OUTPUT
+          
+          echo "=== Detected Files ==="
+          echo "Windows x64: $WINDOWS_FILE"
+          echo "macOS ARM64: $MACOS_FILE"
+          echo "Windows ARM64: $WINDOWS_ARM64_FILE"
+          
+      - name: Create Release
+        id: create-release
+        run: |
+          RELEASE_TAG="${{ steps.create-tag.outputs.tag }}"
+          
+          # 创建 Release
+          gh release create "$RELEASE_TAG" \
+            --title "Development Test Build $RELEASE_TAG" \
+            --notes "🔧 **Development Test Build**
+
+          **📊 构建信息**
+          - 🌿 分支: ${{ github.ref_name }}
+          - 🔖 版本: $RELEASE_TAG
+          - 📅 时间: ${{ github.event.head_commit.timestamp }}
+          - 🔨 提交: ${{ github.sha }}
+
+          **🎯 本次更新**
+          - ✅ 修复unsafe函数调用：env::set_var需要unsafe块
+          - ✅ 修复编译错误：LevelFilter导入路径问题
+          - ✅ 彻底修复三大核心问题：macOS日志+1000节点测速+停止按钮
+
+          **📝 说明**
+          这是Development分支的测试构建，用于验证修复和功能。
+
+          **⚠️ 注意**
+          这是测试版本，仅供功能测试使用。" \
+            --prerelease \
+            --generate-notes
+            
+          echo "release-url=https://github.com/liebesu/LIebesu_Clash/releases/tag/$RELEASE_TAG" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Assets
+        run: |
+          for file in release-files/*; do
+            if [ -f "$file" ]; then
+              echo "Uploading $file..."
+              gh release upload ${{ steps.create-tag.outputs.tag }} "$file" --clobber
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 发送 Telegram 通知
+  notify-completion:
+    needs: [dev, create-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Environment Variables
+        run: |
+          echo "VERSION=dev-${{ github.sha }}" >> $GITHUB_ENV
+          echo "BUILDTIME=$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
+          
+          # 检查构建状态
+          if [[ "${{ needs.dev.result }}" == "success" ]]; then
+            echo "BUILD_STATUS=✅ 构建成功" >> $GITHUB_ENV
+            echo "BUILD_EMOJI=🎉" >> $GITHUB_ENV
+          elif [[ "${{ needs.dev.result }}" == "skipped" ]]; then
+            echo "BUILD_STATUS=⏭️ 构建跳过" >> $GITHUB_ENV
+            echo "BUILD_EMOJI=⏭️" >> $GITHUB_ENV
+          else
+            echo "BUILD_STATUS=❌ 构建失败" >> $GITHUB_ENV
+            echo "BUILD_EMOJI=🚨" >> $GITHUB_ENV
+          fi
+
+      - name: Send Telegram Notification
+        run: node scripts/telegram-dev.mjs
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_TYPE: development-test
+          VERSION: ${{ env.VERSION }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          BUILD_STATUS: ${{ env.BUILD_STATUS }}
+          BUILD_EMOJI: ${{ env.BUILD_EMOJI }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.release-tag }}
+          WINDOWS_FILE: ${{ needs.create-release.outputs.windows-file }}
+          MACOS_FILE: ${{ needs.create-release.outputs.macos-file }}
+          WINDOWS_ARM64_FILE: ${{ needs.create-release.outputs.windows-arm64-file }}
