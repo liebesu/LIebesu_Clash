@@ -41,10 +41,10 @@ impl IpcManager {
             enable_pooling: true,                          // 🔧 启用连接池提高性能
             max_retries: 1,                                // 🔧 最多重试1次，快速失败
             retry_delay: Duration::from_millis(100),       // 🔧 减少重试延迟
-            max_concurrent_requests: 128,                  // 🔧 大幅增加并发限制到128
-            max_requests_per_second: Some(256.0),          // 🔧 大幅提高请求速率限制到256
-            connection_pool_size: Some(32),                // 🔧 连接池大小32
-            connection_idle_timeout: Some(Duration::from_secs(30)), // 🔧 空闲连接30秒后释放
+            max_concurrent_requests: 256,                  // 🔧 大幅增加并发限制到256
+            max_requests_per_second: Some(512.0),          // 🔧 大幅提高请求速率限制到512
+            connection_pool_size: Some(128),               // 🔧 连接池大小128，支持高并发
+            connection_idle_timeout: Some(Duration::from_secs(60)), // 🔧 空闲连接60秒后释放
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
