@@ -440,7 +440,12 @@ export const AppDataProvider = ({
       };
     },
     {
-      refreshInterval: 1000, // 1秒刷新一次
+      refreshInterval: 2000,        // ⚡ 降低轮询频率到2秒，减少IPC压力
+      dedupingInterval: 1000,       // ⚡ 1秒内去重，避免重复请求
+      revalidateOnFocus: false,     // ⚡ 窗口聚焦时不重新验证
+      shouldRetryOnError: false,    // ⚡ 错误时不重试，快速失败
+      errorRetryInterval: 5000,     // ⚡ 错误重试间隔5秒
+      errorRetryCount: 2,           // ⚡ 最多重试2次
       fallbackData: { connections: [], uploadTotal: 0, downloadTotal: 0 },
       keepPreviousData: true,
       onError: (error) => {
