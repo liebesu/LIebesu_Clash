@@ -148,12 +148,12 @@ export const SystemInfoCard = () => {
         goToSettings();
       }
     } catch (err: any) {
-      // 🔧 静默处理 ACL 错误，避免干扰用户
-      if (err?.message?.includes("ACL") || err?.message?.includes("not allowed")) {
-        console.warn("[SystemInfoCard] Updater ACL权限未配置，更新功能不可用");
-        showNotice("warning", t("Update feature is not available"));
-        return;
-      }
+          // 🔧 静默处理 ACL 错误，避免干扰用户
+          if (err?.message?.includes("ACL") || err?.message?.includes("not allowed")) {
+            console.warn("[SystemInfoCard] Updater ACL权限未配置，更新功能不可用");
+            showNotice("info", t("Update feature is not available"));
+            return;
+          }
       showNotice("error", err.message || err.toString());
     }
   });
