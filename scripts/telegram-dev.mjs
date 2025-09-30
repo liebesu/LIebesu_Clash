@@ -27,6 +27,9 @@ async function sendDevTelegramNotification() {
   const commitSha = process.env.GITHUB_SHA?.substring(0, 7) || "unknown";
   const runId = process.env.GITHUB_RUN_ID || "unknown";
 
+  // 检查是否构建失败
+  const isBuildFailed = buildStatus.includes("失败") || buildStatus.includes("❌");
+
   // 构建通知内容
   let releaseContent = `**🔧 Development Build**
 
@@ -37,38 +40,59 @@ async function sendDevTelegramNotification() {
 - 🔨 提交: ${commitSha}
 - 🎯 状态: ${buildStatus}
 
-**🎯 构建内容**
-- ✅ 修复unsafe函数调用：env::set_var需要unsafe块
-- ✅ 修复编译错误：LevelFilter导入路径问题
-- ✅ 彻底修复三大核心问题：macOS日志+1000节点测速+停止按钮
-
 **🔗 相关链接**
 - [GitHub分支](https://github.com/liebesu/LIebesu_Clash/tree/${branchName})
 - [构建日志](https://github.com/liebesu/LIebesu_Clash/actions/runs/${runId})`;
 
-  // 如果有Release信息，添加下载链接
-  const releaseTag = process.env.RELEASE_TAG;
-  const windowsFile = process.env.WINDOWS_FILE;
-  const macosFile = process.env.MACOS_FILE;
-  const linuxFile = process.env.LINUX_FILE;
-
-  if (releaseTag && (windowsFile || macosFile || linuxFile)) {
+  // 如果构建失败，显示错误信息
+  if (isBuildFailed) {
     releaseContent += `
+
+**❌ 构建失败**
+构建过程中出现错误，请查看构建日志获取详细信息。
+
+**🔧 故障排查**
+- 检查编译错误
+- 查看依赖问题
+- 验证代码语法`;
+  } else {
+    // 只在构建成功时显示构建内容
+    releaseContent += `
+
+**🎯 构建内容**
+- ✅ 连接池优化：大幅提升并发处理能力
+- ✅ 连接管理：智能健康检查与清理机制
+- ✅ 性能提升：支持128连接池+256并发+512请求/秒`;
+
+    // 如果有Release信息，添加下载链接
+    const releaseTag = process.env.RELEASE_TAG;
+    const windowsFile = process.env.WINDOWS_FILE;
+    const macosFile = process.env.MACOS_FILE;
+    const windowsArm64File = process.env.WINDOWS_ARM64_FILE;
+    const linuxFile = process.env.LINUX_FILE;
+
+    if (releaseTag && (windowsFile || macosFile || windowsArm64File || linuxFile)) {
+      releaseContent += `
 
 **📥 下载链接**
 - 🔗 [Release页面](https://github.com/liebesu/LIebesu_Clash/releases/tag/${releaseTag})`;
 
-    if (windowsFile) {
-      releaseContent += `
-- 📦 [Windows MSI](https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${windowsFile})`;
-    }
-    if (macosFile) {
-      releaseContent += `
+      if (windowsFile) {
+        releaseContent += `
+- 📦 [Windows x64](https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${windowsFile})`;
+      }
+      if (windowsArm64File) {
+        releaseContent += `
+- 📦 [Windows ARM64](https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${windowsArm64File})`;
+      }
+      if (macosFile) {
+        releaseContent += `
 - 🍎 [macOS DMG](https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${macosFile})`;
-    }
-    if (linuxFile) {
-      releaseContent += `
+      }
+      if (linuxFile) {
+        releaseContent += `
 - 🐧 [Linux DEB](https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${linuxFile})`;
+      }
     }
   }
 

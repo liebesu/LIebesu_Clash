@@ -43,8 +43,6 @@ impl IpcManager {
             retry_delay: Duration::from_millis(100),       // 🔧 减少重试延迟
             max_concurrent_requests: 256,                  // 🔧 大幅增加并发限制到256
             max_requests_per_second: Some(512.0),          // 🔧 大幅提高请求速率限制到512
-            connection_pool_size: Some(128),               // 🔧 连接池大小128，支持高并发
-            connection_idle_timeout: Some(Duration::from_secs(60)), // 🔧 空闲连接60秒后释放
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
@@ -379,7 +377,7 @@ impl IpcManager {
                 Ok(())
             }
             Err(e) => {
-                logging!(warning, Type::Ipc, true, "连接池健康检查失败: {}", e);
+                logging!(warn, Type::Ipc, true, "连接池健康检查失败: {}", e);
                 Err(e)
             }
         }
@@ -392,7 +390,7 @@ impl IpcManager {
         
         match self.close_all_connections().await {
             Ok(_) => {
-                logging!(success, Type::Ipc, true, "成功清理所有连接");
+                logging!(info, Type::Ipc, true, "成功清理所有连接");
                 Ok(())
             }
             Err(e) => {
