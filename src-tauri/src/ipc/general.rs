@@ -2,7 +2,6 @@ use std::time::Duration;
 
 use kode_bridge::{
     ClientConfig, IpcHttpClient, LegacyResponse,
-    pool::PoolConfig,
     errors::{AnyError, AnyResult},
 };
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
@@ -38,26 +37,16 @@ impl IpcManager {
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
         
-        // 🔥 连接池配置 - 关键修复！默认max_size=64远不够用
-        let pool_config = PoolConfig {
-            max_size: 4096,                              // 🔥 连接池大小4096，匹配并发需求
-            min_idle: 512,                               // 🔥 保持512空闲连接，快速响应
-            max_idle_time_ms: 300_000,                   // 🔥 空闲5分钟才回收，避免频繁创建
-            connection_timeout_ms: 10_000,               // 🔥 连接超时10秒
-            retry_delay_ms: 50,                          // 🔥 重试延迟50ms
-            max_retries: 2,                              // 🔥 最多重试2次
-            max_concurrent_requests: 2048,               // 🔥 并发请求2048
-            max_requests_per_second: Some(4096.0),       // 🔥 速率4096/s
-        };
-        
+        // ✅ 保守但稳定的连接池配置（基于官方稳定版本）
+        // 注意：Clash 核心本身不支持超高并发，过激进配置会导致核心崩溃
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(60),    // 🚀 超时60秒，适应超大规模节点场景
-            pool_config,                                 // 🔥 使用自定义连接池配置
-            enable_pooling: true,                        // 🚀 启用连接池提高性能
-            max_retries: 1,                              // 🚀 最多重试1次，快速失败
-            retry_delay: Duration::from_millis(100),     // 🚀 重试延迟100ms
-            max_concurrent_requests: 2048,               // 🚀 极限并发2048，支持海量节点
-            max_requests_per_second: Some(4096.0),       // 🚀 速率限制4096/s，突破性能瓶颈
+            default_timeout: Duration::from_secs(30),    // ✅ 超时30秒（官方配置）
+            enable_pooling: true,                        // ✅ 启用连接池
+            max_retries: 2,                              // ✅ 重试2次（官方配置）
+            retry_delay: Duration::from_millis(200),     // ✅ 重试延迟200ms（官方配置）
+            max_concurrent_requests: 128,                // ✅ 温和的并发限制（官方64→128适度提升）
+            max_requests_per_second: Some(256.0),        // ✅ 温和的速率限制（官方128→256适度提升）
+            ..Default::default()                         // ✅ 其他使用默认值（连接池64，经过验证的稳定配置）
         };
         #[allow(clippy::unwrap_used)]
         let client = IpcHttpClient::with_config(ipc_path, config).unwrap();

@@ -680,12 +680,14 @@ jobs:
   notify-telegram:
     name: Notify Telegram
     runs-on: ubuntu-latest
+    # 只要有一个构建任务完成就运行（即使部分失败）
     needs:
       [
         update_tag,
         autobuild-x86-windows-macos-linux,
         autobuild-x86-arm-windows_webview2,
       ]
+    if: always() && needs.update_tag.result == 'success' && (needs.autobuild-x86-windows-macos-linux.result == 'success' || needs.autobuild-x86-arm-windows_webview2.result == 'success')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
