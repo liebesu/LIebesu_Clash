@@ -192,17 +192,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 只保留最常用的构建目标
+          # ✅ Windows x64 (最主流)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             arch: x64
+          # ✅ macOS ARM64 (M1/M2/M3 芯片，现代Mac)
           - os: macos-latest
             target: aarch64-apple-darwin
             arch: arm64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            arch: x64
-          # 移除不常用的 ARM Windows
+          # ❌ 移除 macOS x64 (Intel Mac已淘汰，GitHub Runner资源不足)
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
