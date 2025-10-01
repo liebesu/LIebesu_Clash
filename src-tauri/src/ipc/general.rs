@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use kode_bridge::{
-    ClientConfig, IpcHttpClient, LegacyResponse, PoolConfig,
+    ClientConfig, IpcHttpClient, LegacyResponse,
+    pool::PoolConfig,
     errors::{AnyError, AnyResult},
 };
 use percent_encoding::{AsciiSet, CONTROLS, utf8_percent_encode};
