@@ -887,168 +887,9 @@ impl CoreManager {
     }
 
     pub async fn init(&self) -> Result<()> {
-        logging!(trace, Type::Core, "Initializing core");
-
-        // 应用启动时先清理任何遗留的 mihomo 进程
-        if let Err(e) = self.cleanup_orphaned_mihomo_processes().await {
-            logging!(
-                warn,
-                Type::Core,
-                true,
-                "应用初始化时清理多余 mihomo 进程失败: {}",
-                e
-            );
-        }
-
-        let mut core_started_successfully = false;
-
-        if service::is_service_available().await.is_ok() {
-            logging!(
-                info,
-                Type::Core,
-                true,
-                "服务当前可用或看似可用，尝试通过服务模式启动/重装"
-            );
-            match self.attempt_service_init().await {
-                Ok(_) => {
-                    logging!(info, Type::Core, true, "服务模式成功启动核心");
-                    core_started_successfully = true;
-                }
-                Err(_err) => {
-                    logging!(
-                        warn,
-                        Type::Core,
-                        true,
-                        "服务模式启动或重装失败。将尝试Sidecar模式回退。"
-                    );
-                }
-            }
-        } else {
-            logging!(
-                info,
-                Type::Core,
-                true,
-                "服务初始不可用 (is_service_available 调用失败)"
-            );
-        }
-
-        if !core_started_successfully {
-            logging!(
-                info,
-                Type::Core,
-                true,
-                "核心未通过服务模式启动，执行Sidecar回退或首次安装逻辑"
-            );
-
-            let service_state = service::ServiceState::get().await;
-
-            if service_state.prefer_sidecar {
-                logging!(
-                    info,
-                    Type::Core,
-                    true,
-                    "用户偏好Sidecar模式或先前服务启动失败，使用Sidecar模式启动"
-                );
-                self.start_core_by_sidecar().await?;
-                // 如果 sidecar 启动成功，我们可以认为核心初始化流程到此结束
-                // 后续的 Tray::global().subscribe_traffic().await 仍然会执行
-            } else {
-                let has_service_install_record = service_state.last_install_time > 0;
-                if !has_service_install_record {
-                    logging!(
-                        info,
-                        Type::Core,
-                        true,
-                        "无服务安装记录 (首次运行或状态重置)，尝试安装服务"
-                    );
-                    match service::install_service().await {
-                        Ok(_) => {
-                            logging!(info, Type::Core, true, "服务安装成功(首次尝试)");
-                            let mut new_state = service::ServiceState::default();
-                            new_state.record_install();
-                            new_state.prefer_sidecar = false;
-                            new_state.save().await?;
-
-                            if service::is_service_available().await.is_ok() {
-                                logging!(info, Type::Core, true, "新安装的服务可用，尝试启动");
-                                if self.start_core_by_service().await.is_ok() {
-                                    logging!(info, Type::Core, true, "新安装的服务启动成功");
-                                } else {
-                                    logging!(
-                                        warn,
-                                        Type::Core,
-                                        true,
-                                        "新安装的服务启动失败，回退到Sidecar模式"
-                                    );
-                                    let mut final_state = service::ServiceState::get().await;
-                                    final_state.prefer_sidecar = true;
-                                    final_state.last_error =
-                                        Some("Newly installed service failed to start".to_string());
-                                    final_state.save().await?;
-                                    self.start_core_by_sidecar().await?;
-                                }
-                            } else {
-                                logging!(
-                                    warn,
-                                    Type::Core,
-                                    true,
-                                    "服务安装成功但未能连接/立即可用，回退到Sidecar模式"
-                                );
-                                let mut final_state = service::ServiceState::get().await;
-                                final_state.prefer_sidecar = true;
-                                final_state.last_error = Some(
-                                    "Newly installed service not immediately available/connectable"
-                                        .to_string(),
-                                );
-                                final_state.save().await?;
-                                self.start_core_by_sidecar().await?;
-                            }
-                        }
-                        Err(err) => {
-                            logging!(warn, Type::Core, true, "服务首次安装失败: {}", err);
-                            let new_state = service::ServiceState {
-                                last_error: Some(err.to_string()),
-                                prefer_sidecar: true,
-                                ..Default::default()
-                            };
-                            new_state.save().await?;
-                            self.start_core_by_sidecar().await?;
-                        }
-                    }
-                } else {
-                    // 有安装记录，服务未成功启动，且初始不偏好sidecar
-                    // 这意味着服务之前可能可用，但 attempt_service_init 失败了（并应已设置 prefer_sidecar），
-                    // 或者服务初始不可用，无偏好，有记录。应强制使用 sidecar。
-                    logging!(
-                        info,
-                        Type::Core,
-                        true,
-                        "有服务安装记录但服务不可用/未启动，强制切换到Sidecar模式"
-                    );
-                    let mut final_state = service::ServiceState::get().await;
-                    if !final_state.prefer_sidecar {
-                        logging!(
-                            warn,
-                            Type::Core,
-                            true,
-                            "prefer_sidecar 为 false，因服务启动失败或不可用而强制设置为 true"
-                        );
-                        final_state.prefer_sidecar = true;
-                        final_state.last_error =
-                            Some(final_state.last_error.unwrap_or_else(|| {
-                                "Service startup failed or unavailable before sidecar fallback"
-                                    .to_string()
-                            }));
-                        final_state.save().await?;
-                    }
-                    self.start_core_by_sidecar().await?;
-                }
-            }
-        }
-
-        logging!(trace, Type::Core, "Initied core logic completed");
-        // #[cfg(target_os = "macos")]
-        // logging_error!(Type::Core, true, Tray::global().subscribe_traffic().await);
+        logging!(info, Type::Core, true, "开始核心初始化");
+        self.start_core().await?;
+        logging!(info, Type::Core, true, "核心初始化完成");
         Ok(())
     }
 
@@ -1062,31 +903,25 @@ impl CoreManager {
         (*guard).clone()
     }
 
-    /// 启动核心
+    /// 启动核心 - 简化版本,优先尝试服务模式,失败则回退到Sidecar模式
     pub async fn start_core(&self) -> Result<()> {
+        // 先尝试服务模式
         if service::is_service_available().await.is_ok() {
-            if service::check_service_needs_reinstall().await {
-                service::reinstall_service().await?;
+            logging!(info, Type::Core, true, "服务可用，尝试使用服务模式启动");
+            match self.start_core_by_service().await {
+                Ok(_) => {
+                    logging!(info, Type::Core, true, "服务模式启动成功");
+                    return Ok(());
+                }
+                Err(e) => {
+                    logging!(warn, Type::Core, true, "服务模式启动失败: {}, 回退到Sidecar模式", e);
+                }
             }
-            logging!(info, Type::Core, true, "服务可用，使用服务模式启动");
-            self.start_core_by_service().await?;
-            return Ok(());
-        };
-
-        // 服务不可用，检查用户偏好
-        let service_state = service::ServiceState::get().await;
-        if service_state.prefer_sidecar {
-            logging!(
-                info,
-                Type::Core,
-                true,
-                "服务不可用，根据用户偏好使用Sidecar模式"
-            );
-            self.start_core_by_sidecar().await?;
-        } else {
-            logging!(info, Type::Core, true, "服务不可用，使用Sidecar模式");
-            self.start_core_by_sidecar().await?;
         }
+
+        // 服务模式不可用或失败,使用Sidecar模式
+        logging!(info, Type::Core, true, "使用Sidecar模式启动");
+        self.start_core_by_sidecar().await?;
         Ok(())
     }
 
