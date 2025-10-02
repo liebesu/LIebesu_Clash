@@ -185,21 +185,21 @@ jobs:
           fi
 
   autobuild-x86-windows-macos-linux:
-    name: Autobuild Windows and MacOS (Optimized)
+    name: Autobuild MacOS ARM64 Only
     needs: [check_commit, update_tag]
     if: ${{ needs.check_commit.outputs.should_run == 'true' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # ✅ Windows x64 (最主流)
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            arch: x64
-          # ✅ macOS ARM64 (M1/M2/M3 芯片，现代Mac)
+          # ✅ macOS ARM64 (M1/M2/M3 芯片，现代Mac) - 只构建这个
           - os: macos-latest
             target: aarch64-apple-darwin
             arch: arm64
+          # ❌ 暂时移除 Windows 构建 (网络错误: NSIS下载失败)
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   arch: x64
           # ❌ 移除 macOS x64 (Intel Mac已淘汰，GitHub Runner资源不足)
     runs-on: ${{ matrix.os }}
     steps:
@@ -274,10 +274,10 @@ jobs:
         run: pnpm release-version autobuild-latest
 
       - name: Create or update release
-        if: matrix.os == 'windows-latest' && matrix.target == 'x86_64-pc-windows-msvc'
+        if: matrix.os == 'macos-latest' && matrix.target == 'aarch64-apple-darwin'
         shell: bash  # 明确指定使用bash shell
         run: |
-          # 只在第一个作业中创建GitHub Release
+          # 只在 Mac ARM64 构建时创建GitHub Release
           if gh release view ${{ env.TAG_NAME }} >/dev/null 2>&1; then
             echo "Release ${{ env.TAG_NAME }} already exists"
             # 删除已存在的release以避免冲突
