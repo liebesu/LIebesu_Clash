@@ -30,23 +30,24 @@ pub struct IpcManager {
 }
 
 impl IpcManager {
-    fn new() -> Self {
+    pub fn new() -> Self {
+        logging!(info, Type::Ipc, true, "Creating new IpcManager instance");
         let ipc_path_buf = ipc_path().unwrap_or_else(|e| {
             logging!(error, Type::Ipc, true, "Failed to get IPC path: {}", e);
             std::path::PathBuf::from("/tmp/clash-verge-ipc") // fallback path
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
         
-        // ✅ 保守但稳定的连接池配置（基于官方稳定版本）
-        // 注意：Clash 核心本身不支持超高并发，过激进配置会导致核心崩溃
+        // 🔥 完全对齐官方最新配置 (upstream/dev 8a4f2de8)
+        // 关键发现：官方禁用了连接池！enable_pooling: false
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(30),    // ✅ 超时30秒（官方配置）
-            enable_pooling: true,                        // ✅ 启用连接池
-            max_retries: 2,                              // ✅ 重试2次（官方配置）
-            retry_delay: Duration::from_millis(200),     // ✅ 重试延迟200ms（官方配置）
-            max_concurrent_requests: 128,                // ✅ 温和的并发限制（官方64→128适度提升）
-            max_requests_per_second: Some(256.0),        // ✅ 温和的速率限制（官方128→256适度提升）
-            ..Default::default()                         // ✅ 其他使用默认值（连接池64，经过验证的稳定配置）
+            default_timeout: Duration::from_secs(5),     // 🔥 官方：5秒超时
+            enable_pooling: false,                       // 🔥 官方：禁用连接池！
+            max_retries: 4,                              // 🔥 官方：重试4次
+            retry_delay: Duration::from_millis(125),     // 🔥 官方：125ms延迟
+            max_concurrent_requests: 16,                 // 🔥 官方：16并发
+            max_requests_per_second: Some(64.0),         // 🔥 官方：64/s速率
+            ..Default::default()
         };
         #[allow(clippy::unwrap_used)]
         let client = IpcHttpClient::with_config(ipc_path, config).unwrap();
