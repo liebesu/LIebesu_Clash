@@ -397,8 +397,9 @@ pub async fn enhance() -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
     }
     
     // 统一延迟测试超时，避免大量节点测速卡死
+    // 减少超时时间以更快失败，提高大量节点场景下的测速效率
     if !config.contains_key("url-test-timeout") {
-        config.insert("url-test-timeout".into(), 5000.into()); // 5秒超时
+        config.insert("url-test-timeout".into(), 3000.into()); // 3秒超时
     }
     
     log::info!(target: "app", "已应用大规模节点性能优化配置");

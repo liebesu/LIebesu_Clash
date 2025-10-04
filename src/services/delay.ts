@@ -133,9 +133,11 @@ class DelayManager {
       // 确保至少显示500ms的加载动画
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      console.error(`[DelayManager] 延迟测试出错，代理: ${name}`, error);
+      // 超时和连接错误是大量节点场景下的正常现象，不输出error级别日志
       if (error instanceof Error && error.message === "Timeout") {
-        console.log(`[DelayManager] 延迟测试超时，代理: ${name}`);
+        // 静默处理超时，不输出日志以减少控制台噪音
+      } else {
+        console.warn(`[DelayManager] 延迟测试失败，代理: ${name}:`, error);
       }
       delay = 1e6; // error
     }
@@ -180,10 +182,7 @@ class DelayManager {
         await this.checkDelay(currName, group, timeout);
         if (listener) listener();
       } catch (error) {
-        console.error(
-          `[DelayManager] 批量测试单个代理出错，代理: ${currName}`,
-          error,
-        );
+        // 批量测试时，单个代理失败是正常的，不输出错误日志
         // 设置为错误状态
         this.setDelay(currName, group, 1e6);
       }
@@ -192,7 +191,8 @@ class DelayManager {
     };
 
     // 限制并发数，避免发送太多请求
-    const actualConcurrency = Math.min(concurrency, names.length, 10);
+    // 对于大量节点场景，提高并发数以加快测速
+    const actualConcurrency = Math.min(concurrency, names.length, 50);
     console.log(`[DelayManager] 实际并发数: ${actualConcurrency}`);
 
     const promiseList: Promise<void>[] = [];
