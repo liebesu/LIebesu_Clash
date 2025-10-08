@@ -1,8 +1,8 @@
 use crate::config::Config;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
+use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Duration, Local};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCleanupOptions {
@@ -59,12 +59,12 @@ pub async fn get_subscription_cleanup_preview(
 ) -> Result<CleanupPreview, String> {
     let profiles_config = Config::profiles().await;
     let profiles = profiles_config.latest_ref();
-    
+
     let mut all_subscriptions = Vec::new();
     let mut expired_subscriptions = Vec::new();
-    
+
     let _threshold_date = Local::now() - Duration::days(options.days_threshold as i64);
-    
+
     let empty_vec = Vec::new();
     let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
@@ -72,56 +72,61 @@ pub async fn get_subscription_cleanup_preview(
             let default_name = "未知订阅".to_string();
             let name = profile.name.as_ref().unwrap_or(&default_name).clone();
             let url = profile.url.clone();
-            
+
             // 获取最后更新时间
             let last_updated = profile.updated.clone();
             let last_update_time = if let Some(timestamp_str) = last_updated {
                 let timestamp = timestamp_str as i64;
-                DateTime::from_timestamp(timestamp, 0)
-                    .map(|dt| dt.with_timezone(&Local))
+                DateTime::from_timestamp(timestamp, 0).map(|dt| dt.with_timezone(&Local))
             } else {
                 None
             };
-            
+
             let days_since_update = if let Some(update_time) = last_update_time {
                 (Local::now() - update_time).num_days() as i32
             } else {
                 999 // 如果没有更新时间，设为一个很大的值
             };
-            
+
             // 检查是否为收藏
-            let is_favorite = profile.selected.is_some() && profile.selected.as_ref().unwrap().len() > 0;
-            
+            let is_favorite =
+                profile.selected.is_some() && profile.selected.as_ref().unwrap().len() > 0;
+
             // 获取分组信息（这里简化处理）
             let groups = vec![]; // TODO: 实际从分组管理中获取
-            
+
             let subscription_info = SubscriptionInfo {
                 uid: uid.clone(),
                 name,
                 url,
-                last_updated: last_updated.map(|ts| DateTime::from_timestamp(ts as i64, 0)
-                    .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
-                    .unwrap_or_else(|| "Invalid timestamp".to_string())),
+                last_updated: last_updated.map(|ts| {
+                    DateTime::from_timestamp(ts as i64, 0)
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+                        .unwrap_or_else(|| "Invalid timestamp".to_string())
+                }),
                 days_since_update,
-                size: None, // TODO: 计算文件大小
+                size: None,       // TODO: 计算文件大小
                 node_count: None, // TODO: 计算节点数量
                 is_favorite,
                 groups: groups.clone(),
             };
-            
+
             all_subscriptions.push(subscription_info.clone());
-            
+
             // 检查是否过期
             let should_delete = days_since_update >= options.days_threshold
                 && !(options.exclude_favorites && is_favorite)
-                && !options.exclude_groups.iter().any(|group| groups.contains(group));
-            
+                && !options
+                    .exclude_groups
+                    .iter()
+                    .any(|group| groups.contains(group));
+
             if should_delete {
                 expired_subscriptions.push(subscription_info);
             }
         }
     }
-    
+
     let preview = CleanupPreview {
         total_subscriptions: all_subscriptions.len(),
         will_be_deleted: expired_subscriptions.len(),
@@ -129,7 +134,7 @@ pub async fn get_subscription_cleanup_preview(
         expired_subscriptions,
         cleanup_options: options,
     };
-    
+
     Ok(preview)
 }
 
@@ -141,11 +146,14 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
         let profiles = profiles_config.latest_ref();
         let empty_vec = Vec::new();
         let items = profiles.items.as_ref().unwrap_or(&empty_vec);
-        items.iter()
+        items
+            .iter()
             .filter(|profile| profile.url.is_some())
             .filter_map(|profile| {
                 profile.uid.as_ref().map(|uid| {
-                    let name = profile.name.as_ref()
+                    let name = profile
+                        .name
+                        .as_ref()
                         .unwrap_or(&"未知订阅".to_string())
                         .clone();
                     (uid.clone(), name)
@@ -153,13 +161,13 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
             })
             .collect()
     };
-    
+
     let mut updated_subscriptions = Vec::new();
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
-    
+
     let total_count = remote_profiles.len(); // 在移动前保存长度
-    
+
     for (uid, name) in remote_profiles {
         match update_single_subscription(&uid).await {
             Ok(_) => {
@@ -171,7 +179,7 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
             }
         }
     }
-    
+
     let result = BatchUpdateResult {
         total_subscriptions: total_count,
         successful_updates: updated_subscriptions.len(),
@@ -180,7 +188,7 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
         failed_subscriptions,
         error_messages,
     };
-    
+
     Ok(result)
 }
 
@@ -192,10 +200,10 @@ pub async fn cleanup_expired_subscriptions(
     if options.preview_only {
         return Err("预览模式，不执行实际删除操作".to_string());
     }
-    
+
     let preview = get_subscription_cleanup_preview(options.clone()).await?;
     let mut deleted_subscriptions = Vec::new();
-    
+
     // 执行删除操作
     for subscription in &preview.expired_subscriptions {
         match delete_subscription(&subscription.uid).await {
@@ -207,14 +215,14 @@ pub async fn cleanup_expired_subscriptions(
             }
         }
     }
-    
+
     let result = CleanupResult {
         deleted_count: deleted_subscriptions.len(),
         deleted_subscriptions,
         cleanup_options: options,
         cleanup_time: Local::now().to_rfc3339(),
     };
-    
+
     Ok(result)
 }
 
@@ -223,7 +231,7 @@ pub async fn cleanup_expired_subscriptions(
 pub async fn get_subscription_management_stats() -> Result<serde_json::Value, String> {
     let profiles_config = Config::profiles().await;
     let profiles = profiles_config.latest_ref();
-    
+
     let mut total_count = 0;
     let mut remote_count = 0;
     let mut local_count = 0;
@@ -231,30 +239,29 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
     let mut outdated_1d_count = 0;
     let mut outdated_3d_count = 0;
     let mut outdated_7d_count = 0;
-    
+
     let now = Local::now();
-    
+
     let empty_vec = Vec::new();
     let items = profiles.items.as_ref().unwrap_or(&empty_vec);
     for profile in items {
         total_count += 1;
-        
+
         if profile.url.is_some() {
             remote_count += 1;
         } else {
             local_count += 1;
         }
-        
+
         let last_update_time = if let Some(timestamp) = profile.updated {
-            DateTime::from_timestamp(timestamp as i64, 0)
-                .map(|dt| dt.with_timezone(&Local))
+            DateTime::from_timestamp(timestamp as i64, 0).map(|dt| dt.with_timezone(&Local))
         } else {
             None
         };
-        
+
         if let Some(update_time) = last_update_time {
             let days_since_update = (now - update_time).num_days();
-            
+
             if days_since_update >= 1 {
                 outdated_1d_count += 1;
             }
@@ -268,7 +275,7 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
             never_updated_count += 1;
         }
     }
-    
+
     let stats = serde_json::json!({
         "total_subscriptions": total_count,
         "remote_subscriptions": remote_count,
@@ -280,7 +287,7 @@ pub async fn get_subscription_management_stats() -> Result<serde_json::Value, St
         "up_to_date": total_count - never_updated_count - outdated_1d_count,
         "last_check": now.to_rfc3339(),
     });
-    
+
     Ok(stats)
 }
 
@@ -292,7 +299,7 @@ pub async fn set_auto_cleanup_rules(
 ) -> Result<(), String> {
     // TODO: 保存自动清理规则到配置文件
     // 这里应该与任务管理系统集成，创建定时清理任务
-    
+
     if enabled {
         // 创建定时清理任务
         log::info!("已启用自动清理规则: {:?}", cleanup_options);
@@ -300,7 +307,7 @@ pub async fn set_auto_cleanup_rules(
         // 禁用定时清理任务
         log::info!("已禁用自动清理规则");
     }
-    
+
     Ok(())
 }
 
@@ -319,7 +326,7 @@ pub async fn get_auto_cleanup_rules() -> Result<serde_json::Value, String> {
         "last_cleanup": null,
         "next_cleanup": null
     });
-    
+
     Ok(rules)
 }
 
@@ -327,10 +334,10 @@ pub async fn get_auto_cleanup_rules() -> Result<serde_json::Value, String> {
 async fn update_single_subscription(_uid: &str) -> Result<()> {
     // TODO: 实际实现订阅更新逻辑
     // 这里应该调用现有的订阅更新API
-    
+
     // 模拟更新过程
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    
+
     // 50% 的成功率（用于测试）
     use rand::Rng;
     if rand::thread_rng().r#gen::<f32>() > 0.5 {
@@ -344,7 +351,7 @@ async fn update_single_subscription(_uid: &str) -> Result<()> {
 async fn delete_subscription(_uid: &str) -> Result<()> {
     // TODO: 实际实现订阅删除逻辑
     // 这里应该调用现有的订阅删除API
-    
+
     log::info!("删除订阅: {}", _uid);
     Ok(())
 }

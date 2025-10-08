@@ -112,7 +112,8 @@ pub fn remove_shortcut() -> Result<()> {
 
     // 删除LIebesu_Clash快捷方式
     if new_shortcut_path.exists() {
-        fs::remove_file(&new_shortcut_path).map_err(|e| anyhow!("删除LIebesu_Clash快捷方式失败: {}", e))?;
+        fs::remove_file(&new_shortcut_path)
+            .map_err(|e| anyhow!("删除LIebesu_Clash快捷方式失败: {}", e))?;
         info!(target: "app", "成功删除LIebesu_Clash启动快捷方式");
         removed_any = true;
     }

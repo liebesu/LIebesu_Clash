@@ -37,16 +37,16 @@ impl IpcManager {
             std::path::PathBuf::from("/tmp/clash-verge-ipc") // fallback path
         });
         let ipc_path = ipc_path_buf.to_str().unwrap_or_default();
-        
+
         // 🔥 完全对齐官方最新配置 (upstream/dev 8a4f2de8)
         // 关键发现：官方禁用了连接池！enable_pooling: false
         let config = ClientConfig {
-            default_timeout: Duration::from_secs(5),     // 🔥 官方：5秒超时
-            enable_pooling: false,                       // 🔥 官方：禁用连接池！
-            max_retries: 4,                              // 🔥 官方：重试4次
-            retry_delay: Duration::from_millis(125),     // 🔥 官方：125ms延迟
-            max_concurrent_requests: 16,                 // 🔥 官方：16并发
-            max_requests_per_second: Some(64.0),         // 🔥 官方：64/s速率
+            default_timeout: Duration::from_secs(5), // 🔥 官方：5秒超时
+            enable_pooling: false,                   // 🔥 官方：禁用连接池！
+            max_retries: 4,                          // 🔥 官方：重试4次
+            retry_delay: Duration::from_millis(125), // 🔥 官方：125ms延迟
+            max_concurrent_requests: 16,             // 🔥 官方：16并发
+            max_requests_per_second: Some(64.0),     // 🔥 官方：64/s速率
             ..Default::default()
         };
         #[allow(clippy::unwrap_used)]

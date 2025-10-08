@@ -1,5 +1,8 @@
 use crate::{
-    config::{DEFAULT_PAC, deserialize_encrypted, serialize_encrypted},
+    config::{
+        DEFAULT_PAC, deserialize_encrypted, serialize_encrypted,
+        subscription_fetch::RemoteSubscriptionConfig,
+    },
     logging,
     utils::{dirs, help, i18n, logging::Type},
 };
@@ -206,6 +209,9 @@ pub struct IVerge {
 
     /// 服务状态跟踪
     pub service_state: Option<crate::core::service::ServiceState>,
+
+    /// 远程订阅拉取配置
+    pub subscription_fetch: Option<RemoteSubscriptionConfig>,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -398,6 +404,7 @@ impl IVerge {
             enable_builtin_enhanced: Some(true),
             auto_log_clean: Some(2), // 1: 1天, 2: 7天, 3: 30天, 4: 90天
             webdav_url: None,
+            subscription_fetch: Some(Default::default()),
             webdav_username: None,
             webdav_password: None,
             enable_tray_speed: Some(false),
@@ -485,6 +492,7 @@ impl IVerge {
         patch!(proxy_layout_column);
         patch!(test_list);
         patch!(auto_log_clean);
+        patch!(subscription_fetch);
 
         patch!(webdav_url);
         patch!(webdav_username);

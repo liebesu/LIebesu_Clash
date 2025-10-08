@@ -451,16 +451,25 @@ impl Timer {
         match tokio::time::timeout(std::time::Duration::from_secs(40), async {
             Self::emit_update_event(&uid, true);
 
-            let is_current = Config::profiles().await.latest_ref().current.as_ref() == Some(&uid);
-            logging!(
-                info,
-                Type::Timer,
-                "配置 {} 是否为当前激活配置: {}",
-                uid,
-                is_current
-            );
+            if uid.starts_with("remote-fetch-") {
+                logging!(info, Type::Timer, "执行远程订阅自动同步任务: {}", uid);
+                if let Err(err) = crate::cmd::sync_subscription_from_remote(None, None).await {
+                    logging_error!(Type::Timer, false, "自动同步远程订阅失败: {}", err);
+                }
+                Ok(())
+            } else {
+                let is_current =
+                    Config::profiles().await.latest_ref().current.as_ref() == Some(&uid);
+                logging!(
+                    info,
+                    Type::Timer,
+                    "配置 {} 是否为当前激活配置: {}",
+                    uid,
+                    is_current
+                );
 
-            feat::update_profile(uid.clone(), None, Some(is_current)).await
+                feat::update_profile(uid.clone(), None, Some(is_current)).await
+            }
         })
         .await
         {
