@@ -2,7 +2,7 @@ use crate::config::{
     Config,
     subscription_fetch::{FetchSummary, RemoteSubscriptionConfig},
 };
-use crate::core::Timer;
+use crate::core::{handle::Handle, Timer};
 use crate::logging;
 use crate::process::AsyncHandler;
 use crate::utils::logging::Type;
@@ -166,7 +166,10 @@ pub async fn sync_subscription_from_remote(
     }
 
     let import_result: BatchImportResult = if !combined_text.trim().is_empty() {
-        super::batch_import::batch_import_from_text(combined_text, Some(options))
+        let app_handle = Handle::global()
+            .app_handle()
+            .ok_or_else(|| "AppHandle not initialized".to_string())?;
+        super::batch_import::batch_import_from_text(app_handle, combined_text, Some(options))
             .await
             .map_err(|e| format!("批量导入失败: {e}"))?
     } else {

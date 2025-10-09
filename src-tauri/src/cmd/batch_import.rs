@@ -1,6 +1,7 @@
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem, PrfOption},
+    core::handle::Handle,
     logging,
     utils::logging::Type,
 };
@@ -9,7 +10,11 @@ use percent_encoding::percent_decode_str;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicU64, Ordering};
 use url::Url;
+use tauri::{AppHandle, Emitter};
+
+static IMPORT_TASK_SEQ: AtomicU64 = AtomicU64::new(1);
 
 /// 批量导入结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,9 +69,57 @@ impl Default for BatchImportOptions {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportProgressPayload {
+    pub task_id: u64,
+    pub stage: String,
+    pub completed: usize,
+    pub total: usize,
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ProgressTracker {
+    app_handle: AppHandle,
+    task_id: u64,
+    total: usize,
+}
+
+impl ProgressTracker {
+    fn new(app_handle: AppHandle, task_id: u64, total: usize) -> Self {
+        Self {
+            app_handle,
+            task_id,
+            total,
+        }
+    }
+
+    fn emit(
+        &self,
+        stage: &str,
+        completed: usize,
+        total_override: Option<usize>,
+        message: Option<String>,
+    ) {
+        let total = total_override.unwrap_or(self.total);
+        let payload = ImportProgressPayload {
+            task_id: self.task_id,
+            stage: stage.to_string(),
+            completed: completed.min(total),
+            total,
+            message,
+        };
+
+        if let Err(err) = self.app_handle.emit("batch-import-progress", payload) {
+            log::warn!(target: "app", "batch-import-progress emit failed: {err}");
+        }
+    }
+}
+
 /// 从文本批量导入订阅
 #[tauri::command]
 pub async fn batch_import_from_text(
+    app_handle: AppHandle,
     text_content: String,
     options: Option<BatchImportOptions>,
 ) -> CmdResult<BatchImportResult> {
@@ -122,8 +175,27 @@ pub async fn batch_import_from_text(
         duplicate_count
     );
 
+    let task_id = IMPORT_TASK_SEQ.fetch_add(1, Ordering::SeqCst);
+    let tracker = ProgressTracker::new(app_handle.clone(), task_id, new_urls.len());
+
+    tracker.emit(
+        "preparing",
+        0,
+        Some(valid_count),
+        Some(format!("解析完成，有效 {} 条", valid_count)),
+    );
+    if duplicate_count > 0 {
+        tracker.emit(
+            "preparing",
+            0,
+            Some(valid_count),
+            Some(format!("检测到 {} 条重复，跳过", duplicate_count)),
+        );
+    }
+
     // 执行导入
-    let (success_results, failed_results) = import_subscriptions(new_urls, &options).await;
+    let (success_results, failed_results) =
+        import_subscriptions(new_urls, &options, tracker.clone()).await;
     let imported_count = success_results.len();
     let failed_count = failed_results.len();
 
@@ -145,6 +217,16 @@ pub async fn batch_import_from_text(
         results: all_results,
         import_duration,
     };
+
+    tracker.emit(
+        "completed",
+        imported_count + failed_count,
+        Some(valid_count),
+        Some(format!(
+            "导入完成，成功 {} 条，失败 {} 条",
+            imported_count, failed_count
+        )),
+    );
 
     logging!(
         info,
@@ -182,7 +264,12 @@ pub async fn batch_import_from_file(
         .map_err(|e| format!("读取文件失败: {}", e))?;
 
     // 调用文本导入逻辑
-    batch_import_from_text(content, options).await
+    // 使用全局 Handle 提供的 AppHandle，再复用文本导入逻辑
+    if let Some(handle) = crate::core::handle::Handle::global().app_handle() {
+        batch_import_from_text(handle, content, options).await
+    } else {
+        Err("AppHandle not initialized".into())
+    }
 }
 
 /// 从剪贴板批量导入订阅
@@ -538,11 +625,12 @@ async fn check_duplicates(urls: Vec<String>) -> CmdResult<(Vec<String>, Vec<Impo
 async fn import_subscriptions(
     urls: Vec<String>,
     options: &BatchImportOptions,
+    tracker: ProgressTracker,
 ) -> (Vec<ImportResult>, Vec<ImportResult>) {
     let mut success_results = Vec::new();
     let mut failed_results = Vec::new();
 
-    for url in urls {
+    for (index, url) in urls.into_iter().enumerate() {
         let name = generate_subscription_name(&url, options);
 
         // 创建订阅项
@@ -566,6 +654,17 @@ async fn import_subscriptions(
             file_data: None,
         };
 
+        let processed = index + 1;
+        tracker.emit(
+            "importing",
+            processed,
+            None,
+            Some(format!(
+                "正在导入: {}",
+                name.clone().unwrap_or_else(|| "订阅".into())
+            )),
+        );
+
         // 尝试导入
         match super::import_profile(url.clone(), item.option.clone()).await {
             Ok(_) => {
@@ -588,6 +687,14 @@ async fn import_subscriptions(
             }
         }
     }
+
+    let processed = success_results.len() + failed_results.len();
+    tracker.emit(
+        "finalizing",
+        processed,
+        None,
+        Some("导入阶段完成，正在收尾".to_string()),
+    );
 
     (success_results, failed_results)
 }

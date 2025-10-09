@@ -54,3 +54,4 @@ impl RemoteSubscriptionConfig {
             .map(|minutes| minutes.min(i32::MAX as u64) as i32)
     }
 }
+

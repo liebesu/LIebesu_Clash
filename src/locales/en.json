@@ -725,5 +725,9 @@
   "Merge": "Merge",
   "Script": "Script",
   "Unknown": "Unknown",
-  "Add Anyway": "Add Anyway"
+  "Add Anyway": "Add Anyway",
+  "BatchImport.Progress.Preparing": "Preparing",
+  "BatchImport.Progress.Importing": "Importing",
+  "BatchImport.Progress.Finalizing": "Finalizing",
+  "BatchImport.Progress.Completed": "Completed"
 }
