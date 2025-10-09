@@ -21,6 +21,7 @@ import { LayoutViewer } from "./mods/layout-viewer";
 import { UpdateViewer } from "./mods/update-viewer";
 import { BackupViewer } from "./mods/backup-viewer";
 import { LiteModeViewer } from "./mods/lite-mode-viewer";
+import { SubscriptionFetchViewer } from "./mods/subscription-fetch-viewer";
 import { TooltipIcon } from "@/components/base/base-tooltip-icon";
 import { ContentCopyRounded } from "@mui/icons-material";
 import { showNotice } from "@/services/noticeService";
@@ -40,6 +41,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
   const updateRef = useRef<DialogRef>(null);
   const backupRef = useRef<DialogRef>(null);
   const liteModeRef = useRef<DialogRef>(null);
+  const subscriptionFetchRef = useRef<DialogRef>(null);
 
   const onCheckUpdate = async () => {
     try {
@@ -75,6 +77,7 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <UpdateViewer ref={updateRef} />
       <BackupViewer ref={backupRef} />
       <LiteModeViewer ref={liteModeRef} />
+      <SubscriptionFetchViewer ref={subscriptionFetchRef} />
 
       <SettingItem
         onClick={() => backupRef.current?.open()}
@@ -90,6 +93,12 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <SettingItem
         onClick={() => configRef.current?.open()}
         label={t("Runtime Config")}
+      />
+
+      <SettingItem
+        onClick={() => subscriptionFetchRef.current?.open()}
+        label={t("Remote Subscription Settings")}
+        extra={<TooltipIcon title={t("Configure remote subscription list and schedule")} />}
       />
 
       <SettingItem

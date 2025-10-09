@@ -880,6 +880,66 @@ export async function previewBatchImport(
   });
 }
 
+// ===== 远程订阅抓取 =====
+
+export interface RemoteSubscriptionConfig {
+  enabled: boolean;
+  source_url?: string | null;
+  mode: "manual" | "daily" | "custom";
+  custom_interval_minutes?: number | null;
+  last_sync_at?: number | null;
+  last_result?: {
+    fetched_urls: number;
+    imported: number;
+    duplicates: number;
+    failed: number;
+    message?: string | null;
+  } | null;
+}
+
+export interface FetchPreviewItem {
+  url: string;
+  status: string;
+  name?: string;
+  error_message?: string;
+}
+
+export interface FetchPreviewResult {
+  total: number;
+  valid: number;
+  invalid: number;
+  duplicate: number;
+  preview: FetchPreviewItem[];
+}
+
+export interface FetchSummary {
+  fetched_urls: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  message?: string | null;
+}
+
+export async function getRemoteSubscriptionConfig() {
+  return invoke<RemoteSubscriptionConfig>("get_remote_subscription_config");
+}
+
+export async function saveRemoteSubscriptionConfig(config: RemoteSubscriptionConfig) {
+  return invoke<void>("save_remote_subscription_config", { config });
+}
+
+export async function fetchSubscriptionPreview(sourceUrl: string) {
+  return invoke<FetchPreviewResult>("fetch_subscription_preview", {
+    source_url: sourceUrl,
+  });
+}
+
+export async function syncSubscriptionFromRemote(sourceUrl?: string) {
+  return invoke<FetchSummary>("sync_subscription_from_remote", {
+    source_url: sourceUrl,
+  });
+}
+
 // ===== 批量导出相关 =====
 
 export interface ExportOptions {

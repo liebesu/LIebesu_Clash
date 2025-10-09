@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -56,6 +56,7 @@ import {
   type BatchImportOptions,
   type ImportResult,
 } from "@/services/cmds";
+import { useBatchImportProgress } from "@/hooks/use-batch-import-progress";
 
 interface BatchImportDialogProps {
   open: boolean;
@@ -97,6 +98,22 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showProgressBar, setShowProgressBar] = useState(false);
+  const progressState = useBatchImportProgress(showProgressBar);
+
+  const effectivePercent = useMemo(() => {
+    if (!showProgressBar) return progress;
+    if (progressState.isCompleted) return 100;
+    if (progressState.percent > 0) return progressState.percent;
+    return progress;
+  }, [progress, progressState.isCompleted, progressState.percent, showProgressBar]);
+
+  const progressMessage = useMemo(() => {
+    if (!showProgressBar) return "正在处理...";
+    if (progressState.displayMessage) return progressState.displayMessage;
+    if (progressState.stageLabel) return `${progressState.stageLabel}...`;
+    return "正在处理...";
+  }, [progressState.displayMessage, progressState.stageLabel, showProgressBar]);
   
   // 输入内容
   const [textContent, setTextContent] = useState("");
@@ -212,6 +229,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 
     setLoading(true);
     setProgress(30);
+    setShowProgressBar(true);
     showNotice("info", "正在生成预览...", 1200);
 
     try {
@@ -239,6 +257,8 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 
     setLoading(true);
     setProgress(30);
+    setShowProgressBar(true);
+    progressState.reset();
     showNotice("info", "正在执行导入...", 1200);
 
     try {
@@ -257,6 +277,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     } finally {
       setLoading(false);
       setProgress(0);
+      setShowProgressBar(false);
     }
   };
 
@@ -281,6 +302,8 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     setImportResult(null);
     setExpandedResults(new Set());
     setProgress(0);
+    setShowProgressBar(false);
+    progressState.reset();
   };
 
   // 关闭对话框
@@ -412,11 +435,14 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 
       <DialogContent>
         {/* 进度条 */}
-        {loading && (
+        {(loading || showProgressBar) && (
           <Box sx={{ mb: 2 }}>
-            <LinearProgress variant={progress > 0 ? "determinate" : "indeterminate"} value={progress} />
+            <LinearProgress
+              variant={effectivePercent > 0 && effectivePercent < 100 ? "determinate" : "indeterminate"}
+              value={effectivePercent}
+            />
             <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-              正在处理...
+              {progressMessage}
             </Typography>
           </Box>
         )}

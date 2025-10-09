@@ -378,30 +378,31 @@ pub async fn enhance() -> (Mapping, Vec<String>, HashMap<String, ResultLog>) {
 
     // 🚀 性能优化：针对大量节点场景（2000+）的内核配置
     use serde_yaml_ng::Value;
-    
+
     // profile-cache-size: 缓存大小，对大量节点很重要
     config.insert(
         "profile".into(),
         serde_yaml_ng::to_value(serde_json::json!({
             "store-selected": true,
             "store-fake-ip": true,
-        })).unwrap_or(Value::Null),
+        }))
+        .unwrap_or(Value::Null),
     );
-    
+
     // 增加文件描述符和连接限制
     config.insert("global-client-fingerprint".into(), "chrome".into());
-    
+
     // TCP并发连接数优化
     if !config.contains_key("tcp-concurrent") {
         config.insert("tcp-concurrent".into(), true.into());
     }
-    
+
     // 统一延迟测试超时，避免大量节点测速卡死
     // 减少超时时间以更快失败，提高大量节点场景下的测速效率
     if !config.contains_key("url-test-timeout") {
         config.insert("url-test-timeout".into(), 3000.into()); // 3秒超时
     }
-    
+
     log::info!(target: "app", "已应用大规模节点性能优化配置");
 
     // 应用独立的DNS配置（如果启用）

@@ -28,11 +28,11 @@ pub struct SubscriptionHealthResult {
 /// 健康状态枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HealthStatus {
-    Healthy,      // 健康
-    Warning,      // 警告（可访问但有问题）
-    Unhealthy,    // 不健康（无法访问）
-    Checking,     // 正在检查
-    Unknown,      // 未知状态
+    Healthy,   // 健康
+    Warning,   // 警告（可访问但有问题）
+    Unhealthy, // 不健康（无法访问）
+    Checking,  // 正在检查
+    Unknown,   // 未知状态
 }
 
 /// 批量健康检查结果
@@ -50,12 +50,13 @@ pub struct BatchHealthResult {
 #[tauri::command]
 pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHealthResult> {
     logging!(info, Type::Cmd, true, "[健康检查] 开始检查订阅: {}", uid);
-    
+
     let profiles = Config::profiles().await;
     let profile = {
         let profiles_ref = profiles.latest_ref();
         let empty_vec = Vec::new();
-        profiles_ref.items
+        profiles_ref
+            .items
             .as_ref()
             .unwrap_or(&empty_vec)
             .iter()
@@ -63,10 +64,17 @@ pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHea
             .cloned()
             .ok_or_else(|| "Profile not found".to_string())?
     };
-    
+
     let result = check_single_subscription(&profile).await;
-    logging!(info, Type::Cmd, true, "[健康检查] 完成检查订阅 {}: {:?}", uid, result.status);
-    
+    logging!(
+        info,
+        Type::Cmd,
+        true,
+        "[健康检查] 完成检查订阅 {}: {:?}",
+        uid,
+        result.status
+    );
+
     Ok(result)
 }
 
@@ -75,12 +83,13 @@ pub async fn check_subscription_health(uid: String) -> CmdResult<SubscriptionHea
 pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
     let start_time = Instant::now();
     logging!(info, Type::Cmd, true, "[批量健康检查] 开始检查所有订阅");
-    
+
     let profiles = Config::profiles().await;
     let remote_profiles: Vec<PrfItem> = {
         let profiles_ref = profiles.latest_ref();
         let empty_vec = Vec::new();
-        profiles_ref.items
+        profiles_ref
+            .items
             .as_ref()
             .unwrap_or(&empty_vec)
             .iter()
@@ -88,39 +97,48 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
             .cloned()
             .collect()
     };
-    
+
     let total = remote_profiles.len();
     let mut results = Vec::new();
-    
+
     // 并发检查（限制并发数避免过载）
     let semaphore = Arc::new(tokio::sync::Semaphore::new(5)); // 最多5个并发
     let mut tasks = Vec::new();
-    
+
     for profile in remote_profiles {
         let permit = semaphore.clone();
-        
+
         let task = tokio::spawn(async move {
             let _permit = permit.acquire().await.unwrap();
             check_single_subscription(&profile).await
         });
-        
+
         tasks.push(task);
     }
-    
+
     // 等待所有检查完成
     for task in tasks {
         if let Ok(result) = task.await {
             results.push(result);
         }
     }
-    
+
     // 统计结果
-    let healthy = results.iter().filter(|r| matches!(r.status, HealthStatus::Healthy)).count();
-    let warning = results.iter().filter(|r| matches!(r.status, HealthStatus::Warning)).count();
-    let unhealthy = results.iter().filter(|r| matches!(r.status, HealthStatus::Unhealthy)).count();
-    
+    let healthy = results
+        .iter()
+        .filter(|r| matches!(r.status, HealthStatus::Healthy))
+        .count();
+    let warning = results
+        .iter()
+        .filter(|r| matches!(r.status, HealthStatus::Warning))
+        .count();
+    let unhealthy = results
+        .iter()
+        .filter(|r| matches!(r.status, HealthStatus::Unhealthy))
+        .count();
+
     let check_duration = start_time.elapsed().as_millis() as u64;
-    
+
     let batch_result = BatchHealthResult {
         total,
         healthy,
@@ -129,25 +147,39 @@ pub async fn check_all_subscriptions_health() -> CmdResult<BatchHealthResult> {
         results,
         check_duration,
     };
-    
-    logging!(info, Type::Cmd, true, 
-        "[批量健康检查] 完成 - 总数: {}, 健康: {}, 警告: {}, 不健康: {}, 耗时: {}ms", 
-        total, healthy, warning, unhealthy, check_duration
+
+    logging!(
+        info,
+        Type::Cmd,
+        true,
+        "[批量健康检查] 完成 - 总数: {}, 健康: {}, 警告: {}, 不健康: {}, 耗时: {}ms",
+        total,
+        healthy,
+        warning,
+        unhealthy,
+        check_duration
     );
-    
+
     Ok(batch_result)
 }
 
 /// 获取订阅详细信息（节点数量等）
 #[tauri::command]
 pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHealthResult> {
-    logging!(info, Type::Cmd, true, "[订阅详情] 获取订阅详细信息: {}", uid);
-    
+    logging!(
+        info,
+        Type::Cmd,
+        true,
+        "[订阅详情] 获取订阅详细信息: {}",
+        uid
+    );
+
     let profiles = Config::profiles().await;
     let profile = {
         let profiles_ref = profiles.latest_ref();
         let empty_vec = Vec::new();
-        profiles_ref.items
+        profiles_ref
+            .items
             .as_ref()
             .unwrap_or(&empty_vec)
             .iter()
@@ -155,9 +187,9 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
             .cloned()
             .ok_or_else(|| "Profile not found".to_string())?
     };
-    
+
     let mut result = check_single_subscription(&profile).await;
-    
+
     // 如果订阅可访问，尝试解析节点数量
     if matches!(result.status, HealthStatus::Healthy | HealthStatus::Warning) {
         if let Some(file_path) = &profile.file {
@@ -166,7 +198,7 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
             }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -177,7 +209,7 @@ async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResul
     let url = profile.url.clone();
     let last_update = profile.updated;
     let now = chrono::Utc::now().timestamp();
-    
+
     let mut result = SubscriptionHealthResult {
         uid: uid.clone(),
         name,
@@ -189,7 +221,7 @@ async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResul
         error_message: None,
         last_checked: now,
     };
-    
+
     // 如果是本地文件，检查文件是否存在
     if url.is_none() {
         if let Some(file_path) = &profile.file {
@@ -205,27 +237,27 @@ async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResul
         }
         return result;
     }
-    
+
     // 检查远程订阅
     if let Some(subscription_url) = url {
         let start_time = Instant::now();
-        
+
         match check_remote_subscription(&subscription_url).await {
             Ok(response_info) => {
                 result.response_time = Some(start_time.elapsed().as_millis() as u64);
                 result.status = HealthStatus::Healthy;
-                
+
                 // 检查响应时间是否过长
                 if result.response_time.unwrap_or(0) > 10000 {
                     result.status = HealthStatus::Warning;
                     result.error_message = Some("响应时间过长".to_string());
                 }
-                
+
                 // 尝试解析节点数量
                 if let Some(content) = response_info.content {
                     let node_count = count_nodes_in_config(&content);
                     result.node_count = Some(node_count);
-                    
+
                     if node_count == 0 {
                         result.status = HealthStatus::Warning;
                         result.error_message = Some("订阅中没有可用节点".to_string());
@@ -239,7 +271,7 @@ async fn check_single_subscription(profile: &PrfItem) -> SubscriptionHealthResul
             }
         }
     }
-    
+
     result
 }
 
@@ -258,18 +290,18 @@ async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, St
         .user_agent("clash-verge-rev/health-checker")
         .build()
         .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
-    
+
     let response = timeout(Duration::from_secs(30), client.get(url).send())
         .await
         .map_err(|_| "请求超时".to_string())?
         .map_err(|e| format!("请求失败: {}", e))?;
-    
+
     let status_code = response.status().as_u16();
-    
+
     if !response.status().is_success() {
         return Err(format!("HTTP错误: {}", status_code));
     }
-    
+
     // 收集响应头
     let mut headers = HashMap::new();
     for (key, value) in response.headers() {
@@ -277,11 +309,12 @@ async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, St
             headers.insert(key.to_string(), value_str.to_string());
         }
     }
-    
+
     // 读取响应内容（限制大小避免内存问题）
     let content = match response.text().await {
         Ok(text) => {
-            if text.len() > 1024 * 1024 * 2 { // 限制2MB
+            if text.len() > 1024 * 1024 * 2 {
+                // 限制2MB
                 None
             } else {
                 Some(text)
@@ -289,7 +322,7 @@ async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, St
         }
         Err(_) => None,
     };
-    
+
     Ok(SubscriptionResponse {
         status_code,
         content,
@@ -307,7 +340,7 @@ fn count_nodes_in_config(content: &str) -> usize {
             }
         }
     }
-    
+
     // 如果YAML解析失败，尝试简单的文本统计
     // 统计包含常见代理字段的行数
     let proxy_indicators = ["server:", "port:", "type:", "cipher:", "password:"];
@@ -315,10 +348,12 @@ fn count_nodes_in_config(content: &str) -> usize {
         .lines()
         .filter(|line| {
             let line_trimmed = line.trim();
-            proxy_indicators.iter().any(|indicator| line_trimmed.contains(indicator))
+            proxy_indicators
+                .iter()
+                .any(|indicator| line_trimmed.contains(indicator))
         })
         .count();
-    
+
     // 粗略估算：每个代理大约有3-5个字段
     lines_with_proxy_fields / 4
 }
