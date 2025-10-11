@@ -453,8 +453,12 @@ impl Timer {
 
             if uid.starts_with("remote-fetch-") {
                 logging!(info, Type::Timer, "执行远程订阅自动同步任务: {}", uid);
-                if let Err(err) = crate::cmd::sync_subscription_from_remote(None, None).await {
-                    logging_error!(Type::Timer, false, "自动同步远程订阅失败: {}", err);
+                if let Some(app_handle) = crate::core::handle::Handle::global().app_handle() {
+                    if let Err(err) = crate::cmd::sync_subscription_from_remote(app_handle, None, None).await {
+                        logging_error!(Type::Timer, false, "自动同步远程订阅失败: {}", err);
+                    }
+                } else {
+                    logging_error!(Type::Timer, false, "自动同步远程订阅失败: AppHandle 不可用");
                 }
                 Ok(())
             } else {

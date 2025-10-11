@@ -119,7 +119,7 @@ fn build_new_window() -> Result<WebviewWindow, String> {
         "main", /* the unique window label */
         tauri::WebviewUrl::App("index.html".into()),
     )
-    .title("Clash Verge")
+    .title("Liebesu_Clash")
     .center()
     .decorations(true)
     .fullscreen(false)

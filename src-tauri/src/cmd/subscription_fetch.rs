@@ -130,6 +130,24 @@ pub async fn fetch_subscription_preview(source_url: String) -> CmdResult<FetchPr
 
 #[tauri::command]
 pub async fn sync_subscription_from_remote(
+    app_handle: tauri::AppHandle,
+    source_url: Option<String>,
+    options: Option<super::batch_import::BatchImportOptions>,
+) -> CmdResult<FetchSummary> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    AsyncHandler::spawn(move || async move {
+        let result = perform_sync(app_handle, source_url, options).await;
+        let _ = tx.send(result);
+    });
+
+    match rx.await {
+        Ok(result) => result,
+        Err(_) => Err("同步任务已中断".into()),
+    }
+}
+
+async fn perform_sync(
+    app_handle: tauri::AppHandle,
     source_url: Option<String>,
     options: Option<super::batch_import::BatchImportOptions>,
 ) -> CmdResult<FetchSummary> {
@@ -155,7 +173,7 @@ pub async fn sync_subscription_from_remote(
         skip_duplicates: true,
         auto_generate_names: true,
         name_prefix: None,
-        default_user_agent: Some("clash-verge-rev".into()),
+        default_user_agent: Some("liebseu-clash".into()),
         update_interval: fetch_config.resolved_interval_minutes_i32(),
     });
 
@@ -166,10 +184,7 @@ pub async fn sync_subscription_from_remote(
     }
 
     let import_result: BatchImportResult = if !combined_text.trim().is_empty() {
-        let app_handle = Handle::global()
-            .app_handle()
-            .ok_or_else(|| "AppHandle not initialized".to_string())?;
-        super::batch_import::batch_import_from_text(app_handle, combined_text, Some(options))
+        super::batch_import::batch_import_from_text(app_handle.clone(), combined_text, Some(options))
             .await
             .map_err(|e| format!("批量导入失败: {e}"))?
     } else {

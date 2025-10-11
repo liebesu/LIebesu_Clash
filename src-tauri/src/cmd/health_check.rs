@@ -287,7 +287,7 @@ struct SubscriptionResponse {
 async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, String> {
     let client = Client::builder()
         .timeout(Duration::from_secs(30))
-        .user_agent("clash-verge-rev/health-checker")
+        .user_agent("liebseu-clash/health-checker")
         .build()
         .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
 

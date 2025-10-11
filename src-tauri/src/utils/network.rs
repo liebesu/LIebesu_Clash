@@ -176,7 +176,7 @@ impl NetworkManager {
             USER_AGENT,
             HeaderValue::from_str(
                 &user_agent
-                    .unwrap_or_else(|| format!("clash-verge/v{}", env!("CARGO_PKG_VERSION"))),
+                    .unwrap_or_else(|| format!("liebseu-clash/v{}", env!("CARGO_PKG_VERSION"))),
             )?,
         );
 

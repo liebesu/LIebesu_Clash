@@ -511,20 +511,20 @@ FunctionEnd
 
 !macro StartVergeService
   ; Check if the service exists
-  SimpleSC::ExistsService "clash_verge_service"
+  SimpleSC::ExistsService "Liebesu_Clash"
   Pop $0  ; 0：service exists；other: service not exists
   ; Service exists
   ${If} $0 == 0
     Push $0
     ; Check if the service is running
-    SimpleSC::ServiceIsRunning "clash_verge_service"
+    SimpleSC::ServiceIsRunning "Liebesu_Clash"
     Pop $0 ; returns an errorcode (<>0) otherwise success (0)
     Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
     ${If} $0 == 0
       Push $0
       ${If} $1 == 0
             DetailPrint "Restart ${PRODUCTNAME} Service..."
-            SimpleSC::StartService "clash_verge_service" "" 30
+            SimpleSC::StartService "Liebesu_Clash" "" 30
       ${EndIf}
     ${ElseIf} $0 != 0
           Push $0
@@ -537,24 +537,24 @@ FunctionEnd
 
 !macro RemoveVergeService
   ; Check if the service exists
-  SimpleSC::ExistsService "clash_verge_service"
+  SimpleSC::ExistsService "Liebesu_Clash"
   Pop $0  ; 0：service exists；other: service not exists
   ; Service exists
   ${If} $0 == 0
     Push $0
     ; Check if the service is running
-    SimpleSC::ServiceIsRunning "clash_verge_service"
+    SimpleSC::ServiceIsRunning "Liebesu_Clash"
     Pop $0 ; returns an errorcode (<>0) otherwise success (0)
     Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
     ${If} $0 == 0
       Push $0
       ${If} $1 == 1
         DetailPrint "Stop ${PRODUCTNAME} Service..."
-        SimpleSC::StopService "clash_verge_service" 1 30
+        SimpleSC::StopService "Liebesu_Clash" 1 30
         Pop $0 ; returns an errorcode (<>0) otherwise success (0)
         ${If} $0 == 0
               DetailPrint "Removing ${PRODUCTNAME} Service..."
-              SimpleSC::RemoveService "clash_verge_service"
+              SimpleSC::RemoveService "Liebesu_Clash"
         ${ElseIf} $0 != 0
                   Push $0
                   SimpleSC::GetErrorMessage
@@ -563,7 +563,7 @@ FunctionEnd
         ${EndIf}
   ${ElseIf} $1 == 0
         DetailPrint "Removing ${PRODUCTNAME} Service..."
-        SimpleSC::RemoveService "clash_verge_service"
+        SimpleSC::RemoveService "Liebesu_Clash"
   ${EndIf}
     ${ElseIf} $0 != 0
           Push $0
@@ -786,14 +786,15 @@ Section Install
   SetRegView 64
   ; 清理旧版本的注册表项 (Clash Verge)
   ReadRegStr $R2 HKCU "$R1" "Clash Verge"
-  ${If} $R2 != ""
+  StrCmp $R2 "" +2
     DeleteRegValue HKCU "$R1" "Clash Verge"
-  ${EndIf}
-
   ReadRegStr $R2 HKLM "$R1" "Clash Verge"
-  ${If} $R2 != ""
+  StrCmp $R2 "" +2
     DeleteRegValue HKLM "$R1" "Clash Verge"
-  ${EndIf}
+  IfFileExists "$INSTDIR\Clash Verge.exe" 0 +2
+    Delete "$INSTDIR\Clash Verge.exe"
+  IfFileExists "$INSTDIR\Liebesu_Clash.exe" 0 +2
+    Delete "$INSTDIR\Liebesu_Clash.exe"
 
   ; 清理新版本的注册表项 (clash-verge)
   ReadRegStr $R2 HKCU "$R1" "clash-verge"
@@ -805,11 +806,6 @@ Section Install
   ${If} $R2 != ""
     DeleteRegValue HKLM "$R1" "clash-verge"
   ${EndIf}
-
-  ; Delete old files before installation
-    ; Delete clash-verge.desktop
-  IfFileExists "$INSTDIR\Clash Verge.exe" 0 +2
-    Delete "$INSTDIR\Clash Verge.exe"
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"
@@ -947,14 +943,15 @@ Section Uninstall
   SetRegView 64
   ; 清理旧版本的注册表项 (Clash Verge)
   ReadRegStr $R2 HKCU "$R1" "Clash Verge"
-  ${If} $R2 != ""
+  StrCmp $R2 "" +2
     DeleteRegValue HKCU "$R1" "Clash Verge"
-  ${EndIf}
-
   ReadRegStr $R2 HKLM "$R1" "Clash Verge"
-  ${If} $R2 != ""
+  StrCmp $R2 "" +2
     DeleteRegValue HKLM "$R1" "Clash Verge"
-  ${EndIf}
+  IfFileExists "$INSTDIR\Clash Verge.exe" 0 +2
+    Delete "$INSTDIR\Clash Verge.exe"
+  IfFileExists "$INSTDIR\Liebesu_Clash.exe" 0 +2
+    Delete "$INSTDIR\Liebesu_Clash.exe"
 
   ; 清理新版本的注册表项 (clash-verge)
   ReadRegStr $R2 HKCU "$R1" "clash-verge"
@@ -970,6 +967,7 @@ Section Uninstall
   ; Delete the app directory and its content from disk
   ; Copy main executable
   Delete "$INSTDIR\${MAINBINARYNAME}.exe"
+  Delete "$INSTDIR\Liebesu_Clash.exe"
 
   ; Delete resources
   {{#each resources}}
@@ -1005,7 +1003,7 @@ Section Uninstall
 
   ; 删除公共桌面快捷方式
   Delete "C:\Users\Public\Desktop\Clash Verge.lnk"
-  Delete "C:\Users\Public\Desktop\clash-verge.lnk"
+  Delete "C:\Users\Public\Desktop\Liebesu_Clash.lnk"
 
   ; 枚举所有用户配置文件目录
   SetRegView 64
@@ -1027,7 +1025,7 @@ Section Uninstall
 
       ; 删除该用户桌面的快捷方式
       Delete "$R4\Clash Verge.lnk"
-      Delete "$R4\clash-verge.lnk"
+      Delete "$R4\Liebesu_Clash.lnk"
 
       DetailPrint "尝试删除用户 '$R3' 桌面的 ${PRODUCTNAME} 快捷方式"
     ${EndIf}
@@ -1042,13 +1040,13 @@ Section Uninstall
   ; 删除用户级开始菜单中的应用程序文件夹和快捷方式
   DetailPrint "删除用户级开始菜单中的应用程序文件夹和快捷方式..."
   RMDir /r /REBOOTOK "$SMPROGRAMS\Clash Verge"
-  RMDir /r /REBOOTOK "$SMPROGRAMS\clash-verge"
+  RMDir /r /REBOOTOK "$SMPROGRAMS\Liebesu_Clash"
   DetailPrint "删除用户级开始菜单中的应用程序文件夹和快捷方式完成"
 
   ; 删除系统级开始菜单中的应用程序文件夹和快捷方式
   DetailPrint "删除系统级开始菜单中的应用程序文件夹和快捷方式..."
   RMDir /r /REBOOTOK "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Clash Verge"
-  RMDir /r /REBOOTOK "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\clash-verge"
+  RMDir /r /REBOOTOK "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Liebesu_Clash"
   DetailPrint "删除系统级开始菜单中的应用程序文件夹和快捷方式完成"
 
   ; 删除所有带 Clash Verge 或 clash-verge 的注册表项
@@ -1060,19 +1058,19 @@ Section Uninstall
   ; 清理 CurrentVersion\Run 中的自启动项
   StrCpy $R1 "Software\Microsoft\Windows\CurrentVersion\Run"
   DeleteRegValue HKCU "$R1" "Clash Verge"
-  DeleteRegValue HKCU "$R1" "clash-verge"
+  DeleteRegValue HKCU "$R1" "Liebesu_Clash"
   DeleteRegValue HKLM "$R1" "Clash Verge"
-  DeleteRegValue HKLM "$R1" "clash-verge"
+  DeleteRegValue HKLM "$R1" "Liebesu_Clash"
 
   ; 清理 App Paths
   DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Clash Verge.exe"
-  DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\clash-verge.exe"
+  DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Liebesu_Clash.exe"
 
   ; 删除指定的注册表路径
   DeleteRegKey HKLM "Software\Clash Verge Rev"
   DeleteRegKey HKCU "Software\Clash Verge Rev"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClashVerge"
   DeleteRegKey HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Clash Verge"
+  DeleteRegKey HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Liebesu_Clash"
 
   ; 清理 Uninstall 信息
   StrCpy $R1 0
@@ -1085,7 +1083,7 @@ Section Uninstall
     ReadRegStr $R3 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$R2" "DisplayName"
     ${If} $R3 != ""
       StrCmp $R3 "Clash Verge" 0 +3
-      StrCmp $R3 "clash-verge" 0 +2
+      StrCmp $R3 "Liebesu_Clash" 0 +2
       DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$R2"
     ${EndIf}
 
@@ -1104,7 +1102,7 @@ Section Uninstall
     ReadRegStr $R3 HKCU "SOFTWARE\$R2" ""
     ${If} $R3 != ""
       StrCmp $R3 "Clash Verge" 0 +3
-      StrCmp $R3 "clash-verge" 0 +2
+      StrCmp $R3 "Liebesu_Clash" 0 +2
       DeleteRegKey HKCU "SOFTWARE\$R2"
     ${EndIf}
 
@@ -1123,7 +1121,7 @@ Section Uninstall
     ReadRegStr $R3 HKLM "SOFTWARE\$R2" ""
     ${If} $R3 != ""
       StrCmp $R3 "Clash Verge" 0 +3
-      StrCmp $R3 "clash-verge" 0 +2
+      StrCmp $R3 "Liebesu_Clash" 0 +2
       DeleteRegKey HKLM "SOFTWARE\$R2"
     ${EndIf}
 

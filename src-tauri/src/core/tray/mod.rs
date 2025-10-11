@@ -445,7 +445,7 @@ impl Tray {
         let version = env!("CARGO_PKG_VERSION");
         if let Some(tray) = app_handle.tray_by_id("main") {
             let _ = tray.set_tooltip(Some(&format!(
-                "Clash Verge {version}\n{}: {}\n{}: {}\n{}: {}",
+                "Liebesu_Clash {version}\n{}: {}\n{}: {}\n{}: {}",
                 sys_proxy_text,
                 switch_map[system_proxy],
                 tun_text,

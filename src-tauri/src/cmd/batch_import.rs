@@ -63,7 +63,7 @@ impl Default for BatchImportOptions {
             skip_duplicates: true,
             auto_generate_names: true,
             name_prefix: None,
-            default_user_agent: Some("clash-verge-rev".to_string()),
+            default_user_agent: Some("liebseu-clash".to_string()),
             update_interval: Some(60 * 24), // 24小时
         }
     }
@@ -870,7 +870,7 @@ async fn export_as_json(
     );
     export_obj.insert(
         "exported_by".to_string(),
-        serde_json::Value::String("Clash Verge Rev".to_string()),
+        serde_json::Value::String("Liebesu_Clash".to_string()),
     );
 
     // 添加订阅数据

@@ -149,7 +149,7 @@ impl CoreManager {
             exists_keys: vec![],
             chain_logs: Default::default(),
         });
-        help::save_yaml(&runtime_path, &clash_config, Some("# Clash Verge Runtime")).await?;
+        help::save_yaml(&runtime_path, &clash_config, Some("# Liebesu_Clash Runtime")).await?;
         handle::Handle::notice_message(msg_type, msg_content);
         Ok(())
     }
