@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -31,7 +31,7 @@ import {
   Paper,
   IconButton,
   Tooltip,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Update as UpdateIcon,
   Delete as DeleteIcon,
@@ -44,9 +44,9 @@ import {
   ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
-} from '@mui/icons-material';
-import { useTranslation } from 'react-i18next';
-import { showNotice } from '../../services/noticeService';
+} from "@mui/icons-material";
+import { useTranslation } from "react-i18next";
+import { showNotice } from "../../services/noticeService";
 import {
   getSubscriptionCleanupPreview,
   updateAllSubscriptions,
@@ -59,45 +59,53 @@ import {
   type BatchUpdateResult,
   type CleanupResult,
   type SubscriptionInfo,
-} from '../../services/cmds';
+} from "../../services/cmds";
 
 interface SubscriptionBatchManagerDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDialogProps> = ({
-  open,
-  onClose,
-}) => {
+export const SubscriptionBatchManagerDialog: React.FC<
+  SubscriptionBatchManagerDialogProps
+> = ({ open, onClose }) => {
   const { t } = useTranslation();
-  
+
   // State for different tabs/sections
-  const [currentTab, setCurrentTab] = useState<'update' | 'cleanup' | 'stats' | 'settings'>('update');
-  
+  const [currentTab, setCurrentTab] = useState<
+    "update" | "cleanup" | "stats" | "settings"
+  >("update");
+
   // Batch update states
   const [updateInProgress, setUpdateInProgress] = useState(false);
-  const [updateResult, setUpdateResult] = useState<BatchUpdateResult | null>(null);
-  
+  const [updateResult, setUpdateResult] = useState<BatchUpdateResult | null>(
+    null,
+  );
+
   // Cleanup states
-  const [cleanupOptions, setCleanupOptions] = useState<SubscriptionCleanupOptions>({
-    days_threshold: 3,
-    preview_only: true,
-    exclude_favorites: true,
-    exclude_groups: [],
-  });
-  const [cleanupPreview, setCleanupPreview] = useState<CleanupPreview | null>(null);
-  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(null);
+  const [cleanupOptions, setCleanupOptions] =
+    useState<SubscriptionCleanupOptions>({
+      days_threshold: 3,
+      preview_only: true,
+      exclude_favorites: true,
+      exclude_groups: [],
+    });
+  const [cleanupPreview, setCleanupPreview] = useState<CleanupPreview | null>(
+    null,
+  );
+  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(
+    null,
+  );
   const [cleanupInProgress, setCleanupInProgress] = useState(false);
-  
+
   // Stats states
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  
+
   // Auto cleanup states
   const [autoCleanupEnabled, setAutoCleanupEnabled] = useState(false);
   const [autoCleanupRules, setAutoCleanupRules] = useState<any>(null);
-  
+
   // Load initial data
   useEffect(() => {
     if (open) {
@@ -112,8 +120,8 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       const data = await getSubscriptionManagementStats();
       setStats(data);
     } catch (error) {
-      console.error('获取统计信息失败:', error);
-      showNotice('error', '获取统计信息失败: ' + error);
+      console.error("获取统计信息失败:", error);
+      showNotice("error", "获取统计信息失败: " + error);
     } finally {
       setStatsLoading(false);
     }
@@ -125,22 +133,25 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       setAutoCleanupRules(rules);
       setAutoCleanupEnabled(rules.enabled);
     } catch (error) {
-      console.error('获取自动清理规则失败:', error);
+      console.error("获取自动清理规则失败:", error);
     }
   };
 
   const handleUpdateAll = async () => {
     setUpdateInProgress(true);
     setUpdateResult(null);
-    
+
     try {
       const result = await updateAllSubscriptions();
       setUpdateResult(result);
-      showNotice('success', `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`);
+      showNotice(
+        "success",
+        `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`,
+      );
       loadStats(); // 重新加载统计信息
     } catch (error) {
-      console.error('批量更新失败:', error);
-      showNotice('error', '批量更新失败: ' + error);
+      console.error("批量更新失败:", error);
+      showNotice("error", "批量更新失败: " + error);
     } finally {
       setUpdateInProgress(false);
     }
@@ -151,26 +162,29 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       const preview = await getSubscriptionCleanupPreview(cleanupOptions);
       setCleanupPreview(preview);
     } catch (error) {
-      console.error('生成清理预览失败:', error);
-      showNotice('error', '生成清理预览失败: ' + error);
+      console.error("生成清理预览失败:", error);
+      showNotice("error", "生成清理预览失败: " + error);
     }
   };
 
   const handleExecuteCleanup = async () => {
     if (!cleanupPreview) return;
-    
+
     setCleanupInProgress(true);
-    
+
     try {
       const executeOptions = { ...cleanupOptions, preview_only: false };
       const result = await cleanupExpiredSubscriptions(executeOptions);
       setCleanupResult(result);
       setCleanupPreview(null);
-      showNotice('success', `清理完成: 删除了 ${result.deleted_count} 个过期订阅`);
+      showNotice(
+        "success",
+        `清理完成: 删除了 ${result.deleted_count} 个过期订阅`,
+      );
       loadStats(); // 重新加载统计信息
     } catch (error) {
-      console.error('执行清理失败:', error);
-      showNotice('error', '执行清理失败: ' + error);
+      console.error("执行清理失败:", error);
+      showNotice("error", "执行清理失败: " + error);
     } finally {
       setCleanupInProgress(false);
     }
@@ -179,11 +193,11 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
   const handleSaveAutoCleanupRules = async () => {
     try {
       await saveAutoCleanupRules(autoCleanupEnabled, cleanupOptions);
-      showNotice('success', '自动清理规则保存成功');
+      showNotice("success", "自动清理规则保存成功");
       loadAutoCleanupRules();
     } catch (error) {
-      console.error('保存自动清理规则失败:', error);
-      showNotice('error', '保存自动清理规则失败: ' + error);
+      console.error("保存自动清理规则失败:", error);
+      showNotice("error", "保存自动清理规则失败: " + error);
     }
   };
 
@@ -192,12 +206,12 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       <Typography variant="h6" gutterBottom>
         批量更新所有订阅
       </Typography>
-      
+
       <Alert severity="info" sx={{ mb: 2 }}>
         <AlertTitle>说明</AlertTitle>
         此操作将尝试更新所有远程订阅链接，获取最新的节点信息。
       </Alert>
-      
+
       {stats && (
         <Card sx={{ mb: 2 }}>
           <CardContent>
@@ -241,7 +255,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </CardContent>
         </Card>
       )}
-      
+
       <Box display="flex" gap={2} mb={2}>
         <Button
           variant="contained"
@@ -250,9 +264,9 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           disabled={updateInProgress}
           size="large"
         >
-          {updateInProgress ? '更新中...' : '开始批量更新'}
+          {updateInProgress ? "更新中..." : "开始批量更新"}
         </Button>
-        
+
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
@@ -262,7 +276,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           刷新状态
         </Button>
       </Box>
-      
+
       {updateInProgress && (
         <Box mb={2}>
           <LinearProgress />
@@ -271,14 +285,14 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
         </Box>
       )}
-      
+
       {updateResult && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               更新结果
             </Typography>
-            
+
             <Grid container spacing={2} mb={2}>
               <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
@@ -305,11 +319,13 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Box>
               </Grid>
             </Grid>
-            
+
             {updateResult.failed_subscriptions.length > 0 && (
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>查看失败详情 ({updateResult.failed_subscriptions.length})</Typography>
+                  <Typography>
+                    查看失败详情 ({updateResult.failed_subscriptions.length})
+                  </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <List>
@@ -320,7 +336,9 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                         </ListItemIcon>
                         <ListItemText
                           primary={name}
-                          secondary={updateResult.error_messages[name] || '未知错误'}
+                          secondary={
+                            updateResult.error_messages[name] || "未知错误"
+                          }
                         />
                       </ListItem>
                     ))}
@@ -339,18 +357,18 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       <Typography variant="h6" gutterBottom>
         清理过期订阅
       </Typography>
-      
+
       <Alert severity="warning" sx={{ mb: 2 }}>
         <AlertTitle>注意</AlertTitle>
         删除操作不可恢复，请谨慎操作。建议先预览再执行删除。
       </Alert>
-      
+
       <Card sx={{ mb: 2 }}>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>
             清理选项
           </Typography>
-          
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth>
@@ -358,10 +376,12 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 <Select
                   value={cleanupOptions.days_threshold}
                   label="删除时间窗口"
-                  onChange={(e) => setCleanupOptions(prev => ({
-                    ...prev,
-                    days_threshold: e.target.value as number
-                  }))}
+                  onChange={(e) =>
+                    setCleanupOptions((prev) => ({
+                      ...prev,
+                      days_threshold: e.target.value as number,
+                    }))
+                  }
                 >
                   <MenuItem value={1}>1天未更新</MenuItem>
                   <MenuItem value={3}>3天未更新</MenuItem>
@@ -371,16 +391,18 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Select>
               </FormControl>
             </Grid>
-            
+
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={cleanupOptions.exclude_favorites}
-                    onChange={(e) => setCleanupOptions(prev => ({
-                      ...prev,
-                      exclude_favorites: e.target.checked
-                    }))}
+                    onChange={(e) =>
+                      setCleanupOptions((prev) => ({
+                        ...prev,
+                        exclude_favorites: e.target.checked,
+                      }))
+                    }
                   />
                 }
                 label="排除收藏订阅"
@@ -389,7 +411,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Grid>
         </CardContent>
       </Card>
-      
+
       <Box display="flex" gap={2} mb={2}>
         <Button
           variant="outlined"
@@ -398,7 +420,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
         >
           生成预览
         </Button>
-        
+
         {cleanupPreview && (
           <Button
             variant="contained"
@@ -407,11 +429,13 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             onClick={handleExecuteCleanup}
             disabled={cleanupInProgress || cleanupPreview.will_be_deleted === 0}
           >
-            {cleanupInProgress ? '删除中...' : `删除 ${cleanupPreview.will_be_deleted} 个订阅`}
+            {cleanupInProgress
+              ? "删除中..."
+              : `删除 ${cleanupPreview.will_be_deleted} 个订阅`}
           </Button>
         )}
       </Box>
-      
+
       {cleanupInProgress && (
         <Box mb={2}>
           <LinearProgress />
@@ -420,14 +444,14 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </Typography>
         </Box>
       )}
-      
+
       {cleanupPreview && (
         <Card sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
               清理预览
             </Typography>
-            
+
             <Grid container spacing={2} mb={2}>
               <Grid size={{ xs: 4 }}>
                 <Box textAlign="center">
@@ -454,11 +478,14 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Box>
               </Grid>
             </Grid>
-            
+
             {cleanupPreview.expired_subscriptions.length > 0 && (
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>查看待删除订阅 ({cleanupPreview.expired_subscriptions.length})</Typography>
+                  <Typography>
+                    查看待删除订阅 (
+                    {cleanupPreview.expired_subscriptions.length})
+                  </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <List>
@@ -469,11 +496,13 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                         </ListItemIcon>
                         <ListItemText
                           primary={sub.name}
-                          secondary={`${sub.days_since_update}天未更新 ${sub.url ? '(远程)' : '(本地)'}`}
+                          secondary={`${sub.days_since_update}天未更新 ${sub.url ? "(远程)" : "(本地)"}`}
                         />
                         <Chip
                           label={`${sub.days_since_update}天`}
-                          color={sub.days_since_update >= 7 ? 'error' : 'warning'}
+                          color={
+                            sub.days_since_update >= 7 ? "error" : "warning"
+                          }
                           size="small"
                         />
                       </ListItem>
@@ -485,7 +514,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           </CardContent>
         </Card>
       )}
-      
+
       {cleanupResult && (
         <Alert severity="success">
           <AlertTitle>清理完成</AlertTitle>
@@ -500,7 +529,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       <Typography variant="h6" gutterBottom>
         订阅管理统计
       </Typography>
-      
+
       <Box display="flex" justifyContent="flex-end" mb={2}>
         <Button
           variant="outlined"
@@ -511,9 +540,9 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
           刷新数据
         </Button>
       </Box>
-      
+
       {statsLoading && <LinearProgress sx={{ mb: 2 }} />}
-      
+
       {stats && (
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -524,24 +553,32 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Typography>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>总订阅数:</Typography>
-                  <Typography fontWeight="bold">{stats.total_subscriptions}</Typography>
+                  <Typography fontWeight="bold">
+                    {stats.total_subscriptions}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>远程订阅:</Typography>
-                  <Typography color="success.main">{stats.remote_subscriptions}</Typography>
+                  <Typography color="success.main">
+                    {stats.remote_subscriptions}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>本地订阅:</Typography>
-                  <Typography color="info.main">{stats.local_subscriptions}</Typography>
+                  <Typography color="info.main">
+                    {stats.local_subscriptions}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between">
                   <Typography>从未更新:</Typography>
-                  <Typography color="error.main">{stats.never_updated}</Typography>
+                  <Typography color="error.main">
+                    {stats.never_updated}
+                  </Typography>
                 </Box>
               </CardContent>
             </Card>
           </Grid>
-          
+
           <Grid size={{ xs: 12, md: 6 }}>
             <Card>
               <CardContent>
@@ -550,19 +587,27 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Typography>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>最新状态:</Typography>
-                  <Typography color="success.main">{stats.up_to_date}</Typography>
+                  <Typography color="success.main">
+                    {stats.up_to_date}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>1天未更新:</Typography>
-                  <Typography color="warning.main">{stats.outdated_1d}</Typography>
+                  <Typography color="warning.main">
+                    {stats.outdated_1d}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between" mb={1}>
                   <Typography>3天未更新:</Typography>
-                  <Typography color="error.main">{stats.outdated_3d}</Typography>
+                  <Typography color="error.main">
+                    {stats.outdated_3d}
+                  </Typography>
                 </Box>
                 <Box display="flex" justifyContent="space-between">
                   <Typography>7天未更新:</Typography>
-                  <Typography color="error.main">{stats.outdated_7d}</Typography>
+                  <Typography color="error.main">
+                    {stats.outdated_7d}
+                  </Typography>
                 </Box>
               </CardContent>
             </Card>
@@ -577,12 +622,12 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
       <Typography variant="h6" gutterBottom>
         自动管理设置
       </Typography>
-      
+
       <Alert severity="info" sx={{ mb: 2 }}>
         <AlertTitle>自动清理</AlertTitle>
         启用后将定期检查并清理过期订阅，减少手动维护工作。
       </Alert>
-      
+
       <Card>
         <CardContent>
           <FormControlLabel
@@ -594,13 +639,13 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
             }
             label="启用自动清理"
           />
-          
+
           <Divider sx={{ my: 2 }} />
-          
+
           <Typography variant="subtitle1" gutterBottom>
             自动清理规则
           </Typography>
-          
+
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth>
@@ -608,10 +653,12 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 <Select
                   value={cleanupOptions.days_threshold}
                   label="自动删除时间窗口"
-                  onChange={(e) => setCleanupOptions(prev => ({
-                    ...prev,
-                    days_threshold: e.target.value as number
-                  }))}
+                  onChange={(e) =>
+                    setCleanupOptions((prev) => ({
+                      ...prev,
+                      days_threshold: e.target.value as number,
+                    }))
+                  }
                   disabled={!autoCleanupEnabled}
                 >
                   <MenuItem value={3}>3天未更新</MenuItem>
@@ -621,16 +668,18 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
                 </Select>
               </FormControl>
             </Grid>
-            
+
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControlLabel
                 control={
                   <Switch
                     checked={cleanupOptions.exclude_favorites}
-                    onChange={(e) => setCleanupOptions(prev => ({
-                      ...prev,
-                      exclude_favorites: e.target.checked
-                    }))}
+                    onChange={(e) =>
+                      setCleanupOptions((prev) => ({
+                        ...prev,
+                        exclude_favorites: e.target.checked,
+                      }))
+                    }
                     disabled={!autoCleanupEnabled}
                   />
                 }
@@ -638,7 +687,7 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
               />
             </Grid>
           </Grid>
-          
+
           <Box mt={2}>
             <Button
               variant="contained"
@@ -655,55 +704,51 @@ export const SubscriptionBatchManagerDialog: React.FC<SubscriptionBatchManagerDi
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle>
-        订阅批量管理
-      </DialogTitle>
-      
+      <DialogTitle>订阅批量管理</DialogTitle>
+
       <DialogContent>
         <Box display="flex" borderBottom={1} borderColor="divider" mb={2}>
           <Button
-            onClick={() => setCurrentTab('update')}
-            variant={currentTab === 'update' ? 'contained' : 'text'}
+            onClick={() => setCurrentTab("update")}
+            variant={currentTab === "update" ? "contained" : "text"}
             startIcon={<UpdateIcon />}
             sx={{ mr: 1 }}
           >
             批量更新
           </Button>
           <Button
-            onClick={() => setCurrentTab('cleanup')}
-            variant={currentTab === 'cleanup' ? 'contained' : 'text'}
+            onClick={() => setCurrentTab("cleanup")}
+            variant={currentTab === "cleanup" ? "contained" : "text"}
             startIcon={<DeleteIcon />}
             sx={{ mr: 1 }}
           >
             清理过期
           </Button>
           <Button
-            onClick={() => setCurrentTab('stats')}
-            variant={currentTab === 'stats' ? 'contained' : 'text'}
+            onClick={() => setCurrentTab("stats")}
+            variant={currentTab === "stats" ? "contained" : "text"}
             startIcon={<AnalyticsIcon />}
             sx={{ mr: 1 }}
           >
             统计信息
           </Button>
           <Button
-            onClick={() => setCurrentTab('settings')}
-            variant={currentTab === 'settings' ? 'contained' : 'text'}
+            onClick={() => setCurrentTab("settings")}
+            variant={currentTab === "settings" ? "contained" : "text"}
             startIcon={<ScheduleIcon />}
           >
             自动管理
           </Button>
         </Box>
-        
-        {currentTab === 'update' && renderUpdateTab()}
-        {currentTab === 'cleanup' && renderCleanupTab()}
-        {currentTab === 'stats' && renderStatsTab()}
-        {currentTab === 'settings' && renderSettingsTab()}
+
+        {currentTab === "update" && renderUpdateTab()}
+        {currentTab === "cleanup" && renderCleanupTab()}
+        {currentTab === "stats" && renderStatsTab()}
+        {currentTab === "settings" && renderSettingsTab()}
       </DialogContent>
-      
+
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
       </DialogActions>
     </Dialog>
   );

@@ -45,10 +45,12 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
     const [openType, setOpenType] = useState<"new" | "edit">("new");
     const [loading, setLoading] = useState(false);
     const { profiles } = useProfiles();
-    
+
     // 重复检查对话框状态
     const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
-    const [duplicateProfiles, setDuplicateProfiles] = useState<IProfileItem[]>([]);
+    const [duplicateProfiles, setDuplicateProfiles] = useState<IProfileItem[]>(
+      [],
+    );
     const [pendingFormData, setPendingFormData] = useState<any>(null);
 
     // file input
@@ -102,15 +104,15 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
     // 处理重复检查
     const handleDuplicateCheck = async (form: IProfileItem) => {
       const isRemote = form.type === "remote";
-      
+
       // 只对远程订阅进行重复检查
       if (isRemote && form.url) {
         const duplicates = checkDuplicateSubscription(
           form.url,
           profiles?.items || [],
-          openType === "edit" ? form.uid : undefined
+          openType === "edit" ? form.uid : undefined,
         );
-        
+
         if (duplicates.length > 0) {
           setDuplicateProfiles(duplicates);
           setPendingFormData(form);
@@ -118,7 +120,7 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
           return false; // 阻止继续执行
         }
       }
-      
+
       return true; // 继续执行
     };
 
@@ -176,7 +178,7 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
 
     const handleDuplicateDialogConfirm = async () => {
       if (!pendingFormData) return;
-      
+
       try {
         setDuplicateDialogOpen(false);
         // 继续执行创建操作，跳过重复检查
@@ -207,8 +209,7 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
       const isUpdate = openType === "edit";
 
       // 判断是否是当前激活的配置
-      const isActivating =
-        isUpdate && form.uid === (profiles?.current ?? "");
+      const isActivating = isUpdate && form.uid === (profiles?.current ?? "");
 
       // 保存原始代理设置以便回退成功后恢复
       const originalOptions = {
@@ -295,90 +296,115 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
 
     return (
       <>
-      <BaseDialog
-        open={open}
-        title={openType === "new" ? t("Create Profile") : t("Edit Profile")}
-        contentSx={{ width: 375, pb: 0, maxHeight: "80%" }}
-        okBtn={t("Save")}
-        cancelBtn={t("Cancel")}
-        onClose={handleClose}
-        onCancel={handleClose}
-        onOk={handleOk}
-        loading={loading}
-      >
-        <Controller
-          name="type"
-          control={control}
-          render={({ field }) => (
-            <FormControl size="small" fullWidth sx={{ mt: 1, mb: 1 }}>
-              <InputLabel>{t("Type")}</InputLabel>
-              <Select {...field} autoFocus label={t("Type")}>
-                <MenuItem value="remote">Remote</MenuItem>
-                <MenuItem value="local">Local</MenuItem>
-              </Select>
-            </FormControl>
+        <BaseDialog
+          open={open}
+          title={openType === "new" ? t("Create Profile") : t("Edit Profile")}
+          contentSx={{ width: 375, pb: 0, maxHeight: "80%" }}
+          okBtn={t("Save")}
+          cancelBtn={t("Cancel")}
+          onClose={handleClose}
+          onCancel={handleClose}
+          onOk={handleOk}
+          loading={loading}
+        >
+          <Controller
+            name="type"
+            control={control}
+            render={({ field }) => (
+              <FormControl size="small" fullWidth sx={{ mt: 1, mb: 1 }}>
+                <InputLabel>{t("Type")}</InputLabel>
+                <Select {...field} autoFocus label={t("Type")}>
+                  <MenuItem value="remote">Remote</MenuItem>
+                  <MenuItem value="local">Local</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          />
+
+          <Controller
+            name="name"
+            control={control}
+            render={({ field }) => (
+              <TextField {...text} {...field} label={t("Name")} />
+            )}
+          />
+
+          <Controller
+            name="desc"
+            control={control}
+            render={({ field }) => (
+              <TextField {...text} {...field} label={t("Descriptions")} />
+            )}
+          />
+
+          {isRemote && (
+            <>
+              <Controller
+                name="url"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...text}
+                    {...field}
+                    multiline
+                    label={t("Subscription URL")}
+                  />
+                )}
+              />
+
+              <Controller
+                name="option.user_agent"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...text}
+                    {...field}
+                    placeholder={`clash-verge/v${version}`}
+                    label="User Agent"
+                  />
+                )}
+              />
+
+              <Controller
+                name="option.timeout_seconds"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...text}
+                    {...field}
+                    type="number"
+                    placeholder="60"
+                    label={t("HTTP Request Timeout")}
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            {t("seconds")}
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
+                )}
+              />
+            </>
           )}
-        />
 
-        <Controller
-          name="name"
-          control={control}
-          render={({ field }) => (
-            <TextField {...text} {...field} label={t("Name")} />
-          )}
-        />
-
-        <Controller
-          name="desc"
-          control={control}
-          render={({ field }) => (
-            <TextField {...text} {...field} label={t("Descriptions")} />
-          )}
-        />
-
-        {isRemote && (
-          <>
+          {(isRemote || isLocal) && (
             <Controller
-              name="url"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...text}
-                  {...field}
-                  multiline
-                  label={t("Subscription URL")}
-                />
-              )}
-            />
-
-            <Controller
-              name="option.user_agent"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...text}
-                  {...field}
-                  placeholder={`clash-verge/v${version}`}
-                  label="User Agent"
-                />
-              )}
-            />
-
-            <Controller
-              name="option.timeout_seconds"
+              name="option.update_interval"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...text}
                   {...field}
                   type="number"
-                  placeholder="60"
-                  label={t("HTTP Request Timeout")}
+                  label={t("Update Interval")}
                   slotProps={{
                     input: {
                       endAdornment: (
                         <InputAdornment position="end">
-                          {t("seconds")}
+                          {t("mins")}
                         </InputAdornment>
                       ),
                     },
@@ -386,90 +412,70 @@ export const ProfileViewer = forwardRef<ProfileViewerRef, Props>(
                 />
               )}
             />
-          </>
-        )}
+          )}
 
-        {(isRemote || isLocal) && (
-          <Controller
-            name="option.update_interval"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...text}
-                {...field}
-                type="number"
-                label={t("Update Interval")}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        {t("mins")}
-                      </InputAdornment>
-                    ),
-                  },
-                }}
+          {isLocal && openType === "new" && (
+            <FileInput
+              onChange={(file, val) => {
+                formIns.setValue(
+                  "name",
+                  formIns.getValues("name") || file.name,
+                );
+                fileDataRef.current = val;
+              }}
+            />
+          )}
+
+          {isRemote && (
+            <>
+              <Controller
+                name="option.with_proxy"
+                control={control}
+                render={({ field }) => (
+                  <StyledBox>
+                    <InputLabel>{t("Use System Proxy")}</InputLabel>
+                    <Switch checked={field.value} {...field} color="primary" />
+                  </StyledBox>
+                )}
               />
-            )}
-          />
-        )}
 
-        {isLocal && openType === "new" && (
-          <FileInput
-            onChange={(file, val) => {
-              formIns.setValue("name", formIns.getValues("name") || file.name);
-              fileDataRef.current = val;
-            }}
-          />
-        )}
+              <Controller
+                name="option.self_proxy"
+                control={control}
+                render={({ field }) => (
+                  <StyledBox>
+                    <InputLabel>{t("Use Clash Proxy")}</InputLabel>
+                    <Switch checked={field.value} {...field} color="primary" />
+                  </StyledBox>
+                )}
+              />
 
-        {isRemote && (
-          <>
-            <Controller
-              name="option.with_proxy"
-              control={control}
-              render={({ field }) => (
-                <StyledBox>
-                  <InputLabel>{t("Use System Proxy")}</InputLabel>
-                  <Switch checked={field.value} {...field} color="primary" />
-                </StyledBox>
-              )}
-            />
+              <Controller
+                name="option.danger_accept_invalid_certs"
+                control={control}
+                render={({ field }) => (
+                  <StyledBox>
+                    <InputLabel>
+                      {t("Accept Invalid Certs (Danger)")}
+                    </InputLabel>
+                    <Switch checked={field.value} {...field} color="primary" />
+                  </StyledBox>
+                )}
+              />
+            </>
+          )}
+        </BaseDialog>
 
-            <Controller
-              name="option.self_proxy"
-              control={control}
-              render={({ field }) => (
-                <StyledBox>
-                  <InputLabel>{t("Use Clash Proxy")}</InputLabel>
-                  <Switch checked={field.value} {...field} color="primary" />
-                </StyledBox>
-              )}
-            />
-
-            <Controller
-              name="option.danger_accept_invalid_certs"
-              control={control}
-              render={({ field }) => (
-                <StyledBox>
-                  <InputLabel>{t("Accept Invalid Certs (Danger)")}</InputLabel>
-                  <Switch checked={field.value} {...field} color="primary" />
-                </StyledBox>
-              )}
-            />
-          </>
-        )}
-      </BaseDialog>
-
-      <DuplicateSubscriptionDialog
-        open={duplicateDialogOpen}
-        duplicateProfiles={duplicateProfiles}
-        newUrl={pendingFormData?.url || ""}
-        onClose={handleDuplicateDialogClose}
-        onConfirm={handleDuplicateDialogConfirm}
-        onCancel={handleDuplicateDialogCancel}
-      />
-    </>
-  );
+        <DuplicateSubscriptionDialog
+          open={duplicateDialogOpen}
+          duplicateProfiles={duplicateProfiles}
+          newUrl={pendingFormData?.url || ""}
+          onClose={handleDuplicateDialogClose}
+          onConfirm={handleDuplicateDialogConfirm}
+          onCancel={handleDuplicateDialogCancel}
+        />
+      </>
+    );
   },
 );
 

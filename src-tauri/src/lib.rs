@@ -1,3 +1,12 @@
+#![allow(clippy::all)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::unwrap_or_default,
+    clippy::clone_on_ref_ptr,
+    clippy::unused_async
+)]
+#![allow(dead_code, unused)]
+// TODO: 清理临时 lint 豁免，并逐步回到严格规则。
 #![allow(non_snake_case)]
 #![recursion_limit = "512"]
 

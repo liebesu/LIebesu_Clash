@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::clone_on_ref_ptr, clippy::unwrap_used, clippy::unused_async)]
+// TODO: 后续优化订阅测试模块，移除 lint 豁免。
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem},

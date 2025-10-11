@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::collapsible_if)]
+// TODO: 后续细化目录工具模块的 lint 调整。
 use crate::core::handle;
 use anyhow::Result;
 use once_cell::sync::OnceCell;

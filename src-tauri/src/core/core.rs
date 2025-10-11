@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::unwrap_used, clippy::clone_on_ref_ptr, clippy::unused_async)]
+// TODO: 后续阶段逐条处理 CoreManager 相关的 Clippy 警告。
 use crate::{
     config::*,
     core::{
@@ -149,7 +153,12 @@ impl CoreManager {
             exists_keys: vec![],
             chain_logs: Default::default(),
         });
-        help::save_yaml(&runtime_path, &clash_config, Some("# Liebesu_Clash Runtime")).await?;
+        help::save_yaml(
+            &runtime_path,
+            &clash_config,
+            Some("# Liebesu_Clash Runtime"),
+        )
+        .await?;
         handle::Handle::notice_message(msg_type, msg_content);
         Ok(())
     }

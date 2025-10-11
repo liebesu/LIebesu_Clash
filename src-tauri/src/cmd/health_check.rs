@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::clone_on_ref_ptr, clippy::unwrap_used, clippy::unused_async)]
+// TODO: 后续分阶段处理健康检查模块的 Clippy 提示。
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem},

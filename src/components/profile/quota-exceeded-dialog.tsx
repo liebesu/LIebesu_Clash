@@ -48,10 +48,12 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
 
   // 获取所有额度为100%的订阅
   const getOverQuotaProfiles = () => {
-    return remoteProfiles.filter((profile) => {
-      const trafficInfo = getProfileTrafficInfo(profile);
-      return trafficInfo && trafficInfo.progress >= 100;
-    }).map(p => p.uid);
+    return remoteProfiles
+      .filter((profile) => {
+        const trafficInfo = getProfileTrafficInfo(profile);
+        return trafficInfo && trafficInfo.progress >= 100;
+      })
+      .map((p) => p.uid);
   };
 
   useEffect(() => {
@@ -60,7 +62,7 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
       const overQuotaUIDs = getOverQuotaProfiles();
       setSelectedProfiles(overQuotaUIDs);
       setSelectAll(overQuotaUIDs.length === remoteProfiles.length);
-      
+
       // 如果有超额订阅，显示自动选择的提示
       if (overQuotaUIDs.length > 0) {
         // 延迟显示通知，让对话框先显示
@@ -76,7 +78,7 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
       const newSelected = prev.includes(uid)
         ? prev.filter((id) => id !== uid)
         : [...prev, uid];
-      
+
       setSelectAll(newSelected.length === remoteProfiles.length);
       return newSelected;
     });
@@ -102,7 +104,9 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
     onConfirm(selectedProfiles);
   };
 
-  const getProfileTrafficInfo = (profile: IProfileItem): {
+  const getProfileTrafficInfo = (
+    profile: IProfileItem,
+  ): {
     used: string;
     total: string;
     progress: number;
@@ -112,7 +116,8 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
 
     const { upload = 0, download = 0, total = 0 } = extra;
     const used = upload + download;
-    const progress = total > 0 ? Math.min(Math.round((used * 100) / total), 100) : 0;
+    const progress =
+      total > 0 ? Math.min(Math.round((used * 100) / total), 100) : 0;
 
     return {
       used: parseTraffic(used).join(" "),
@@ -139,9 +144,7 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
       <DialogTitle>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <WarningRounded color="warning" />
-          <Typography variant="h6">
-            {t("Quota Exceeded")}
-          </Typography>
+          <Typography variant="h6">{t("Quota Exceeded")}</Typography>
         </Box>
       </DialogTitle>
 
@@ -175,7 +178,10 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
             </Button>
           </Box>
           <Typography variant="body2" color="textSecondary" sx={{ ml: 4 }}>
-            {t("Selected count", { count: selectedProfiles.length, total: remoteProfiles.length })}
+            {t("Selected count", {
+              count: selectedProfiles.length,
+              total: remoteProfiles.length,
+            })}
             {(() => {
               const overQuotaCount = getOverQuotaProfiles().length;
               return overQuotaCount > 0 ? ` (${overQuotaCount}个已超额)` : "";
@@ -200,10 +206,10 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
                   borderColor: isOverQuota ? "error.main" : "divider",
                   borderRadius: 1,
                   mb: 1,
-                  backgroundColor: isSelected 
-                    ? "action.selected" 
-                    : isOverQuota 
-                      ? "error.light" 
+                  backgroundColor: isSelected
+                    ? "action.selected"
+                    : isOverQuota
+                      ? "error.light"
                       : "background.paper",
                   opacity: isOverQuota ? 1 : 0.7,
                 }}
@@ -214,12 +220,12 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
                     onChange={() => handleSelectProfile(profile.uid)}
                   />
                 </ListItemIcon>
-                
+
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
-                    <CloudDownloadRounded 
-                      sx={{ mr: 1, fontSize: 18 }} 
-                      color="primary" 
+                    <CloudDownloadRounded
+                      sx={{ mr: 1, fontSize: 18 }}
+                      color="primary"
                     />
                     <Typography variant="subtitle2" noWrap>
                       {profile.name || "Unnamed Profile"}
@@ -227,7 +233,12 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
                   </Box>
 
                   {profile.desc && (
-                    <Typography variant="body2" color="textSecondary" noWrap sx={{ mb: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      noWrap
+                      sx={{ mb: 0.5 }}
+                    >
                       {profile.desc}
                     </Typography>
                   )}
@@ -236,34 +247,51 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
                     <Typography variant="caption" color="textSecondary">
                       {t("Updated")}: {updateTime}
                     </Typography>
-                    
-                    {trafficInfo && trafficInfo.total && trafficInfo.total !== "0 B" && (
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Typography variant="caption" color="textSecondary">
-                          {trafficInfo.used} / {trafficInfo.total}
-                        </Typography>
-                        <Box sx={{ width: 60 }}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={trafficInfo.progress}
-                            sx={{ 
-                              height: 4,
-                              backgroundColor: trafficInfo.progress >= 100 ? "error.light" : "grey.300",
-                              '& .MuiLinearProgress-bar': {
-                                backgroundColor: trafficInfo.progress >= 100 ? "error.main" : "primary.main"
-                              }
-                            }}
-                          />
-                        </Box>
-                        <Typography 
-                          variant="caption" 
-                          color={trafficInfo.progress >= 100 ? "error.main" : "textSecondary"}
-                          sx={{ fontWeight: trafficInfo.progress >= 100 ? "bold" : "normal" }}
+
+                    {trafficInfo &&
+                      trafficInfo.total &&
+                      trafficInfo.total !== "0 B" && (
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
                         >
-                          {trafficInfo.progress}%
-                        </Typography>
-                      </Box>
-                    )}
+                          <Typography variant="caption" color="textSecondary">
+                            {trafficInfo.used} / {trafficInfo.total}
+                          </Typography>
+                          <Box sx={{ width: 60 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={trafficInfo.progress}
+                              sx={{
+                                height: 4,
+                                backgroundColor:
+                                  trafficInfo.progress >= 100
+                                    ? "error.light"
+                                    : "grey.300",
+                                "& .MuiLinearProgress-bar": {
+                                  backgroundColor:
+                                    trafficInfo.progress >= 100
+                                      ? "error.main"
+                                      : "primary.main",
+                                },
+                              }}
+                            />
+                          </Box>
+                          <Typography
+                            variant="caption"
+                            color={
+                              trafficInfo.progress >= 100
+                                ? "error.main"
+                                : "textSecondary"
+                            }
+                            sx={{
+                              fontWeight:
+                                trafficInfo.progress >= 100 ? "bold" : "normal",
+                            }}
+                          >
+                            {trafficInfo.progress}%
+                          </Typography>
+                        </Box>
+                      )}
                   </Box>
                 </Box>
               </ListItem>
@@ -272,16 +300,18 @@ const QuotaExceededDialog: React.FC<QuotaExceededDialogProps> = ({
         </List>
 
         {remoteProfiles.length === 0 && (
-          <Typography variant="body2" color="textSecondary" sx={{ textAlign: "center", py: 2 }}>
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            sx={{ textAlign: "center", py: 2 }}
+          >
             {t("No remote profiles found")}
           </Typography>
         )}
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          {t("Cancel")}
-        </Button>
+        <Button onClick={onClose}>{t("Cancel")}</Button>
         <Button
           onClick={handleConfirm}
           variant="contained"

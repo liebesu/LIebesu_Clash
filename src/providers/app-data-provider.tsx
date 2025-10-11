@@ -339,18 +339,23 @@ export const AppDataProvider = ({
     "getClashConfig",
     getClashConfig,
     {
-      refreshInterval: 120000,              // 🚀 120秒刷新间隔，降低大量节点压力
-      dedupingInterval: 30000,              // 🚀 30秒内去重，避免重复请求
+      refreshInterval: 120000, // 🚀 120秒刷新间隔，降低大量节点压力
+      dedupingInterval: 30000, // 🚀 30秒内去重，避免重复请求
       revalidateOnFocus: false,
-      revalidateOnReconnect: false,         // 🚀 重连时不重新验证
+      revalidateOnReconnect: false, // 🚀 重连时不重新验证
       suspense: false,
-      errorRetryCount: 2,                   // 🚀 减少重试次数
-      errorRetryInterval: 10000,            // 🚀 错误重试间隔10秒
+      errorRetryCount: 2, // 🚀 减少重试次数
+      errorRetryInterval: 10000, // 🚀 错误重试间隔10秒
       onError: (error) => {
         console.error("[ClashConfig] 获取配置失败:", error);
         // 🚀 大量节点时的超时是正常现象，不需要报警
-        if (error?.message?.includes("timeout") || error?.message?.includes("exhausted")) {
-          console.warn("[ClashConfig] 配置获取超时，可能是节点数量过多(2000+)，这是正常现象");
+        if (
+          error?.message?.includes("timeout") ||
+          error?.message?.includes("exhausted")
+        ) {
+          console.warn(
+            "[ClashConfig] 配置获取超时，可能是节点数量过多(2000+)，这是正常现象",
+          );
         }
       },
     },
@@ -450,12 +455,12 @@ export const AppDataProvider = ({
       };
     },
     {
-      refreshInterval: 2000,        // ⚡ 降低轮询频率到2秒，减少IPC压力
-      dedupingInterval: 1000,       // ⚡ 1秒内去重，避免重复请求
-      revalidateOnFocus: false,     // ⚡ 窗口聚焦时不重新验证
-      shouldRetryOnError: false,    // ⚡ 错误时不重试，快速失败
-      errorRetryInterval: 5000,     // ⚡ 错误重试间隔5秒
-      errorRetryCount: 2,           // ⚡ 最多重试2次
+      refreshInterval: 2000, // ⚡ 降低轮询频率到2秒，减少IPC压力
+      dedupingInterval: 1000, // ⚡ 1秒内去重，避免重复请求
+      revalidateOnFocus: false, // ⚡ 窗口聚焦时不重新验证
+      shouldRetryOnError: false, // ⚡ 错误时不重试，快速失败
+      errorRetryInterval: 5000, // ⚡ 错误重试间隔5秒
+      errorRetryCount: 2, // ⚡ 最多重试2次
       fallbackData: { connections: [], uploadTotal: 0, downloadTotal: 0 },
       keepPreviousData: true,
       onError: (error) => {

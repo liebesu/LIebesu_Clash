@@ -7,6 +7,7 @@
 ## ✅ 完成的工作
 
 ### 📱 图标生成
+
 - **源图片**: `paidaxing.png`
 - **生成脚本**: `scripts/generate-icons.sh`
 - **自动化处理**: 一键生成所有平台所需的图标格式和尺寸
@@ -14,6 +15,7 @@
 ### 🖼️ 生成的图标文件
 
 #### 基础PNG图标
+
 ```
 src-tauri/icons/
 ├── 16x16.png          # 小图标
@@ -29,6 +31,7 @@ src-tauri/icons/
 ```
 
 #### Windows图标
+
 ```
 ├── icon.ico                    # 主ICO图标
 ├── tray-icon.ico              # 系统托盘图标
@@ -42,6 +45,7 @@ src-tauri/icons/
 ```
 
 #### Windows Store图标
+
 ```
 ├── Square30x30Logo.png        # 30x30
 ├── Square44x44Logo.png        # 44x44
@@ -56,6 +60,7 @@ src-tauri/icons/
 ```
 
 #### macOS图标
+
 ```
 └── icon.icns                  # macOS应用包图标
     ├── icon_16x16.png         # 16x16
@@ -71,6 +76,7 @@ src-tauri/icons/
 ```
 
 ### 🌐 前端资源
+
 ```
 src/assets/image/
 ├── logo.svg                   # 主SVG logo (左上角显示)
@@ -81,6 +87,7 @@ src/assets/image/
 ```
 
 ### 📄 HTML资源
+
 ```
 src/index.html
 └── favicon: ./assets/image/logo.svg
@@ -89,6 +96,7 @@ src/index.html
 ## 🔧 技术实现
 
 ### 自动化图标生成脚本
+
 ```bash
 #!/bin/bash
 # scripts/generate-icons.sh
@@ -100,12 +108,13 @@ ASSETS_DIR="src/assets/image"
 
 # 生成各种尺寸的PNG图标 (RGBA格式)
 # 生成Windows ICO文件
-# 生成macOS ICNS文件  
+# 生成macOS ICNS文件
 # 生成前端SVG资源
 # 生成主题适配图标
 ```
 
 ### SVG Logo设计
+
 ```svg
 <!-- src/assets/image/logo.svg -->
 <svg width="64" height="64" viewBox="0 0 64 64">
@@ -121,6 +130,7 @@ ASSETS_DIR="src/assets/image"
 ```
 
 ### 程序界面集成
+
 ```typescript
 // src/pages/_layout.tsx
 import LogoSvg from "@/assets/image/logo.svg?react";
@@ -132,23 +142,27 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 ## 🚀 平台支持
 
 ### ✅ Windows
+
 - **应用图标**: icon.ico
 - **系统托盘**: 多种状态图标 (正常/系统代理/TUN模式)
 - **Windows Store**: 完整的Store图标集
 - **单色图标**: 支持系统主题
 
-### ✅ macOS  
+### ✅ macOS
+
 - **应用包图标**: icon.icns (支持所有Retina尺寸)
 - **Dock图标**: 高质量显示
 - **Launchpad**: 自动识别和显示
 - **系统集成**: 完整的macOS图标规范
 
 ### ✅ Linux
+
 - **桌面图标**: PNG格式，多种尺寸
 - **应用菜单**: 标准Linux桌面环境支持
 - **系统托盘**: 适配不同桌面环境
 
 ### ✅ Web界面
+
 - **Favicon**: SVG格式，矢量缩放
 - **左上角Logo**: 响应式SVG显示
 - **主题适配**: 支持深色/浅色主题自动切换
@@ -156,17 +170,20 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 ## 📊 质量特性
 
 ### 🎯 图像质量
+
 - **格式**: RGBA透明度支持
 - **分辨率**: 16x16 到 1024x1024 全覆盖
 - **压缩**: 高质量输出 (quality=100)
 - **兼容性**: 支持所有现代平台
 
 ### 🔄 主题适配
+
 - **SVG矢量**: 无损缩放
 - **颜色适配**: 深色/浅色主题自动切换
 - **对比度**: 确保在不同背景下的可见性
 
 ### ⚡ 性能优化
+
 - **文件大小**: 优化的图标尺寸
 - **加载速度**: 快速渲染
 - **内存占用**: 合理的资源使用
@@ -174,11 +191,13 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 ## 🎉 用户体验提升
 
 ### 视觉统一性
+
 - **品牌一致**: 所有平台使用统一的logo设计
 - **识别度高**: 基于paidaxing.png的独特设计
 - **专业外观**: 高质量的图标渲染
 
 ### 系统集成
+
 - **原生感受**: 符合各平台设计规范
 - **状态指示**: 系统托盘图标反映程序状态
 - **主题响应**: 自动适配系统主题
@@ -191,6 +210,7 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 - ✅ **图标集成**: 所有平台图标已就绪
 
 ### 构建信息
+
 - **提交哈希**: `62bcc6ec`
 - **构建ID**: `17938820427`
 - **触发方式**: `push` (自动触发)
@@ -199,6 +219,7 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 ## 📋 验证清单
 
 ### ✅ 已完成验证
+
 - [x] 图标生成脚本执行成功
 - [x] 所有平台图标文件生成完整
 - [x] 前端构建成功包含新logo
@@ -207,8 +228,9 @@ import LogoSvg from "@/assets/image/logo.svg?react";
 - [x] GitHub Actions自动触发
 
 ### 🔄 待验证 (构建完成后)
+
 - [ ] Windows应用图标显示正常
-- [ ] macOS应用图标显示正常  
+- [ ] macOS应用图标显示正常
 - [ ] 系统托盘图标工作正常
 - [ ] 程序左上角logo显示正确
 - [ ] 主题切换时logo适配正常

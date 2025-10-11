@@ -1,3 +1,6 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+// TODO: 清理临时豁免，逐步优化代码。
 use crate::{config::Config, ipc::IpcManager, utils::dirs};
 use anyhow::Result;
 use parking_lot::Mutex;

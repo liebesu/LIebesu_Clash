@@ -32,8 +32,12 @@ const clampPercent = (value: number) => {
   return Math.min(100, Math.max(0, value));
 };
 
-export function useBatchImportProgress(enabled: boolean): BatchImportProgressState {
-  const [payload, setPayload] = useState<BatchImportProgressPayload | null>(null);
+export function useBatchImportProgress(
+  enabled: boolean,
+): BatchImportProgressState {
+  const [payload, setPayload] = useState<BatchImportProgressPayload | null>(
+    null,
+  );
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -47,11 +51,14 @@ export function useBatchImportProgress(enabled: boolean): BatchImportProgressSta
 
     (async () => {
       try {
-        unlisten = await listen<BatchImportProgressPayload>("batch-import-progress", (event) => {
-          if (!disposed) {
-            setPayload(event.payload);
-          }
-        });
+        unlisten = await listen<BatchImportProgressPayload>(
+          "batch-import-progress",
+          (event) => {
+            if (!disposed) {
+              setPayload(event.payload);
+            }
+          },
+        );
       } catch (error) {
         console.error("Failed to listen batch-import-progress", error);
       }
@@ -103,4 +110,3 @@ export function useBatchImportProgress(enabled: boolean): BatchImportProgressSta
     reset,
   };
 }
-

@@ -92,7 +92,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
@@ -106,7 +106,12 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     if (progressState.isCompleted) return 100;
     if (progressState.percent > 0) return progressState.percent;
     return progress;
-  }, [progress, progressState.isCompleted, progressState.percent, showProgressBar]);
+  }, [
+    progress,
+    progressState.isCompleted,
+    progressState.percent,
+    showProgressBar,
+  ]);
 
   const progressMessage = useMemo(() => {
     if (!showProgressBar) return "正在处理...";
@@ -114,11 +119,11 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     if (progressState.stageLabel) return `${progressState.stageLabel}...`;
     return "正在处理...";
   }, [progressState.displayMessage, progressState.stageLabel, showProgressBar]);
-  
+
   // 输入内容
   const [textContent, setTextContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  
+
   // 导入选项
   const [options, setOptions] = useState<BatchImportOptions>({
     skip_duplicates: true,
@@ -127,11 +132,17 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
     default_user_agent: "clash-verge-rev",
     update_interval: 1440, // 24小时
   });
-  
+
   // 结果数据
-  const [previewResult, setPreviewResult] = useState<BatchImportResult | null>(null);
-  const [importResult, setImportResult] = useState<BatchImportResult | null>(null);
-  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const [previewResult, setPreviewResult] = useState<BatchImportResult | null>(
+    null,
+  );
+  const [importResult, setImportResult] = useState<BatchImportResult | null>(
+    null,
+  );
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(
+    new Set(),
+  );
 
   // 步骤标签
   const steps = ["选择输入方式", "配置选项", "预览结果", "执行导入"];
@@ -266,7 +277,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
       setImportResult(result);
       setActiveStep(3);
       setProgress(100);
-      
+
       if (onImportComplete) {
         onImportComplete(result);
       }
@@ -321,9 +332,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             <Typography color="text.secondary" gutterBottom>
               总数
             </Typography>
-            <Typography variant="h4">
-              {result.total_input}
-            </Typography>
+            <Typography variant="h4">{result.total_input}</Typography>
           </CardContent>
         </Card>
       </Grid>
@@ -384,8 +393,8 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                     {result.url}
                   </Typography>
                 </Box>
-                <Chip 
-                  label={getStatusText(result.status)} 
+                <Chip
+                  label={getStatusText(result.status)}
                   color={getStatusColor(result.status) as any}
                   size="small"
                 />
@@ -396,7 +405,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                 </IconButton>
               </ListItemSecondaryAction>
             </ListItem>
-            
+
             <Collapse in={isExpanded}>
               <Box sx={{ pl: 4, pr: 2, pb: 2 }}>
                 {result.error_message && (
@@ -414,7 +423,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                 )}
               </Box>
             </Collapse>
-            
+
             {index < results.length - 1 && <Divider />}
           </React.Fragment>
         );
@@ -438,7 +447,11 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
         {(loading || showProgressBar) && (
           <Box sx={{ mb: 2 }}>
             <LinearProgress
-              variant={effectivePercent > 0 && effectivePercent < 100 ? "determinate" : "indeterminate"}
+              variant={
+                effectivePercent > 0 && effectivePercent < 100
+                  ? "determinate"
+                  : "indeterminate"
+              }
               value={effectivePercent}
             />
             <Typography variant="body2" align="center" sx={{ mt: 1 }}>
@@ -462,7 +475,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             <Typography variant="h6" gutterBottom>
               选择导入方式
             </Typography>
-            
+
             <Grid container spacing={2} sx={{ mb: 3 }}>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Button
@@ -549,7 +562,12 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   control={
                     <Switch
                       checked={options.skip_duplicates}
-                      onChange={(e) => setOptions({...options, skip_duplicates: e.target.checked})}
+                      onChange={(e) =>
+                        setOptions({
+                          ...options,
+                          skip_duplicates: e.target.checked,
+                        })
+                      }
                     />
                   }
                   label="跳过重复订阅"
@@ -560,7 +578,12 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   control={
                     <Switch
                       checked={options.auto_generate_names}
-                      onChange={(e) => setOptions({...options, auto_generate_names: e.target.checked})}
+                      onChange={(e) =>
+                        setOptions({
+                          ...options,
+                          auto_generate_names: e.target.checked,
+                        })
+                      }
                     />
                   }
                   label="自动生成订阅名称"
@@ -571,7 +594,9 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   fullWidth
                   label="名称前缀（可选）"
                   value={options.name_prefix || ""}
-                  onChange={(e) => setOptions({...options, name_prefix: e.target.value})}
+                  onChange={(e) =>
+                    setOptions({ ...options, name_prefix: e.target.value })
+                  }
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -579,7 +604,12 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   fullWidth
                   label="默认User-Agent"
                   value={options.default_user_agent || ""}
-                  onChange={(e) => setOptions({...options, default_user_agent: e.target.value})}
+                  onChange={(e) =>
+                    setOptions({
+                      ...options,
+                      default_user_agent: e.target.value,
+                    })
+                  }
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
@@ -588,15 +618,18 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
                   type="number"
                   label="更新间隔（分钟）"
                   value={options.update_interval || 1440}
-                  onChange={(e) => setOptions({...options, update_interval: parseInt(e.target.value)})}
+                  onChange={(e) =>
+                    setOptions({
+                      ...options,
+                      update_interval: parseInt(e.target.value),
+                    })
+                  }
                 />
               </Grid>
             </Grid>
 
             <Box display="flex" gap={2} sx={{ mt: 3 }}>
-              <Button onClick={() => setActiveStep(0)}>
-                上一步
-              </Button>
+              <Button onClick={() => setActiveStep(0)}>上一步</Button>
               <Button
                 variant="contained"
                 onClick={handlePreview}
@@ -626,9 +659,7 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
             </Paper>
 
             <Box display="flex" gap={2} sx={{ mt: 3 }}>
-              <Button onClick={() => setActiveStep(1)}>
-                上一步
-              </Button>
+              <Button onClick={() => setActiveStep(1)}>上一步</Button>
               <Button
                 variant="contained"
                 startIcon={<PlayArrow />}
@@ -650,14 +681,13 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
 
             {renderResultSummary(importResult)}
 
-            <Alert 
-              severity={importResult.failed > 0 ? "warning" : "success"} 
+            <Alert
+              severity={importResult.failed > 0 ? "warning" : "success"}
               sx={{ mb: 2 }}
             >
-              {importResult.failed > 0 
+              {importResult.failed > 0
                 ? `导入完成，但有 ${importResult.failed} 个订阅导入失败`
-                : `成功导入 ${importResult.imported} 个订阅`
-              }
+                : `成功导入 ${importResult.imported} 个订阅`}
             </Alert>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

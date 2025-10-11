@@ -44,18 +44,28 @@ const DuplicateCleanupDialog: React.FC<DuplicateCleanupDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {t("Duplicate subscriptions found")}
-      </DialogTitle>
+      <DialogTitle>{t("Duplicate subscriptions found")}</DialogTitle>
       <DialogContent>
         <Typography variant="body1" sx={{ mb: 2 }}>
           {t("Duplicate subscriptions message", { groups: groups.length })}
         </Typography>
 
         {groups.map((group, index) => (
-          <Box key={group.url} sx={{ mb: 2, border: "1px solid", borderColor: "divider", borderRadius: 1 }}>
+          <Box
+            key={group.url}
+            sx={{
+              mb: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+            }}
+          >
             <Box sx={{ p: 1.5 }}>
-              <Typography variant="subtitle2" color="textSecondary" sx={{ wordBreak: "break-all" }}>
+              <Typography
+                variant="subtitle2"
+                color="textSecondary"
+                sx={{ wordBreak: "break-all" }}
+              >
                 {t("Subscription URL")}: {group.url}
               </Typography>
             </Box>
@@ -90,5 +100,3 @@ const DuplicateCleanupDialog: React.FC<DuplicateCleanupDialogProps> = ({
 };
 
 export default DuplicateCleanupDialog;
-
-

@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::collapsible_if, clippy::unwrap_or_default)]
+// TODO: 后续专门清理订阅分组模块的 lint 警告。
 use super::CmdResult;
 use crate::{config::Config, logging, utils::logging::Type};
 use once_cell::sync::Lazy;

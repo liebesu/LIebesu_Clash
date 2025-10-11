@@ -73,17 +73,23 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  
+
   // 状态管理
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  
+
   // 数据状态
-  const [subscriptions, setSubscriptions] = useState<ExportableSubscription[]>([]);
-  const [selectedSubscriptions, setSelectedSubscriptions] = useState<Set<string>>(new Set());
-  const [exportPreview, setExportPreview] = useState<ExportPreview | null>(null);
+  const [subscriptions, setSubscriptions] = useState<ExportableSubscription[]>(
+    [],
+  );
+  const [selectedSubscriptions, setSelectedSubscriptions] = useState<
+    Set<string>
+  >(new Set());
+  const [exportPreview, setExportPreview] = useState<ExportPreview | null>(
+    null,
+  );
   const [exportResult, setExportResult] = useState<string>("");
-  
+
   // 导出选项
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
     format: "json",
@@ -93,17 +99,37 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
     encrypt: false,
     password: "",
   });
-  
+
   // UI状态
   const [showPassword, setShowPassword] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
 
   // 导出格式选项
   const formatOptions = [
-    { value: "json", label: "JSON 格式", icon: <Code />, description: "标准JSON格式，易于解析" },
-    { value: "yaml", label: "YAML 格式", icon: <Settings />, description: "YAML格式，可读性好" },
-    { value: "txt", label: "文本格式", icon: <Public />, description: "纯文本链接列表" },
-    { value: "clash", label: "Clash 配置", icon: <Security />, description: "完整Clash配置文件" },
+    {
+      value: "json",
+      label: "JSON 格式",
+      icon: <Code />,
+      description: "标准JSON格式，易于解析",
+    },
+    {
+      value: "yaml",
+      label: "YAML 格式",
+      icon: <Settings />,
+      description: "YAML格式，可读性好",
+    },
+    {
+      value: "txt",
+      label: "文本格式",
+      icon: <Public />,
+      description: "纯文本链接列表",
+    },
+    {
+      value: "clash",
+      label: "Clash 配置",
+      icon: <Security />,
+      description: "完整Clash配置文件",
+    },
   ];
 
   // 加载订阅列表
@@ -144,7 +170,9 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
-      setSelectedSubscriptions(new Set(subscriptions.filter(s => s.is_valid).map(s => s.uid)));
+      setSelectedSubscriptions(
+        new Set(subscriptions.filter((s) => s.is_valid).map((s) => s.uid)),
+      );
     } else {
       setSelectedSubscriptions(new Set());
     }
@@ -159,10 +187,13 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       newSelected.add(uid);
     }
     setSelectedSubscriptions(newSelected);
-    
+
     // 更新全选状态
-    const validSubscriptions = subscriptions.filter(s => s.is_valid);
-    setSelectAll(newSelected.size === validSubscriptions.length && validSubscriptions.length > 0);
+    const validSubscriptions = subscriptions.filter((s) => s.is_valid);
+    setSelectAll(
+      newSelected.size === validSubscriptions.length &&
+        validSubscriptions.length > 0,
+    );
   };
 
   // 生成导出预览
@@ -174,7 +205,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
 
     setLoading(true);
     try {
-      const preview = await previewExport(Array.from(selectedSubscriptions), exportOptions);
+      const preview = await previewExport(
+        Array.from(selectedSubscriptions),
+        exportOptions,
+      );
       setExportPreview(preview);
       setCurrentStep(2);
     } catch (error) {
@@ -191,7 +225,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
 
     setLoading(true);
     try {
-      const result = await batchExportSubscriptions(Array.from(selectedSubscriptions), exportOptions);
+      const result = await batchExportSubscriptions(
+        Array.from(selectedSubscriptions),
+        exportOptions,
+      );
       setExportResult(result);
       setCurrentStep(3);
       showNotice("success", "导出成功");
@@ -209,8 +246,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       // TODO: 使用文件选择器选择保存路径
       const fileName = `subscriptions_export_${Date.now()}.${exportOptions.format}`;
       const filePath = `/tmp/${fileName}`; // 临时路径，实际应该使用文件选择器
-      
-      await exportSubscriptionsToFile(Array.from(selectedSubscriptions), filePath, exportOptions);
+
+      await exportSubscriptionsToFile(
+        Array.from(selectedSubscriptions),
+        filePath,
+        exportOptions,
+      );
       showNotice("success", `已保存到: ${filePath}`);
     } catch (error) {
       console.error("保存文件失败:", error);
@@ -248,10 +289,13 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
   // 渲染订阅选择步骤
   const renderSubscriptionSelection = () => (
     <Box>
-      <Box display="flex" justifyContent="between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">
-          选择要导出的订阅
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6">选择要导出的订阅</Typography>
         <FormControlLabel
           control={
             <Checkbox
@@ -259,7 +303,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
               onChange={(e) => handleSelectAll(e.target.checked)}
             />
           }
-          label={`全选 (${subscriptions.filter(s => s.is_valid).length} 个可用)`}
+          label={`全选 (${subscriptions.filter((s) => s.is_valid).length} 个可用)`}
         />
       </Box>
 
@@ -307,7 +351,8 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     )}
                     <Typography variant="caption" color="text.secondary">
                       创建: {formatDate(subscription.created_at)}
-                      {subscription.updated_at && ` | 更新: ${formatDate(subscription.updated_at)}`}
+                      {subscription.updated_at &&
+                        ` | 更新: ${formatDate(subscription.updated_at)}`}
                     </Typography>
                   </Box>
                 }
@@ -324,7 +369,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         </List>
       </Card>
 
-      <Box display="flex" justifyContent="between" alignItems="center" sx={{ mt: 2 }}>
+      <Box
+        display="flex"
+        justifyContent="between"
+        alignItems="center"
+        sx={{ mt: 2 }}
+      >
         <Typography variant="body2" color="text.secondary">
           已选择 {selectedSubscriptions.size} 个订阅
         </Typography>
@@ -356,16 +406,30 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
             {formatOptions.map((option) => (
               <Grid size={{ xs: 12, sm: 6 }} key={option.value}>
                 <Card
-                  variant={exportOptions.format === option.value ? "elevation" : "outlined"}
+                  variant={
+                    exportOptions.format === option.value
+                      ? "elevation"
+                      : "outlined"
+                  }
                   sx={{
                     cursor: "pointer",
                     border: exportOptions.format === option.value ? 2 : 1,
-                    borderColor: exportOptions.format === option.value ? "primary.main" : "divider",
+                    borderColor:
+                      exportOptions.format === option.value
+                        ? "primary.main"
+                        : "divider",
                   }}
-                  onClick={() => setExportOptions({ ...exportOptions, format: option.value })}
+                  onClick={() =>
+                    setExportOptions({ ...exportOptions, format: option.value })
+                  }
                 >
                   <CardContent>
-                    <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                    <Box
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      sx={{ mb: 1 }}
+                    >
                       {option.icon}
                       <Typography variant="h6">{option.label}</Typography>
                     </Box>
@@ -388,10 +452,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
             control={
               <Checkbox
                 checked={exportOptions.include_settings}
-                onChange={(e) => setExportOptions({
-                  ...exportOptions,
-                  include_settings: e.target.checked,
-                })}
+                onChange={(e) =>
+                  setExportOptions({
+                    ...exportOptions,
+                    include_settings: e.target.checked,
+                  })
+                }
               />
             }
             label="包含应用设置"
@@ -400,10 +466,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
             control={
               <Checkbox
                 checked={exportOptions.include_groups}
-                onChange={(e) => setExportOptions({
-                  ...exportOptions,
-                  include_groups: e.target.checked,
-                })}
+                onChange={(e) =>
+                  setExportOptions({
+                    ...exportOptions,
+                    include_groups: e.target.checked,
+                  })
+                }
               />
             }
             label="包含分组信息"
@@ -423,10 +491,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     control={
                       <Checkbox
                         checked={exportOptions.compress}
-                        onChange={(e) => setExportOptions({
-                          ...exportOptions,
-                          compress: e.target.checked,
-                        })}
+                        onChange={(e) =>
+                          setExportOptions({
+                            ...exportOptions,
+                            compress: e.target.checked,
+                          })
+                        }
                       />
                     }
                     label="压缩导出文件"
@@ -435,10 +505,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     control={
                       <Checkbox
                         checked={exportOptions.encrypt}
-                        onChange={(e) => setExportOptions({
-                          ...exportOptions,
-                          encrypt: e.target.checked,
-                        })}
+                        onChange={(e) =>
+                          setExportOptions({
+                            ...exportOptions,
+                            encrypt: e.target.checked,
+                          })
+                        }
                       />
                     }
                     label="加密导出文件"
@@ -451,10 +523,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                       label="加密密码"
                       type={showPassword ? "text" : "password"}
                       value={exportOptions.password}
-                      onChange={(e) => setExportOptions({
-                        ...exportOptions,
-                        password: e.target.value,
-                      })}
+                      onChange={(e) =>
+                        setExportOptions({
+                          ...exportOptions,
+                          password: e.target.value,
+                        })
+                      }
                       InputProps={{
                         endAdornment: (
                           <IconButton
@@ -475,13 +549,13 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       </Grid>
 
       <Box display="flex" justifyContent="between" sx={{ mt: 3 }}>
-        <Button onClick={() => setCurrentStep(0)}>
-          上一步
-        </Button>
+        <Button onClick={() => setCurrentStep(0)}>上一步</Button>
         <Button
           variant="contained"
           onClick={handleGeneratePreview}
-          disabled={loading || (exportOptions.encrypt && !exportOptions.password)}
+          disabled={
+            loading || (exportOptions.encrypt && !exportOptions.password)
+          }
         >
           {loading ? "生成中..." : "生成预览"}
         </Button>
@@ -506,7 +580,11 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
                     导出格式
                   </Typography>
                   <Typography variant="h6">
-                    {formatOptions.find(f => f.value === exportPreview.format)?.label}
+                    {
+                      formatOptions.find(
+                        (f) => f.value === exportPreview.format,
+                      )?.label
+                    }
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
@@ -548,8 +626,10 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
               overflow: "auto",
               fontFamily: "monospace",
               fontSize: "0.875rem",
-              bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-              color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "grey.900" : "grey.50",
+              color: (theme) =>
+                theme.palette.mode === "dark" ? "grey.100" : "text.primary",
             }}
           >
             <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
@@ -560,14 +640,8 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
       )}
 
       <Box display="flex" justifyContent="between" sx={{ mt: 3 }}>
-        <Button onClick={() => setCurrentStep(1)}>
-          上一步
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleExport}
-          disabled={loading}
-        >
+        <Button onClick={() => setCurrentStep(1)}>上一步</Button>
+        <Button variant="contained" onClick={handleExport} disabled={loading}>
           {loading ? "导出中..." : "确认导出"}
         </Button>
       </Box>
@@ -579,13 +653,12 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
     <Box>
       <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
         <CheckCircle color="success" />
-        <Typography variant="h6">
-          导出完成
-        </Typography>
+        <Typography variant="h6">导出完成</Typography>
       </Box>
 
       <Alert severity="success" sx={{ mb: 2 }}>
-        成功导出 {selectedSubscriptions.size} 个订阅，大小: {formatFileSize(exportResult.length)}
+        成功导出 {selectedSubscriptions.size} 个订阅，大小:{" "}
+        {formatFileSize(exportResult.length)}
       </Alert>
 
       <Box display="flex" gap={2} sx={{ mb: 2 }}>
@@ -616,19 +689,17 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
           overflow: "auto",
           fontFamily: "monospace",
           fontSize: "0.875rem",
-          bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
-          color: (theme) => theme.palette.mode === 'dark' ? 'grey.100' : 'text.primary',
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark" ? "grey.900" : "grey.50",
+          color: (theme) =>
+            theme.palette.mode === "dark" ? "grey.100" : "text.primary",
         }}
       >
-        <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-          {exportResult}
-        </pre>
+        <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{exportResult}</pre>
       </Paper>
 
       <Box display="flex" justifyContent="between" sx={{ mt: 3 }}>
-        <Button onClick={() => setCurrentStep(0)}>
-          重新导出
-        </Button>
+        <Button onClick={() => setCurrentStep(0)}>重新导出</Button>
         <Button variant="contained" onClick={onClose}>
           完成
         </Button>
@@ -649,38 +720,28 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
         <Stepper activeStep={currentStep} orientation="vertical">
           <Step>
             <StepLabel>选择订阅</StepLabel>
-            <StepContent>
-              {renderSubscriptionSelection()}
-            </StepContent>
+            <StepContent>{renderSubscriptionSelection()}</StepContent>
           </Step>
 
           <Step>
             <StepLabel>配置选项</StepLabel>
-            <StepContent>
-              {renderExportOptions()}
-            </StepContent>
+            <StepContent>{renderExportOptions()}</StepContent>
           </Step>
 
           <Step>
             <StepLabel>预览导出</StepLabel>
-            <StepContent>
-              {renderExportPreview()}
-            </StepContent>
+            <StepContent>{renderExportPreview()}</StepContent>
           </Step>
 
           <Step>
             <StepLabel>导出完成</StepLabel>
-            <StepContent>
-              {renderExportResult()}
-            </StepContent>
+            <StepContent>{renderExportResult()}</StepContent>
           </Step>
         </Stepper>
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          {currentStep === 3 ? "完成" : "取消"}
-        </Button>
+        <Button onClick={onClose}>{currentStep === 3 ? "完成" : "取消"}</Button>
       </DialogActions>
     </Dialog>
   );

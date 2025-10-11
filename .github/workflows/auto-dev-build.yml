@@ -4,13 +4,13 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.mts'
-      - 'tsconfig.json'
+      - "src/**"
+      - "src-tauri/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.mts"
+      - "tsconfig.json"
 
 permissions: write-all
 
@@ -26,7 +26,7 @@ jobs:
   auto-dev-build:
     name: 自动开发构建 - macOS
     runs-on: macos-latest
-    
+
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
       - name: Rust 缓存
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: 安装依赖 (macOS)
         run: |
@@ -85,11 +85,11 @@ jobs:
       - name: 修复macOS应用签名问题
         run: |
           echo "=== 优化 macOS 应用以匹配官方版本体验 ==="
-          
+
           # 查找生成的.app文件
           APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.app" | head -1)
           DMG_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle -name "*.dmg" | head -1)
-          
+
           if [ -n "$APP_PATH" ]; then
             echo "找到应用: $APP_PATH"
             
@@ -117,7 +117,7 @@ jobs:
           else
             echo "❌ 未找到.app文件"
           fi
-          
+
           # 5. 处理DMG文件
           if [ -n "$DMG_PATH" ]; then
             echo "🔧 处理DMG文件: $DMG_PATH"
@@ -131,7 +131,7 @@ jobs:
       - name: 生成用户修复脚本
         run: |
           echo "=== 生成用户端修复脚本 ==="
-          
+
           # 将修复脚本复制到构建产物中
           if [ -f "fix-macos-app.sh" ]; then
             chmod +x fix-macos-app.sh
@@ -152,10 +152,10 @@ jobs:
           ls -la src-tauri/target/aarch64-apple-darwin/release/ || echo "release目录不存在"
           ls -la src-tauri/target/aarch64-apple-darwin/release/bundle/ || echo "bundle目录不存在"
           ls -la src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/ || echo "dmg目录不存在"
-          
+
           echo "=== 查找所有dmg文件 ==="
           find src-tauri/target/ -name "*.dmg" -type f || echo "未找到dmg文件"
-          
+
           echo "=== 查找所有app文件 ==="
           find src-tauri/target/ -name "*.app" -type d || echo "未找到app文件"
 
@@ -177,7 +177,7 @@ jobs:
         run: |
           echo "=== 查找所有构建产物 ==="
           find src-tauri/target/ -name "*.dmg" -o -name "*.app" -o -name "*.exe" | head -20
-          
+
           # 如果找到dmg文件，创建一个临时目录来收集它们
           if find src-tauri/target/ -name "*.dmg" | grep -q .; then
             mkdir -p ./found-artifacts

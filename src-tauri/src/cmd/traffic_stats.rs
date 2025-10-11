@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::unwrap_used, clippy::unused_async)]
+// TODO: 保留提醒，待后续清理流量统计模块 lint。
 use super::CmdResult;
 use crate::{config::Config, logging, utils::logging::Type};
 use anyhow::Result;

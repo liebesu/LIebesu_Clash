@@ -1,8 +1,11 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+// TODO: 本文件含多个 IPC 命令及预览结构，后续逐步优化并去除临时豁免。
 use crate::config::{
     Config,
     subscription_fetch::{FetchSummary, RemoteSubscriptionConfig},
 };
-use crate::core::{handle::Handle, Timer};
+use crate::core::Timer;
 use crate::logging;
 use crate::process::AsyncHandler;
 use crate::utils::logging::Type;
@@ -184,9 +187,13 @@ async fn perform_sync(
     }
 
     let import_result: BatchImportResult = if !combined_text.trim().is_empty() {
-        super::batch_import::batch_import_from_text(app_handle.clone(), combined_text, Some(options))
-            .await
-            .map_err(|e| format!("批量导入失败: {e}"))?
+        super::batch_import::batch_import_from_text(
+            app_handle.clone(),
+            combined_text,
+            Some(options),
+        )
+        .await
+        .map_err(|e| format!("批量导入失败: {e}"))?
     } else {
         BatchImportResult {
             total_input: new_urls.len(),

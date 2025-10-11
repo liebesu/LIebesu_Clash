@@ -119,7 +119,12 @@ interface TrafficAlert {
   alert_id: string;
   subscription_uid: string;
   subscription_name: string;
-  alert_type: "QuotaUsage" | "ExpirationDate" | "HighUsage" | "SpeedDrop" | "ConnectionIssue";
+  alert_type:
+    | "QuotaUsage"
+    | "ExpirationDate"
+    | "HighUsage"
+    | "SpeedDrop"
+    | "ConnectionIssue";
   message: string;
   threshold_value: number;
   current_value: number;
@@ -175,14 +180,16 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // 数据状态
   const [overview, setOverview] = useState<TrafficOverview | null>(null);
-  const [subscriptionStats, setSubscriptionStats] = useState<SubscriptionTrafficStats[]>([]);
+  const [subscriptionStats, setSubscriptionStats] = useState<
+    SubscriptionTrafficStats[]
+  >([]);
   const [alerts, setAlerts] = useState<TrafficAlert[]>([]);
   const [selectedSubscription, setSelectedSubscription] = useState<string>("");
 
@@ -344,7 +351,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
       setOverview(mockOverview);
       setSubscriptionStats(mockStats);
       setAlerts(mockAlerts);
-      
+
       if (mockStats.length > 0) {
         setSelectedSubscription(mockStats[0].subscription_uid);
       }
@@ -368,7 +375,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
       <Typography variant="h6" gutterBottom>
         流量统计概览
       </Typography>
-      
+
       {overview && (
         <>
           {/* 主要指标卡片 */}
@@ -428,7 +435,12 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
             <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
-                  <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    sx={{ mb: 1 }}
+                  >
                     <CloudUpload color="primary" />
                     <Typography variant="h6">上传流量</Typography>
                   </Box>
@@ -444,7 +456,12 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
             <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
-                  <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    sx={{ mb: 1 }}
+                  >
                     <CloudDownload color="primary" />
                     <Typography variant="h6">下载流量</Typography>
                   </Box>
@@ -460,7 +477,12 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
             <Grid size={{ xs: 12, sm: 4 }}>
               <Card variant="outlined">
                 <CardContent>
-                  <Box display="flex" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    sx={{ mb: 1 }}
+                  >
                     <Speed color="primary" />
                     <Typography variant="h6">网络速度</Typography>
                   </Box>
@@ -486,9 +508,9 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                   <Typography variant="h4" color="primary">
                     {formatBytes(overview.today_usage)}
                   </Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(overview.today_usage / overview.total_bytes) * 100} 
+                  <LinearProgress
+                    variant="determinate"
+                    value={(overview.today_usage / overview.total_bytes) * 100}
                     sx={{ mt: 1 }}
                   />
                 </CardContent>
@@ -503,9 +525,11 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                   <Typography variant="h4" color="secondary">
                     {formatBytes(overview.this_month_usage)}
                   </Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(overview.this_month_usage / overview.total_bytes) * 100} 
+                  <LinearProgress
+                    variant="determinate"
+                    value={
+                      (overview.this_month_usage / overview.total_bytes) * 100
+                    }
                     color="secondary"
                     sx={{ mt: 1 }}
                   />
@@ -529,14 +553,18 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
         <Button
           variant="outlined"
           startIcon={<GetApp />}
-          onClick={() => {/* TODO: 导出数据 */}}
+          onClick={() => {
+            /* TODO: 导出数据 */
+          }}
         >
           导出数据
         </Button>
         <Button
           variant="outlined"
           startIcon={<Settings />}
-          onClick={() => {/* TODO: 打开设置 */}}
+          onClick={() => {
+            /* TODO: 打开设置 */
+          }}
         >
           统计设置
         </Button>
@@ -547,10 +575,13 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
   // 渲染订阅详情
   const renderSubscriptionDetails = () => (
     <Box>
-      <Box display="flex" justifyContent="between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">
-          订阅流量详情
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6">订阅流量详情</Typography>
         <FormControl sx={{ minWidth: 200 }}>
           <InputLabel>选择订阅</InputLabel>
           <Select
@@ -559,7 +590,10 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
             label="选择订阅"
           >
             {subscriptionStats.map((stats) => (
-              <MenuItem key={stats.subscription_uid} value={stats.subscription_uid}>
+              <MenuItem
+                key={stats.subscription_uid}
+                value={stats.subscription_uid}
+              >
                 {stats.subscription_name}
               </MenuItem>
             ))}
@@ -567,112 +601,172 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
         </FormControl>
       </Box>
 
-      {selectedSubscription && (() => {
-        const stats = subscriptionStats.find(s => s.subscription_uid === selectedSubscription);
-        if (!stats) return null;
+      {selectedSubscription &&
+        (() => {
+          const stats = subscriptionStats.find(
+            (s) => s.subscription_uid === selectedSubscription,
+          );
+          if (!stats) return null;
 
-        return (
-          <Box>
-            {/* 订阅统计卡片 */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      使用统计
-                    </Typography>
-                    <Box display="flex" justifyContent="between" sx={{ mb: 1 }}>
-                      <Typography>总使用量:</Typography>
-                      <Typography variant="h6">{formatBytes(stats.total_bytes)}</Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="between" sx={{ mb: 1 }}>
-                      <Typography>会话次数:</Typography>
-                      <Typography>{stats.session_count}</Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="between" sx={{ mb: 1 }}>
-                      <Typography>平均速度:</Typography>
-                      <Typography>{stats.avg_speed_mbps.toFixed(1)} Mbps</Typography>
-                    </Box>
-                    <Box display="flex" justifyContent="between">
-                      <Typography>使用时长:</Typography>
-                      <Typography>{formatDuration(stats.total_duration_seconds)}</Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              {stats.quota_info && (
+          return (
+            <Box>
+              {/* 订阅统计卡片 */}
+              <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Card>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
-                        配额信息
+                        使用统计
                       </Typography>
-                      {stats.quota_info.total_quota_bytes ? (
-                        <>
-                          <Box display="flex" justifyContent="between" sx={{ mb: 1 }}>
-                            <Typography>总配额:</Typography>
-                            <Typography>{formatBytes(stats.quota_info.total_quota_bytes)}</Typography>
-                          </Box>
-                          <Box display="flex" justifyContent="between" sx={{ mb: 1 }}>
-                            <Typography>已使用:</Typography>
-                            <Typography>{formatBytes(stats.quota_info.used_quota_bytes)}</Typography>
-                          </Box>
-                          <Box display="flex" justifyContent="between" sx={{ mb: 2 }}>
-                            <Typography>剩余:</Typography>
-                            <Typography>{formatBytes(stats.quota_info.remaining_quota_bytes || 0)}</Typography>
-                          </Box>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={(stats.quota_info.used_quota_bytes / stats.quota_info.total_quota_bytes) * 100}
-                            color={
-                              (stats.quota_info.used_quota_bytes / stats.quota_info.total_quota_bytes) > 0.8 
-                                ? "error" 
-                                : "primary"
-                            }
-                          />
-                          {stats.quota_info.expire_date && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              到期时间: {formatDate(stats.quota_info.expire_date)}
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        <Typography color="success.main">
-                          无限制套餐
+                      <Box
+                        display="flex"
+                        justifyContent="between"
+                        sx={{ mb: 1 }}
+                      >
+                        <Typography>总使用量:</Typography>
+                        <Typography variant="h6">
+                          {formatBytes(stats.total_bytes)}
                         </Typography>
-                      )}
+                      </Box>
+                      <Box
+                        display="flex"
+                        justifyContent="between"
+                        sx={{ mb: 1 }}
+                      >
+                        <Typography>会话次数:</Typography>
+                        <Typography>{stats.session_count}</Typography>
+                      </Box>
+                      <Box
+                        display="flex"
+                        justifyContent="between"
+                        sx={{ mb: 1 }}
+                      >
+                        <Typography>平均速度:</Typography>
+                        <Typography>
+                          {stats.avg_speed_mbps.toFixed(1)} Mbps
+                        </Typography>
+                      </Box>
+                      <Box display="flex" justifyContent="between">
+                        <Typography>使用时长:</Typography>
+                        <Typography>
+                          {formatDuration(stats.total_duration_seconds)}
+                        </Typography>
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
-              )}
-            </Grid>
 
-            {/* 使用历史 */}
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6">使用历史详情</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body2" color="text.secondary">
-                  首次使用: {stats.first_used ? formatDate(stats.first_used) : "未知"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  最近使用: {stats.last_used ? formatDate(stats.last_used) : "未知"}
-                </Typography>
-                
-                {/* TODO: 添加图表组件显示使用趋势 */}
-                <Paper variant="outlined" sx={{ p: 2, textAlign: "center" }}>
-                  <BarChart sx={{ fontSize: 48, color: "text.secondary" }} />
-                  <Typography color="text.secondary">
-                    使用趋势图表 (开发中)
+                {stats.quota_info && (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          配额信息
+                        </Typography>
+                        {stats.quota_info.total_quota_bytes ? (
+                          <>
+                            <Box
+                              display="flex"
+                              justifyContent="between"
+                              sx={{ mb: 1 }}
+                            >
+                              <Typography>总配额:</Typography>
+                              <Typography>
+                                {formatBytes(
+                                  stats.quota_info.total_quota_bytes,
+                                )}
+                              </Typography>
+                            </Box>
+                            <Box
+                              display="flex"
+                              justifyContent="between"
+                              sx={{ mb: 1 }}
+                            >
+                              <Typography>已使用:</Typography>
+                              <Typography>
+                                {formatBytes(stats.quota_info.used_quota_bytes)}
+                              </Typography>
+                            </Box>
+                            <Box
+                              display="flex"
+                              justifyContent="between"
+                              sx={{ mb: 2 }}
+                            >
+                              <Typography>剩余:</Typography>
+                              <Typography>
+                                {formatBytes(
+                                  stats.quota_info.remaining_quota_bytes || 0,
+                                )}
+                              </Typography>
+                            </Box>
+                            <LinearProgress
+                              variant="determinate"
+                              value={
+                                (stats.quota_info.used_quota_bytes /
+                                  stats.quota_info.total_quota_bytes) *
+                                100
+                              }
+                              color={
+                                stats.quota_info.used_quota_bytes /
+                                  stats.quota_info.total_quota_bytes >
+                                0.8
+                                  ? "error"
+                                  : "primary"
+                              }
+                            />
+                            {stats.quota_info.expire_date && (
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 1 }}
+                              >
+                                到期时间:{" "}
+                                {formatDate(stats.quota_info.expire_date)}
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          <Typography color="success.main">
+                            无限制套餐
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+
+              {/* 使用历史 */}
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                  <Typography variant="h6">使用历史详情</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="body2" color="text.secondary">
+                    首次使用:{" "}
+                    {stats.first_used ? formatDate(stats.first_used) : "未知"}
                   </Typography>
-                </Paper>
-              </AccordionDetails>
-            </Accordion>
-          </Box>
-        );
-      })()}
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    最近使用:{" "}
+                    {stats.last_used ? formatDate(stats.last_used) : "未知"}
+                  </Typography>
+
+                  {/* TODO: 添加图表组件显示使用趋势 */}
+                  <Paper variant="outlined" sx={{ p: 2, textAlign: "center" }}>
+                    <BarChart sx={{ fontSize: 48, color: "text.secondary" }} />
+                    <Typography color="text.secondary">
+                      使用趋势图表 (开发中)
+                    </Typography>
+                  </Paper>
+                </AccordionDetails>
+              </Accordion>
+            </Box>
+          );
+        })()}
     </Box>
   );
 
@@ -680,7 +774,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
   const renderAlerts = () => (
     <Box>
       <Typography variant="h6" gutterBottom>
-        流量警告 ({alerts.filter(a => !a.is_read).length} 条未读)
+        流量警告 ({alerts.filter((a) => !a.is_read).length} 条未读)
       </Typography>
 
       {alerts.length > 0 ? (
@@ -688,7 +782,12 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
           {alerts.map((alert) => (
             <React.Fragment key={alert.alert_id}>
               <ListItem>
-                <Box display="flex" alignItems="center" gap={2} sx={{ flex: 1 }}>
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  gap={2}
+                  sx={{ flex: 1 }}
+                >
                   {getAlertIcon(alert.severity)}
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="subtitle1">
@@ -702,17 +801,13 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
                     </Typography>
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
-                    <Chip 
-                      label={alert.severity} 
+                    <Chip
+                      label={alert.severity}
                       color={getAlertColor(alert.severity) as any}
                       size="small"
                     />
                     {!alert.is_read && (
-                      <Chip 
-                        label="未读" 
-                        color="primary"
-                        size="small"
-                      />
+                      <Chip label="未读" color="primary" size="small" />
                     )}
                   </Box>
                 </Box>
@@ -722,24 +817,28 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
         </List>
       ) : (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <NotificationsActive sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
-          <Typography color="text.secondary">
-            暂无流量警告
-          </Typography>
+          <NotificationsActive
+            sx={{ fontSize: 48, color: "text.secondary", mb: 2 }}
+          />
+          <Typography color="text.secondary">暂无流量警告</Typography>
         </Paper>
       )}
 
       <Box display="flex" gap={2} sx={{ mt: 2 }}>
         <Button
           variant="outlined"
-          onClick={() => {/* TODO: 标记所有为已读 */}}
-          disabled={alerts.filter(a => !a.is_read).length === 0}
+          onClick={() => {
+            /* TODO: 标记所有为已读 */
+          }}
+          disabled={alerts.filter((a) => !a.is_read).length === 0}
         >
           全部标记为已读
         </Button>
         <Button
           variant="outlined"
-          onClick={() => {/* TODO: 清理已读警告 */}}
+          onClick={() => {
+            /* TODO: 清理已读警告 */
+          }}
         >
           清理已读警告
         </Button>
@@ -757,9 +856,9 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs 
-            value={currentTab} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Tabs
+            value={currentTab}
             onChange={(_, newValue) => setCurrentTab(newValue)}
             aria-label="流量统计标签"
           >
@@ -785,9 +884,7 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
       </DialogActions>
     </Dialog>
   );

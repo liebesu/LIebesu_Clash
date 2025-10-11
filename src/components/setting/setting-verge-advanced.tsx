@@ -98,7 +98,11 @@ const SettingVergeAdvanced = ({ onError: _ }: Props) => {
       <SettingItem
         onClick={() => subscriptionFetchRef.current?.open()}
         label={t("Remote Subscription Settings")}
-        extra={<TooltipIcon title={t("Configure remote subscription list and schedule")} />}
+        extra={
+          <TooltipIcon
+            title={t("Configure remote subscription list and schedule")}
+          />
+        }
       />
 
       <SettingItem

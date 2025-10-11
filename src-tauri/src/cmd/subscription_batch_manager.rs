@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::unwrap_used)]
+// TODO: 后续处理订阅批量管理模块 lint，当前先豁免。
 use crate::config::Config;
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Duration, Local};

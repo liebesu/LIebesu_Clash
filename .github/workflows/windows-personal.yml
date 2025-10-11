@@ -5,13 +5,13 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.mts'
-      - 'tsconfig.json'
+      - "src/**"
+      - "src-tauri/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.mts"
+      - "tsconfig.json"
 
 permissions: write-all
 
@@ -40,7 +40,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -60,7 +60,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Starting prebuild for x86_64-pc-windows-msvc..." -ForegroundColor Green
-          
+
           try {
             pnpm run prebuild x86_64-pc-windows-msvc
             Write-Host "Prebuild completed successfully" -ForegroundColor Green
@@ -68,14 +68,14 @@ jobs:
             Write-Host "Prebuild failed: $($_.Exception.Message)" -ForegroundColor Red
             throw
           }
-          
+
           # Verify critical sidecar files exist
           Write-Host "Verifying critical sidecar files..." -ForegroundColor Yellow
           $criticalFiles = @(
             "src-tauri/sidecar/verge-mihomo-x86_64-pc-windows-msvc.exe",
             "src-tauri/sidecar/verge-mihomo-alpha-x86_64-pc-windows-msvc.exe"
           )
-          
+
           foreach ($file in $criticalFiles) {
             if (Test-Path $file) {
               $size = (Get-ItemProperty $file).Length / 1MB
@@ -85,14 +85,14 @@ jobs:
               throw "Critical sidecar binary missing: $file"
             }
           }
-          
+
           # Verify Windows-specific files
           $windowsFiles = @(
             "src-tauri/resources/sysproxy.exe",
             "src-tauri/resources/clash-verge-service.exe",
             "src-tauri/resources/enableLoopback.exe"
           )
-          
+
           foreach ($file in $windowsFiles) {
             if (Test-Path $file) {
               Write-Host "[OK] Windows file: $file" -ForegroundColor Green
@@ -146,13 +146,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Verifying build artifacts..." -ForegroundColor Yellow
-          
+
           $targetDir = "src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
-          
+
           if (!(Test-Path $targetDir)) {
             throw "Target directory not found: $targetDir"
           }
-          
+
           # Check NSIS installer files
           $nsisDir = "$targetDir/nsis"
           if (Test-Path $nsisDir) {
@@ -176,14 +176,14 @@ jobs:
           } else {
             throw "NSIS directory not found: $nsisDir"
           }
-          
+
           # List all build artifacts for debugging
           Write-Host "`nAll build artifacts:" -ForegroundColor Cyan
           Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe", "*.msi" | ForEach-Object {
             $sizeMB = [math]::Round($_.Length / 1MB, 2)
             Write-Host "  $($_.FullName) ($sizeMB MB)" -ForegroundColor White
           }
-          
+
           # Verify the main binary exists
           $mainBinary = "src-tauri/target/x86_64-pc-windows-msvc/release/liebesu-clash.exe"
           if (Test-Path $mainBinary) {
@@ -202,4 +202,3 @@ jobs:
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
           if-no-files-found: warn
           retention-days: 7
-

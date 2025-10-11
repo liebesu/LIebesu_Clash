@@ -18,19 +18,19 @@ function generateReleaseContent(assets, releaseTag, version) {
   content += `- ✅ 添加服务启动停止控制按钮\n`;
   content += `- ✅ 完善错误处理和超时保护机制\n`;
   content += `- ✅ 优化前端构建内存配置 (4GB→8GB)\n\n`;
-  
+
   content += `**下载地址**\n\n`;
-  
+
   // Windows 资产
-  const windowsAssets = assets.filter(name => name.includes('setup.exe'));
+  const windowsAssets = assets.filter((name) => name.includes("setup.exe"));
   if (windowsAssets.length > 0) {
     content += `**Windows (不再支持Win7)**\n`;
-    windowsAssets.forEach(asset => {
+    windowsAssets.forEach((asset) => {
       // 检查文件名是否已经URL编码，如果已编码就不要再编码
-      const isAlreadyEncoded = asset.includes('%');
+      const isAlreadyEncoded = asset.includes("%");
       const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
       const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
-      if (asset.includes('webview2')) {
+      if (asset.includes("webview2")) {
         content += `- [内置WebView2版 64位](${url})\n`;
       } else {
         content += `- [正常版 64位](${url})\n`;
@@ -38,34 +38,41 @@ function generateReleaseContent(assets, releaseTag, version) {
     });
     content += `\n`;
   }
-  
-  // macOS 资产  
-  const macosAssets = assets.filter(name => name.includes('.dmg') || name.includes('.app.tar.gz'));
+
+  // macOS 资产
+  const macosAssets = assets.filter(
+    (name) => name.includes(".dmg") || name.includes(".app.tar.gz"),
+  );
   if (macosAssets.length > 0) {
     content += `**macOS**\n`;
-    macosAssets.forEach(asset => {
+    macosAssets.forEach((asset) => {
       // 检查文件名是否已经URL编码，如果已编码就不要再编码
-      const isAlreadyEncoded = asset.includes('%');
+      const isAlreadyEncoded = asset.includes("%");
       const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
       const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
-      if (asset.includes('aarch64')) {
+      if (asset.includes("aarch64")) {
         content += `- [Apple M芯片 DMG](${url})\n`;
-      } else if (asset.includes('.app.tar.gz')) {
+      } else if (asset.includes(".app.tar.gz")) {
         content += `- [App包](${url})\n`;
-      } else if (asset.includes('.dmg')) {
+      } else if (asset.includes(".dmg")) {
         content += `- [Intel芯片 DMG](${url})\n`;
       }
     });
     content += `\n`;
   }
-  
+
   // Linux 资产
-  const linuxAssets = assets.filter(name => name.includes('.deb') || name.includes('.rpm') || name.includes('AppImage'));
+  const linuxAssets = assets.filter(
+    (name) =>
+      name.includes(".deb") ||
+      name.includes(".rpm") ||
+      name.includes("AppImage"),
+  );
   if (linuxAssets.length > 0) {
     content += `**Linux**\n`;
-    linuxAssets.forEach(asset => {
+    linuxAssets.forEach((asset) => {
       // 检查文件名是否已经URL编码，如果已编码就不要再编码
-      const isAlreadyEncoded = asset.includes('%');
+      const isAlreadyEncoded = asset.includes("%");
       const encodedAsset = isAlreadyEncoded ? asset : encodeURIComponent(asset);
       const url = `https://github.com/liebesu/LIebesu_Clash/releases/download/${releaseTag}/${encodedAsset}`;
       content += `- [${asset}](${url})\n`;
@@ -73,9 +80,9 @@ function generateReleaseContent(assets, releaseTag, version) {
   } else {
     content += `**Linux**\n⚠️ 此版本暂不提供Linux构建\n`;
   }
-  
+
   content += `\n**FAQ**\n- [常见问题](https://github.com/liebesu/LIebesu_Clash/wiki/FAQ)`;
-  
+
   return content;
 }
 
@@ -114,18 +121,36 @@ async function sendTelegramNotification() {
   let releaseAssets = [];
   try {
     // 使用更可靠的方式获取资产信息，包括完整的文件名
-    const assetsOutput = execSync(`gh api repos/liebesu/LIebesu_Clash/releases/tags/${releaseTag} --jq '.assets[] | .name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
-    releaseAssets = assetsOutput.trim().split('\n').filter(name => name.length > 0 && name !== '' && !name.includes('null'));
-    
+    const assetsOutput = execSync(
+      `gh api repos/liebesu/LIebesu_Clash/releases/tags/${releaseTag} --jq '.assets[] | .name' 2>/dev/null || echo ""`,
+      { encoding: "utf-8" },
+    );
+    releaseAssets = assetsOutput
+      .trim()
+      .split("\n")
+      .filter(
+        (name) => name.length > 0 && name !== "" && !name.includes("null"),
+      );
+
     // 如果没有获取到资产，尝试其他方法
     if (releaseAssets.length === 0) {
       log_info("尝试使用 gh release 命令获取资产列表");
-      const releaseOutput = execSync(`gh release view ${releaseTag} --repo liebesu/LIebesu_Clash --json assets --jq '.assets[].name' 2>/dev/null || echo ""`, { encoding: 'utf-8' });
-      releaseAssets = releaseOutput.trim().split('\n').filter(name => name.length > 0 && name !== '' && !name.includes('null'));
+      const releaseOutput = execSync(
+        `gh release view ${releaseTag} --repo liebesu/LIebesu_Clash --json assets --jq '.assets[].name' 2>/dev/null || echo ""`,
+        { encoding: "utf-8" },
+      );
+      releaseAssets = releaseOutput
+        .trim()
+        .split("\n")
+        .filter(
+          (name) => name.length > 0 && name !== "" && !name.includes("null"),
+        );
     }
-    
-    log_info(`发现 ${releaseAssets.length} 个资产: ${releaseAssets.join(', ')}`);
-    
+
+    log_info(
+      `发现 ${releaseAssets.length} 个资产: ${releaseAssets.join(", ")}`,
+    );
+
     // 调试信息：显示实际的文件名
     if (releaseAssets.length > 0) {
       log_info("实际的资产文件名:");
@@ -133,14 +158,13 @@ async function sendTelegramNotification() {
         log_info(`  ${index + 1}. ${asset}`);
       });
     }
-    
   } catch (error) {
     log_error("获取release资产失败", error);
   }
 
   // 读取发布说明和下载地址
   let releaseContent = "";
-  
+
   // 优先使用动态生成的内容，如果有资产的话
   if (releaseAssets.length > 0) {
     log_info("使用动态检测的资产生成发布内容");
@@ -174,7 +198,7 @@ async function sendTelegramNotification() {
             /\[([^\]]+)\]\(([^)]+)\)/g,
             (match, text, url) => {
               // 检查URL是否已经编码，避免双重编码
-              const isAlreadyEncoded = url.includes('%');
+              const isAlreadyEncoded = url.includes("%");
               const encodedUrl = isAlreadyEncoded ? url : encodeURI(url);
               return `<a href="${encodedUrl}">${text}</a>`;
             },

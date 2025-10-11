@@ -124,16 +124,16 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // 备份数据
   const [backups, setBackups] = useState<BackupInfo[]>([]);
   const [selectedBackup, setSelectedBackup] = useState<BackupInfo | null>(null);
   const [backupDetails, setBackupDetails] = useState<BackupData | null>(null);
-  
+
   // 创建备份状态
   const [createStep, setCreateStep] = useState(0);
   const [backupOptions, setBackupOptions] = useState<BackupOptions>({
@@ -149,7 +149,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     backup_name: "",
     description: "",
   });
-  
+
   // 恢复状态
   const [restoreOptions, setRestoreOptions] = useState<RestoreOptions>({
     backup_id: "",
@@ -162,8 +162,10 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     password: "",
     create_backup_before_restore: true,
   });
-  const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(null);
-  
+  const [restoreResult, setRestoreResult] = useState<RestoreResult | null>(
+    null,
+  );
+
   // WebDAV状态
   const [webdavConfig, setWebdavConfig] = useState<WebDAVConfig>({
     enabled: false,
@@ -185,7 +187,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     sync_errors: [],
     is_syncing: false,
   });
-  
+
   // UI状态
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedBackupId, setSelectedBackupId] = useState<string>("");
@@ -257,7 +259,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     try {
       const config = await getWebDAVConfig();
       setWebdavConfig(config);
-      
+
       const status = await getSyncStatus();
       setSyncStatus(status);
     } catch (error) {
@@ -274,7 +276,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       setRestoreResult(null);
       setBackupOptions({
         ...backupOptions,
-        backup_name: `Backup_${new Date().toISOString().split('T')[0]}`,
+        backup_name: `Backup_${new Date().toISOString().split("T")[0]}`,
         description: "手动创建的备份",
       });
     }
@@ -316,7 +318,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       };
       const result = await restoreBackup(options);
       setRestoreResult(result);
-      
+
       if (result.success) {
         showNotice("success", "备份恢复成功");
         loadBackups();
@@ -450,7 +452,10 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   };
 
   // 菜单处理
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, backupId: string) => {
+  const handleMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    backupId: string,
+  ) => {
     setMenuAnchor(event.currentTarget);
     setSelectedBackupId(backupId);
   };
@@ -463,10 +468,13 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   // 渲染备份列表
   const renderBackupList = () => (
     <Box>
-      <Box display="flex" justifyContent="between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">
-          备份列表 ({backups.length})
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6">备份列表 ({backups.length})</Typography>
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"
@@ -497,9 +505,18 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={backup.backup_id}>
               <Card variant="outlined">
                 <CardContent>
-                  <Box display="flex" justifyContent="between" alignItems="start" sx={{ mb: 2 }}>
+                  <Box
+                    display="flex"
+                    justifyContent="between"
+                    alignItems="start"
+                    sx={{ mb: 2 }}
+                  >
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="h6" noWrap title={backup.backup_name}>
+                      <Typography
+                        variant="h6"
+                        noWrap
+                        title={backup.backup_name}
+                      >
                         {backup.backup_name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -535,7 +552,11 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                     )}
                   </Box>
 
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     {backup.description}
                   </Typography>
 
@@ -596,10 +617,14 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={() => {
-          const backup = backups.find(b => b.backup_id === selectedBackupId);
-          if (backup) handleViewDetails(backup);
-        }}>
+        <MenuItem
+          onClick={() => {
+            const backup = backups.find(
+              (b) => b.backup_id === selectedBackupId,
+            );
+            if (backup) handleViewDetails(backup);
+          }}
+        >
           <ListItemIcon>
             <Visibility fontSize="small" />
           </ListItemIcon>
@@ -611,7 +636,11 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
           </ListItemIcon>
           验证备份
         </MenuItem>
-        <MenuItem onClick={() => {/* TODO: 导出备份 */}}>
+        <MenuItem
+          onClick={() => {
+            /* TODO: 导出备份 */
+          }}
+        >
           <ListItemIcon>
             <GetApp fontSize="small" />
           </ListItemIcon>
@@ -642,19 +671,39 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="subtitle2">基本信息</Typography>
-                <Typography variant="body2">名称: {backupDetails.backup_name}</Typography>
-                <Typography variant="body2">描述: {backupDetails.description}</Typography>
-                <Typography variant="body2">创建时间: {formatDate(backupDetails.created_at)}</Typography>
-                <Typography variant="body2">文件大小: {formatFileSize(backupDetails.file_size)}</Typography>
-                <Typography variant="body2">是否加密: {backupDetails.is_encrypted ? "是" : "否"}</Typography>
+                <Typography variant="body2">
+                  名称: {backupDetails.backup_name}
+                </Typography>
+                <Typography variant="body2">
+                  描述: {backupDetails.description}
+                </Typography>
+                <Typography variant="body2">
+                  创建时间: {formatDate(backupDetails.created_at)}
+                </Typography>
+                <Typography variant="body2">
+                  文件大小: {formatFileSize(backupDetails.file_size)}
+                </Typography>
+                <Typography variant="body2">
+                  是否加密: {backupDetails.is_encrypted ? "是" : "否"}
+                </Typography>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Typography variant="subtitle2">包含内容</Typography>
-                <Typography variant="body2">订阅数量: {backupDetails.profiles.length}</Typography>
-                <Typography variant="body2">包含设置: {backupDetails.settings ? "是" : "否"}</Typography>
-                <Typography variant="body2">包含分组: {backupDetails.groups ? "是" : "否"}</Typography>
-                <Typography variant="body2">包含流量统计: {backupDetails.traffic_stats ? "是" : "否"}</Typography>
-                <Typography variant="body2">包含任务: {backupDetails.tasks ? "是" : "否"}</Typography>
+                <Typography variant="body2">
+                  订阅数量: {backupDetails.profiles.length}
+                </Typography>
+                <Typography variant="body2">
+                  包含设置: {backupDetails.settings ? "是" : "否"}
+                </Typography>
+                <Typography variant="body2">
+                  包含分组: {backupDetails.groups ? "是" : "否"}
+                </Typography>
+                <Typography variant="body2">
+                  包含流量统计: {backupDetails.traffic_stats ? "是" : "否"}
+                </Typography>
+                <Typography variant="body2">
+                  包含任务: {backupDetails.tasks ? "是" : "否"}
+                </Typography>
               </Grid>
             </Grid>
           </DialogContent>
@@ -684,10 +733,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                     fullWidth
                     label="备份名称"
                     value={backupOptions.backup_name}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      backup_name: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        backup_name: e.target.value,
+                      })
+                    }
                     required
                   />
                 </Grid>
@@ -696,10 +747,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                     fullWidth
                     label="备份描述"
                     value={backupOptions.description}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      description: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        description: e.target.value,
+                      })
+                    }
                     multiline
                     rows={2}
                   />
@@ -713,10 +766,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.include_profiles}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      include_profiles: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        include_profiles: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="订阅配置"
@@ -725,10 +780,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.include_settings}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      include_settings: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        include_settings: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="应用设置"
@@ -737,10 +794,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.include_groups}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      include_groups: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        include_groups: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="订阅分组"
@@ -749,10 +808,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.include_traffic_stats}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      include_traffic_stats: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        include_traffic_stats: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="流量统计"
@@ -761,10 +822,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.include_tasks}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      include_tasks: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        include_tasks: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="定时任务"
@@ -792,10 +855,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
               </Typography>
               <Slider
                 value={backupOptions.compression_level}
-                onChange={(_, value) => setBackupOptions({
-                  ...backupOptions,
-                  compression_level: value as number,
-                })}
+                onChange={(_, value) =>
+                  setBackupOptions({
+                    ...backupOptions,
+                    compression_level: value as number,
+                  })
+                }
                 min={0}
                 max={9}
                 step={1}
@@ -807,10 +872,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={backupOptions.encrypt}
-                    onChange={(e) => setBackupOptions({
-                      ...backupOptions,
-                      encrypt: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setBackupOptions({
+                        ...backupOptions,
+                        encrypt: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="加密备份"
@@ -822,10 +889,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                   label="加密密码"
                   type={showPassword ? "text" : "password"}
                   value={backupOptions.password}
-                  onChange={(e) => setBackupOptions({
-                    ...backupOptions,
-                    password: e.target.value,
-                  })}
+                  onChange={(e) =>
+                    setBackupOptions({
+                      ...backupOptions,
+                      password: e.target.value,
+                    })
+                  }
                   InputProps={{
                     endAdornment: (
                       <IconButton
@@ -842,13 +911,13 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
             </Box>
 
             <Box display="flex" gap={1}>
-              <Button onClick={() => setCreateStep(0)}>
-                上一步
-              </Button>
+              <Button onClick={() => setCreateStep(0)}>上一步</Button>
               <Button
                 variant="contained"
                 onClick={handleCreateBackup}
-                disabled={loading || (backupOptions.encrypt && !backupOptions.password)}
+                disabled={
+                  loading || (backupOptions.encrypt && !backupOptions.password)
+                }
               >
                 {loading ? "创建中..." : "创建备份"}
               </Button>
@@ -876,14 +945,21 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Box display="flex" justifyContent="between" alignItems="center" sx={{ mb: 2 }}>
+          <Box
+            display="flex"
+            justifyContent="between"
+            alignItems="center"
+            sx={{ mb: 2 }}
+          >
             <Typography variant="h6">同步状态</Typography>
             <Switch
               checked={webdavConfig.enabled}
-              onChange={(e) => setWebdavConfig({
-                ...webdavConfig,
-                enabled: e.target.checked,
-              })}
+              onChange={(e) =>
+                setWebdavConfig({
+                  ...webdavConfig,
+                  enabled: e.target.checked,
+                })
+              }
             />
           </Box>
 
@@ -907,12 +983,18 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
               <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid size={{ xs: 6 }}>
                   <Typography variant="body2" color="text.secondary">
-                    最后同步: {syncStatus.last_sync ? formatDate(syncStatus.last_sync) : "从未"}
+                    最后同步:{" "}
+                    {syncStatus.last_sync
+                      ? formatDate(syncStatus.last_sync)
+                      : "从未"}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
                   <Typography variant="body2" color="text.secondary">
-                    最后上传: {syncStatus.last_upload ? formatDate(syncStatus.last_upload) : "从未"}
+                    最后上传:{" "}
+                    {syncStatus.last_upload
+                      ? formatDate(syncStatus.last_upload)
+                      : "从未"}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
@@ -947,9 +1029,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
               </Box>
             </Box>
           ) : (
-            <Alert severity="info">
-              启用WebDAV同步以自动备份到云端存储
-            </Alert>
+            <Alert severity="info">启用WebDAV同步以自动备份到云端存储</Alert>
           )}
         </CardContent>
       </Card>
@@ -965,10 +1045,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 fullWidth
                 label="服务器地址"
                 value={webdavConfig.server_url}
-                onChange={(e) => setWebdavConfig({
-                  ...webdavConfig,
-                  server_url: e.target.value,
-                })}
+                onChange={(e) =>
+                  setWebdavConfig({
+                    ...webdavConfig,
+                    server_url: e.target.value,
+                  })
+                }
                 placeholder="https://your-webdav-server.com"
               />
             </Grid>
@@ -977,10 +1059,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 fullWidth
                 label="用户名"
                 value={webdavConfig.username}
-                onChange={(e) => setWebdavConfig({
-                  ...webdavConfig,
-                  username: e.target.value,
-                })}
+                onChange={(e) =>
+                  setWebdavConfig({
+                    ...webdavConfig,
+                    username: e.target.value,
+                  })
+                }
               />
             </Grid>
             <Grid size={{ xs: 6 }}>
@@ -989,10 +1073,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 label="密码"
                 type={showWebdavPassword ? "text" : "password"}
                 value={webdavConfig.password}
-                onChange={(e) => setWebdavConfig({
-                  ...webdavConfig,
-                  password: e.target.value,
-                })}
+                onChange={(e) =>
+                  setWebdavConfig({
+                    ...webdavConfig,
+                    password: e.target.value,
+                  })
+                }
                 InputProps={{
                   endAdornment: (
                     <IconButton
@@ -1010,10 +1096,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 fullWidth
                 label="远程路径"
                 value={webdavConfig.remote_path}
-                onChange={(e) => setWebdavConfig({
-                  ...webdavConfig,
-                  remote_path: e.target.value,
-                })}
+                onChange={(e) =>
+                  setWebdavConfig({
+                    ...webdavConfig,
+                    remote_path: e.target.value,
+                  })
+                }
               />
             </Grid>
             <Grid size={{ xs: 12 }}>
@@ -1021,10 +1109,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={webdavConfig.auto_sync}
-                    onChange={(e) => setWebdavConfig({
-                      ...webdavConfig,
-                      auto_sync: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setWebdavConfig({
+                        ...webdavConfig,
+                        auto_sync: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="自动同步"
@@ -1033,10 +1123,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={webdavConfig.encrypt_before_upload}
-                    onChange={(e) => setWebdavConfig({
-                      ...webdavConfig,
-                      encrypt_before_upload: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setWebdavConfig({
+                        ...webdavConfig,
+                        encrypt_before_upload: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="上传前加密"
@@ -1045,10 +1137,12 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
                 control={
                   <Checkbox
                     checked={webdavConfig.compression_enabled}
-                    onChange={(e) => setWebdavConfig({
-                      ...webdavConfig,
-                      compression_enabled: e.target.checked,
-                    })}
+                    onChange={(e) =>
+                      setWebdavConfig({
+                        ...webdavConfig,
+                        compression_enabled: e.target.checked,
+                      })
+                    }
                   />
                 }
                 label="启用压缩"
@@ -1066,7 +1160,9 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
             </Button>
             <Button
               variant="outlined"
-              onClick={() => {/* TODO: 测试连接 */}}
+              onClick={() => {
+                /* TODO: 测试连接 */
+              }}
               disabled={loading}
             >
               测试连接
@@ -1086,7 +1182,8 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
             {restoreResult.success ? "恢复成功" : "恢复失败"}
           </Typography>
           <Typography variant="body2">
-            恢复了 {restoreResult.restored_items} 项，失败 {restoreResult.failed_items} 项
+            恢复了 {restoreResult.restored_items} 项，失败{" "}
+            {restoreResult.failed_items} 项
           </Typography>
           {restoreResult.errors.length > 0 && (
             <Typography variant="body2" color="error">
@@ -1108,9 +1205,9 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs 
-            value={currentTab} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Tabs
+            value={currentTab}
             onChange={(_, newValue) => setCurrentTab(newValue)}
             aria-label="备份恢复标签"
           >
@@ -1134,9 +1231,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
       </DialogActions>
     </Dialog>
   );

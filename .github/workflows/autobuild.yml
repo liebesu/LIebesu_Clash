@@ -2,7 +2,7 @@ name: Auto Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
   schedule:
     # 每天一次：UTC 04:00（北京 12:00）
@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Check if build needed
         id: check
         run: |
@@ -166,7 +166,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Clean old assets
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -210,31 +210,30 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         continue-on-error: true
         id: rust_install_1
-        
+
       - name: Retry Install Rust Stable (attempt 2)
         if: steps.rust_install_1.outcome == 'failure'
         uses: dtolnay/rust-toolchain@stable
         continue-on-error: true
         id: rust_install_2
-        
+
       - name: Add Rust Target
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_1
-        
+
       - name: Retry Add Rust Target (attempt 2)
         if: steps.rust_target_1.outcome == 'failure'
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_2
-        
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-all-crates: true
-          save-if: ${{ github.ref == 'refs/heads/main' }}  # 修复：在main分支保存缓存
+          save-if: ${{ github.ref == 'refs/heads/main' }} # 修复：在main分支保存缓存
           shared-key: autobuild-optimized
 
       # Linux 构建已禁用
@@ -275,7 +274,7 @@ jobs:
 
       - name: Create or update release
         if: matrix.os == 'macos-latest' && matrix.target == 'aarch64-apple-darwin'
-        shell: bash  # 明确指定使用bash shell
+        shell: bash # 明确指定使用bash shell
         run: |
           # 只在 Mac ARM64 构建时创建GitHub Release
           if gh release view ${{ env.TAG_NAME }} >/dev/null 2>&1; then
@@ -295,7 +294,7 @@ jobs:
       - name: Tauri build for Windows-macOS-Linux
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=6144" # 优化：增加内存限制
           # 移除GITHUB_TOKEN，禁用所有GitHub相关操作
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # 使用 ad-hoc 签名，避免证书导入
@@ -356,7 +355,7 @@ jobs:
             Rename-Item $file.FullName $newPath
             Write-Output "Renamed to: $newPath"
           }
-          
+
           $files = Get-ChildItem ".\src-tauri\target\${{ matrix.target }}\release\bundle\nsis\*.nsis.zip"
           foreach ($file in $files) {
             $dir = $file.Directory
@@ -383,7 +382,7 @@ jobs:
             mv "$DMG_PATH" "$DIR/$NEW_NAME"
             echo "Renamed DMG to: $DIR/$NEW_NAME"
           fi
-          
+
           # 重命名 APP.tar.gz 文件
           APP_PATH=$(find src-tauri/target -type f -path "*/release/bundle/macos/*.app.tar.gz" | head -1)
           if [[ -n "$APP_PATH" ]]; then
@@ -432,31 +431,30 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         continue-on-error: true
         id: rust_install_1
-        
+
       - name: Retry Install Rust Stable (attempt 2)
         if: steps.rust_install_1.outcome == 'failure'
         uses: dtolnay/rust-toolchain@stable
         continue-on-error: true
         id: rust_install_2
-        
+
       - name: Add Rust Target
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_1
-        
+
       - name: Retry Add Rust Target (attempt 2)
         if: steps.rust_target_1.outcome == 'failure'
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_2
-        
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-all-crates: true
-          save-if: ${{ github.ref == 'refs/heads/main' }}  # 修复：在main分支保存缓存
+          save-if: ${{ github.ref == 'refs/heads/main' }} # 修复：在main分支保存缓存
           shared-key: autobuild-optimized
 
       - name: Install pnpm
@@ -540,7 +538,7 @@ jobs:
           fi
           pnpm build --target ${{ matrix.target }}
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=6144" # 优化：增加内存限制
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
 
@@ -584,20 +582,19 @@ jobs:
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_1
-        
+
       - name: Retry Add Rust Target (attempt 2)
         if: steps.rust_target_1.outcome == 'failure'
         run: rustup target add ${{ matrix.target }}
         continue-on-error: true
         id: rust_target_2
-        
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           cache-all-crates: true
-          save-if: ${{ github.ref == 'refs/heads/main' }}  # 修复：在main分支保存缓存
+          save-if: ${{ github.ref == 'refs/heads/main' }} # 修复：在main分支保存缓存
           shared-key: autobuild-optimized
 
       - name: Install pnpm
@@ -631,7 +628,7 @@ jobs:
         id: build
         uses: tauri-apps/tauri-action@v0
         env:
-          NODE_OPTIONS: "--max_old_space_size=6144"  # 优化：增加内存限制
+          NODE_OPTIONS: "--max_old_space_size=6144" # 优化：增加内存限制
           # 移除GITHUB_TOKEN，禁用GitHub相关操作
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
@@ -782,7 +779,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gh
-          
+
       - name: Debug Release Info
         run: |
           echo "=== 调试信息 ==="

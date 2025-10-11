@@ -4,23 +4,25 @@
 
 ### 1. **配置文件标识符不一致** ✅ 已修复
 
-| 文件 | 原标识符 | 修复后标识符 | 状态 |
-|------|---------|-------------|------|
-| `tauri.conf.json` | `io.github.liebesu.clash` | ✅ 正确 | 已正确 |
-| `tauri.personal.conf.json` | `io.github.liebesu.clash` | ✅ 正确 | 已正确 |
-| `tauri.windows.conf.json` | `io.github.clash-verge-rev.clash-verge-rev` | `io.github.liebesu.clash` | ✅ 已修复 |
-| `webview2.x64.json` | `io.github.liebesu.clash` | ✅ 正确 | 已正确 |
-| `webview2.arm64.json` | `io.github.liebesu.clash` | ✅ 正确 | 已正确 |
-| `webview2.x86.json` | `io.github.liebesu.clash` | ✅ 正确 | 已正确 |
+| 文件                       | 原标识符                                    | 修复后标识符              | 状态      |
+| -------------------------- | ------------------------------------------- | ------------------------- | --------- |
+| `tauri.conf.json`          | `io.github.liebesu.clash`                   | ✅ 正确                   | 已正确    |
+| `tauri.personal.conf.json` | `io.github.liebesu.clash`                   | ✅ 正确                   | 已正确    |
+| `tauri.windows.conf.json`  | `io.github.clash-verge-rev.clash-verge-rev` | `io.github.liebesu.clash` | ✅ 已修复 |
+| `webview2.x64.json`        | `io.github.liebesu.clash`                   | ✅ 正确                   | 已正确    |
+| `webview2.arm64.json`      | `io.github.liebesu.clash`                   | ✅ 正确                   | 已正确    |
+| `webview2.x86.json`        | `io.github.liebesu.clash`                   | ✅ 正确                   | 已正确    |
 
 ### 2. **GitHub Actions 构建流程问题** ⚠️
 
 #### **问题A：普通版本构建** (`windows-personal.yml`)
+
 - **正确使用**：`--config src-tauri/tauri.personal.conf.json`
 - **配置内容**：包含正确的 `identifier` 和 `productName`
 - **状态**：✅ 应该正常
 
 #### **问题B：内置WebView2版本构建** (`release.yml`, `autobuild.yml`)
+
 ```yaml
 # 问题流程：
 - name: Download WebView2 Runtime
@@ -42,13 +44,13 @@
 
 #### **问题C：配置文件内容差异**
 
-| 配置项 | `tauri.windows.conf.json` | `webview2.x64.json` |
-|--------|--------------------------|---------------------|
-| `identifier` | ✅ `io.github.liebesu.clash` | ✅ `io.github.liebesu.clash` |
-| `webviewInstallMode.type` | `embedBootstrapper` | `fixedRuntime` |
-| `webviewInstallMode.path` | ❌ 无 | ✅ `./Microsoft.WebView2...` |
-| `updater.active` | ❌ 无 | ✅ `true` |
-| `updater.endpoints` | ❌ 空数组 | ✅ 有更新服务器 |
+| 配置项                    | `tauri.windows.conf.json`    | `webview2.x64.json`          |
+| ------------------------- | ---------------------------- | ---------------------------- |
+| `identifier`              | ✅ `io.github.liebesu.clash` | ✅ `io.github.liebesu.clash` |
+| `webviewInstallMode.type` | `embedBootstrapper`          | `fixedRuntime`               |
+| `webviewInstallMode.path` | ❌ 无                        | ✅ `./Microsoft.WebView2...` |
+| `updater.active`          | ❌ 无                        | ✅ `true`                    |
+| `updater.endpoints`       | ❌ 空数组                    | ✅ 有更新服务器              |
 
 ## 🎯 **根本原因分析**
 
@@ -70,11 +72,13 @@
 ## 🛠️ **修复策略**
 
 ### **短期修复（立即生效）**
+
 1. ✅ 已修复所有配置文件的 `identifier`
 2. ✅ 确认 GitHub Actions 配置正确
 3. ⚠️ 需要检查 NSIS 安装脚本中的产品名称
 
 ### **长期修复（彻底解决）**
+
 1. 统一所有构建流程的配置文件管理
 2. 确保所有变体（普通版、WebView2内置版）使用相同的产品信息
 3. 改进构建后的文件名验证
@@ -82,11 +86,13 @@
 ## 📋 **下一步操作**
 
 ### **立即执行**：
+
 1. 检查 `src-tauri/packages/windows/installer.nsi` 脚本
 2. 验证产品名称和文件名映射
 3. 重新构建和测试
 
 ### **验证方法**：
+
 1. 查看构建日志中的文件路径
 2. 检查生成的安装包内容
 3. 安装后验证应用程序位置
@@ -94,6 +100,7 @@
 ## 🚨 **紧急修复建议**
 
 如果需要立即修复，可以考虑：
+
 1. **临时方案**：修改诊断脚本以搜索所有可能的应用程序名称
 2. **永久方案**：确保构建流程产生预期的文件名和路径
 3. **验证方案**：在 GitHub Actions 中添加构建后验证步骤

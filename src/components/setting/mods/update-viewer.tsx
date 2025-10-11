@@ -32,12 +32,15 @@ export const UpdateViewer = forwardRef<DialogRef>((props, ref) => {
   const { addListener } = useListen();
 
   const { data: updateInfo } = useSWR("checkUpdate", checkUpdate, {
-    errorRetryCount: 0,                     // 🔧 ACL错误不重试
+    errorRetryCount: 0, // 🔧 ACL错误不重试
     revalidateIfStale: false,
-    focusThrottleInterval: 36e5,            // 1 hour
+    focusThrottleInterval: 36e5, // 1 hour
     onError: (error) => {
       // 🔧 静默处理 ACL 错误，避免假死
-      if (error?.message?.includes("ACL") || error?.message?.includes("not allowed")) {
+      if (
+        error?.message?.includes("ACL") ||
+        error?.message?.includes("not allowed")
+      ) {
         console.warn("[UpdateViewer] Updater ACL权限未配置，跳过更新检查");
         return;
       }

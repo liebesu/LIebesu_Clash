@@ -56,9 +56,14 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
 }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [batchResult, setBatchResult] = useState<BatchHealthResult | null>(null);
-  const [singleResult, setSingleResult] = useState<SubscriptionHealthResult | null>(null);
-  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
+  const [batchResult, setBatchResult] = useState<BatchHealthResult | null>(
+    null,
+  );
+  const [singleResult, setSingleResult] =
+    useState<SubscriptionHealthResult | null>(null);
+  const [expandedResults, setExpandedResults] = useState<Set<string>>(
+    new Set(),
+  );
   const [progress, setProgress] = useState(0);
 
   // 健康状态图标映射
@@ -126,7 +131,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
   const runHealthCheck = async () => {
     setLoading(true);
     setProgress(0);
-    
+
     try {
       if (initialUid) {
         // 检查单个订阅
@@ -164,8 +169,8 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
       const details = await getSubscriptionDetails(uid);
       // 更新结果中的详细信息
       if (batchResult) {
-        const updatedResults = batchResult.results.map(result =>
-          result.uid === uid ? { ...result, ...details } : result
+        const updatedResults = batchResult.results.map((result) =>
+          result.uid === uid ? { ...result, ...details } : result,
         );
         setBatchResult({ ...batchResult, results: updatedResults });
       }
@@ -184,18 +189,22 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
   // 渲染单个订阅结果
   const renderSubscriptionResult = (result: SubscriptionHealthResult) => {
     const isExpanded = expandedResults.has(result.uid);
-    
+
     return (
       <Card key={result.uid} variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+          >
             <Box display="flex" alignItems="center" gap={1}>
               {getStatusIcon(result.status)}
               <Typography variant="h6" component="div">
                 {result.name}
               </Typography>
-              <Chip 
-                label={getStatusText(result.status)} 
+              <Chip
+                label={getStatusText(result.status)}
                 color={getStatusColor(result.status) as any}
                 size="small"
               />
@@ -204,7 +213,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
               {isExpanded ? <ExpandLess /> : <ExpandMore />}
             </IconButton>
           </Box>
-          
+
           {/* 基础信息 */}
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ xs: 6, sm: 3 }}>
@@ -246,7 +255,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
           <Collapse in={isExpanded}>
             <Box sx={{ mt: 2 }}>
               <Divider sx={{ mb: 2 }} />
-              
+
               {/* 错误信息 */}
               {result.error_message && (
                 <Alert severity="error" sx={{ mb: 2 }}>
@@ -260,23 +269,17 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
               <List dense>
                 {result.url && (
                   <ListItem>
-                    <ListItemText 
-                      primary="订阅URL"
-                      secondary={result.url}
-                    />
+                    <ListItemText primary="订阅URL" secondary={result.url} />
                   </ListItem>
                 )}
                 <ListItem>
-                  <ListItemText 
+                  <ListItemText
                     primary="最后更新"
                     secondary={formatTimestamp(result.last_update)}
                   />
                 </ListItem>
                 <ListItem>
-                  <ListItemText 
-                    primary="UID"
-                    secondary={result.uid}
-                  />
+                  <ListItemText primary="UID" secondary={result.uid} />
                 </ListItem>
               </List>
             </Box>
@@ -303,7 +306,10 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
         {/* 加载进度 */}
         {loading && (
           <Box sx={{ mb: 2 }}>
-            <LinearProgress variant={progress > 0 ? "determinate" : "indeterminate"} value={progress} />
+            <LinearProgress
+              variant={progress > 0 ? "determinate" : "indeterminate"}
+              value={progress}
+            />
             <Typography variant="body2" align="center" sx={{ mt: 1 }}>
               正在检查订阅健康状态...
             </Typography>
@@ -323,9 +329,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                     <Typography color="text.secondary" gutterBottom>
                       总数
                     </Typography>
-                    <Typography variant="h4">
-                      {batchResult.total}
-                    </Typography>
+                    <Typography variant="h4">{batchResult.total}</Typography>
                   </CardContent>
                 </Card>
               </Grid>
@@ -366,7 +370,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
                 </Card>
               </Grid>
             </Grid>
-            
+
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
               检查耗时: {(batchResult.check_duration / 1000).toFixed(1)} 秒
             </Typography>
@@ -385,9 +389,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
 
         {/* 单个订阅结果 */}
         {singleResult && !loading && (
-          <Box>
-            {renderSubscriptionResult(singleResult)}
-          </Box>
+          <Box>{renderSubscriptionResult(singleResult)}</Box>
         )}
 
         {/* 无结果状态 */}
@@ -401,11 +403,9 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
-        <Button 
-          variant="contained" 
+        <Button onClick={onClose}>关闭</Button>
+        <Button
+          variant="contained"
           onClick={runHealthCheck}
           disabled={loading}
           startIcon={<Refresh />}

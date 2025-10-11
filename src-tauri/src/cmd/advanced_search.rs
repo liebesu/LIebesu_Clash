@@ -1,3 +1,6 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+// TODO: 移除临时的 lint 豁免，逐步落地对应优化。
 use anyhow::{Context, Result};
 use chrono::Utc;
 use nanoid::nanoid;

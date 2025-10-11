@@ -1,4 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -67,7 +73,12 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
       progressState.stageLabel ||
       t("Processing...")
     );
-  }, [progressState.displayMessage, progressState.stageLabel, showProgressBar, t]);
+  }, [
+    progressState.displayMessage,
+    progressState.stageLabel,
+    showProgressBar,
+    t,
+  ]);
 
   useImperativeHandle(ref, () => ({
     open: () => {
@@ -177,7 +188,9 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
     setShowProgressBar(true);
     progressState.reset();
     try {
-      const summary: FetchSummary = await syncSubscriptionFromRemote(inputUrl.trim());
+      const summary: FetchSummary = await syncSubscriptionFromRemote(
+        inputUrl.trim(),
+      );
       showNotice(
         "success",
         t("Subscription list synced. Imported {{count}} new subscriptions", {
@@ -208,7 +221,11 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
     if (!config?.last_result) return null;
     const { last_result: result, last_sync_at } = config;
     return (
-      <Alert severity="info" sx={{ mb: 2 }} icon={<AnalyticsRoundedIcon fontSize="inherit" />}>
+      <Alert
+        severity="info"
+        sx={{ mb: 2 }}
+        icon={<AnalyticsRoundedIcon fontSize="inherit" />}
+      >
         <Box display="flex" flexDirection="column" gap={1}>
           <Typography variant="subtitle2">
             {t("Last Sync Summary")}:
@@ -217,8 +234,14 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
               : " -"}
           </Typography>
           <Box display="flex" gap={1} flexWrap="wrap">
-            <Chip color="primary" label={`${t("Fetched")}: ${result.fetched_urls}`} />
-            <Chip color="success" label={`${t("Imported")}: ${result.imported}`} />
+            <Chip
+              color="primary"
+              label={`${t("Fetched")}: ${result.fetched_urls}`}
+            />
+            <Chip
+              color="success"
+              label={`${t("Imported")}: ${result.imported}`}
+            />
             <Chip
               color="info"
               variant="outlined"
@@ -316,7 +339,11 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
         {showProgressBar && (
           <Box sx={{ mb: 2 }}>
             <LinearProgress
-              variant={progressPercent > 0 && progressPercent < 100 ? "determinate" : "indeterminate"}
+              variant={
+                progressPercent > 0 && progressPercent < 100
+                  ? "determinate"
+                  : "indeterminate"
+              }
               value={progressPercent}
             />
             <Typography variant="body2" align="center" sx={{ mt: 1 }}>
@@ -326,7 +353,7 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
         )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t(
-            "Configure a remote list URL. Each line in the file should contain one subscription link."
+            "Configure a remote list URL. Each line in the file should contain one subscription link.",
           )}
         </Typography>
 
@@ -415,5 +442,3 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
 });
 
 SubscriptionFetchViewer.displayName = "SubscriptionFetchViewer";
-
-

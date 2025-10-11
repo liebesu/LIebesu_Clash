@@ -5,13 +5,13 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.mts'
-      - 'tsconfig.json'
+      - "src/**"
+      - "src-tauri/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.mts"
+      - "tsconfig.json"
 
 permissions: write-all
 
@@ -40,7 +40,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install dependencies (Homebrew)
         run: |
@@ -144,4 +144,3 @@ jobs:
             fix-macos-app.sh
           if-no-files-found: warn
           retention-days: 7
-

@@ -89,7 +89,7 @@ pub fn create_shortcut() -> Result<()> {
         return Err(anyhow!("创建快捷方式失败: {}", error_msg));
     }
 
-        info!(target: "app", "成功创建 Liebesu_Clash 启动快捷方式");
+    info!(target: "app", "成功创建 Liebesu_Clash 启动快捷方式");
     Ok(())
 }
 

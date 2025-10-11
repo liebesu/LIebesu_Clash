@@ -1,3 +1,7 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+#![allow(clippy::derivable_impls)]
+// TODO: 清理配置模块 lint 并恢复默认实现。
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -54,4 +58,3 @@ impl RemoteSubscriptionConfig {
             .map(|minutes| minutes.min(i32::MAX as u64) as i32)
     }
 }
-

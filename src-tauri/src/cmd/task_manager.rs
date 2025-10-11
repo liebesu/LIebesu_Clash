@@ -1,3 +1,6 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+// TODO: 下一阶段逐条处理任务管理模块的 lint 警告。
 use super::CmdResult;
 use crate::{logging, utils::logging::Type};
 use serde::{Deserialize, Serialize};

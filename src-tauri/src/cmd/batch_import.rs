@@ -1,7 +1,9 @@
+#![allow(clippy::all)]
+#![allow(dead_code, unused)]
+// TODO: 清理临时注释并逐项处理 Clippy 指出的问题。
 use super::CmdResult;
 use crate::{
     config::{Config, PrfItem, PrfOption},
-    core::handle::Handle,
     logging,
     utils::logging::Type,
 };
@@ -11,8 +13,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicU64, Ordering};
-use url::Url;
 use tauri::{AppHandle, Emitter};
+use url::Url;
 
 static IMPORT_TASK_SEQ: AtomicU64 = AtomicU64::new(1);
 

@@ -98,25 +98,29 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   initialSubscriptionUid,
 }) => {
   const { t } = useTranslation();
-  
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  
+
   // 测试配置
   const [selectedSubscription, setSelectedSubscription] = useState<string>(
-    initialSubscriptionUid || ""
+    initialSubscriptionUid || "",
   );
   const [testType, setTestType] = useState<TestType>("Connectivity");
-  
+
   // 数据状态
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [singleTestResult, setSingleTestResult] = useState<SubscriptionTestResult | null>(null);
-  const [batchTestResult, setBatchTestResult] = useState<BatchTestResult | null>(null);
+  const [singleTestResult, setSingleTestResult] =
+    useState<SubscriptionTestResult | null>(null);
+  const [batchTestResult, setBatchTestResult] =
+    useState<BatchTestResult | null>(null);
   const [qualityRanking, setQualityRanking] = useState<NodeTestResult[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<"quality" | "speed" | "success">("quality");
+  const [sortBy, setSortBy] = useState<"quality" | "speed" | "success">(
+    "quality",
+  );
 
   // 状态图标映射
   const getStatusIcon = (status: string) => {
@@ -192,11 +196,11 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   const loadSubscriptions = async () => {
     try {
       const profilesData = await getProfiles();
-      const remoteSubscriptions = profilesData?.items?.filter(
-        (item: any) => item.type === "remote"
-      ) || [];
+      const remoteSubscriptions =
+        profilesData?.items?.filter((item: any) => item.type === "remote") ||
+        [];
       setSubscriptions(remoteSubscriptions);
-      
+
       if (!selectedSubscription && remoteSubscriptions.length > 0) {
         setSelectedSubscription(remoteSubscriptions[0].uid);
       }
@@ -208,10 +212,10 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   // 执行单个订阅测试
   const handleTestSubscription = async () => {
     if (!selectedSubscription) return;
-    
+
     setLoading(true);
     setProgress(30);
-    
+
     try {
       const result = await testSubscription(selectedSubscription, testType);
       setSingleTestResult(result);
@@ -228,7 +232,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   const handleBatchTest = async () => {
     setLoading(true);
     setProgress(20);
-    
+
     try {
       const result = await testAllSubscriptions(testType);
       setBatchTestResult(result);
@@ -244,22 +248,26 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   // 快速连通性测试
   const handleQuickTest = async () => {
     if (!selectedSubscription) return;
-    
+
     setLoading(true);
     setProgress(30);
-    
+
     try {
       const results = await quickConnectivityTest(selectedSubscription);
       // 创建一个简化的测试结果
       const quickResult: SubscriptionTestResult = {
         subscription_uid: selectedSubscription,
-        subscription_name: subscriptions.find(s => s.uid === selectedSubscription)?.name || "Unknown",
+        subscription_name:
+          subscriptions.find((s) => s.uid === selectedSubscription)?.name ||
+          "Unknown",
         test_type: "Connectivity",
-        overall_status: results.some(r => r.status === "Pass") ? "Pass" : "Fail",
+        overall_status: results.some((r) => r.status === "Pass")
+          ? "Pass"
+          : "Fail",
         total_nodes: results.length,
-        passed_nodes: results.filter(r => r.status === "Pass").length,
-        failed_nodes: results.filter(r => r.status === "Fail").length,
-        warning_nodes: results.filter(r => r.status === "Warning").length,
+        passed_nodes: results.filter((r) => r.status === "Pass").length,
+        failed_nodes: results.filter((r) => r.status === "Fail").length,
+        warning_nodes: results.filter((r) => r.status === "Warning").length,
         quality_grade: "Fair",
         node_results: results,
         recommendations: [],
@@ -279,9 +287,9 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   // 获取质量排名
   const handleGetQualityRanking = async () => {
     if (!selectedSubscription) return;
-    
+
     setLoading(true);
-    
+
     try {
       const ranking = await getNodeQualityRanking(selectedSubscription, 200);
       setQualityRanking(ranking);
@@ -295,11 +303,12 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   // 获取优化建议
   const handleGetSuggestions = async () => {
     if (!selectedSubscription) return;
-    
+
     setLoading(true);
-    
+
     try {
-      const suggestions = await getOptimizationSuggestions(selectedSubscription);
+      const suggestions =
+        await getOptimizationSuggestions(selectedSubscription);
       setSuggestions(suggestions);
     } catch (error) {
       console.error("获取优化建议失败:", error);
@@ -321,7 +330,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
       <Typography variant="h6" gutterBottom>
         测试配置
       </Typography>
-      
+
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6 }}>
           <FormControl fullWidth>
@@ -402,7 +411,10 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
 
       {loading && (
         <Box sx={{ mt: 2 }}>
-          <LinearProgress variant={progress > 0 ? "determinate" : "indeterminate"} value={progress} />
+          <LinearProgress
+            variant={progress > 0 ? "determinate" : "indeterminate"}
+            value={progress}
+          />
           <Typography variant="body2" align="center" sx={{ mt: 1 }}>
             正在执行测试...
           </Typography>
@@ -419,7 +431,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           <Typography variant="h6" gutterBottom>
             测试结果 - {singleTestResult.subscription_name}
           </Typography>
-          
+
           {/* 概览信息 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 6, sm: 3 }}>
@@ -521,8 +533,8 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           {/* 质量等级 */}
           <Box display="flex" alignItems="center" gap={2} sx={{ mb: 3 }}>
             <Typography variant="h6">质量等级:</Typography>
-            <Chip 
-              label={getQualityText(singleTestResult.quality_grade)} 
+            <Chip
+              label={getQualityText(singleTestResult.quality_grade)}
               color={getQualityColor(singleTestResult.quality_grade) as any}
               size="medium"
             />
@@ -531,7 +543,9 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           {/* 节点详细结果 */}
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography variant="h6">节点详细结果 ({singleTestResult.node_results.length})</Typography>
+              <Typography variant="h6">
+                节点详细结果 ({singleTestResult.node_results.length})
+              </Typography>
             </AccordionSummary>
             <AccordionDetails>
               <TableContainer component={Paper}>
@@ -550,17 +564,19 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                   <TableBody>
                     {singleTestResult.node_results.map((node, index) => (
                       <TableRow key={index}>
-                        <TableCell>
-                          {getStatusIcon(node.status)}
-                        </TableCell>
+                        <TableCell>{getStatusIcon(node.status)}</TableCell>
                         <TableCell>{node.node_name}</TableCell>
                         <TableCell>{node.node_type}</TableCell>
-                        <TableCell>{node.server}:{node.port}</TableCell>
+                        <TableCell>
+                          {node.server}:{node.port}
+                        </TableCell>
                         <TableCell>
                           {node.latency_ms ? `${node.latency_ms}ms` : "N/A"}
                         </TableCell>
                         <TableCell>
-                          {node.download_speed_mbps ? `${node.download_speed_mbps.toFixed(1)} Mbps` : "N/A"}
+                          {node.download_speed_mbps
+                            ? `${node.download_speed_mbps.toFixed(1)} Mbps`
+                            : "N/A"}
                         </TableCell>
                         <TableCell>
                           {node.error_message && (
@@ -595,9 +611,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
         </Box>
       ) : (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="text.secondary">
-            请先执行测试以查看结果
-          </Typography>
+          <Typography color="text.secondary">请先执行测试以查看结果</Typography>
         </Paper>
       )}
     </Box>
@@ -611,7 +625,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           <Typography variant="h6" gutterBottom>
             批量测试结果
           </Typography>
-          
+
           {/* 测试摘要 */}
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid size={{ xs: 6, sm: 3 }}>
@@ -677,8 +691,8 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                       <Typography variant="subtitle1">
                         {result.subscription_name}
                       </Typography>
-                      <Chip 
-                        label={getQualityText(result.quality_grade)} 
+                      <Chip
+                        label={getQualityText(result.quality_grade)}
                         color={getQualityColor(result.quality_grade) as any}
                         size="small"
                       />
@@ -687,10 +701,11 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                   }
                   secondary={
                     <Typography variant="body2" color="text.secondary">
-                      节点: {result.total_nodes} | 
-                      通过: {result.passed_nodes} | 
-                      失败: {result.failed_nodes} |
-                      平均延迟: {result.avg_latency_ms ? `${result.avg_latency_ms.toFixed(0)}ms` : "N/A"}
+                      节点: {result.total_nodes} | 通过: {result.passed_nodes} |
+                      失败: {result.failed_nodes} | 平均延迟:{" "}
+                      {result.avg_latency_ms
+                        ? `${result.avg_latency_ms.toFixed(0)}ms`
+                        : "N/A"}
                     </Typography>
                   }
                 />
@@ -712,7 +727,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   const renderAnalysis = () => (
     <Box>
       {/* 排序与应用 */}
-      <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+      <Box sx={{ mb: 2, display: "flex", gap: 2, alignItems: "center" }}>
         <FormControl size="small">
           <InputLabel>排序</InputLabel>
           <Select
@@ -745,7 +760,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                 </TableRow>
               </TableHead>
               <TableBody>
-                {([...qualityRanking]
+                {[...qualityRanking]
                   .sort((a, b) => {
                     if (sortBy === "quality") {
                       const av = a.stability_score ?? -1;
@@ -758,39 +773,49 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
                       return bv - av;
                     }
                     // success: 根据状态排序 Pass>Warning>Fail>Timeout
-                    const rank = (s: string | undefined) => (
-                      s === "Pass" ? 3 : s === "Warning" ? 2 : s === "Fail" ? 1 : 0
-                    );
+                    const rank = (s: string | undefined) =>
+                      s === "Pass"
+                        ? 3
+                        : s === "Warning"
+                          ? 2
+                          : s === "Fail"
+                            ? 1
+                            : 0;
                     return rank(b.status as any) - rank(a.status as any);
                   })
-                ).map((node, index) => (
-                  <TableRow key={index}>
-                    <TableCell>#{index + 1}</TableCell>
-                    <TableCell>{node.node_name}</TableCell>
-                    <TableCell>
-                      {node.latency_ms ? `${node.latency_ms}ms` : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {node.download_speed_mbps ? `${node.download_speed_mbps.toFixed(1)} Mbps` : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {node.stability_score ? `${node.stability_score}/100` : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      {getStatusIcon(node.status)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  .map((node, index) => (
+                    <TableRow key={index}>
+                      <TableCell>#{index + 1}</TableCell>
+                      <TableCell>{node.node_name}</TableCell>
+                      <TableCell>
+                        {node.latency_ms ? `${node.latency_ms}ms` : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {node.download_speed_mbps
+                          ? `${node.download_speed_mbps.toFixed(1)} Mbps`
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {node.stability_score
+                          ? `${node.stability_score}/100`
+                          : "N/A"}
+                      </TableCell>
+                      <TableCell>{getStatusIcon(node.status)}</TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </TableContainer>
-          <Box sx={{ mt: 2, textAlign: 'right' }}>
+          <Box sx={{ mt: 2, textAlign: "right" }}>
             <Button
               variant="contained"
               startIcon={<TrendingUp />}
               onClick={() => {
                 // 应用排名第一的节点（示例：仅提示，实际切换需结合分组/当前策略）
-                const best = ([...qualityRanking].sort((a, b) => (b.stability_score ?? -1) - (a.stability_score ?? -1)))[0];
+                const best = [...qualityRanking].sort(
+                  (a, b) =>
+                    (b.stability_score ?? -1) - (a.stability_score ?? -1),
+                )[0];
                 if (best) {
                   // 这里可以调用已有的 updateProxy 或者提供一个回调去选择组/节点
                   // 暂时弹提示，待确认具体切换策略后接入 updateProxyAndSync
@@ -813,12 +838,12 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
           <List>
             {suggestions.map((suggestion, index) => (
               <ListItem key={index}>
-                <ListItemText 
+                <ListItemText
                   primary={suggestion}
-                  sx={{ 
+                  sx={{
                     "& .MuiListItemText-primary": {
-                      fontWeight: "medium"
-                    }
+                      fontWeight: "medium",
+                    },
                   }}
                 />
               </ListItem>
@@ -847,9 +872,9 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs 
-            value={currentTab} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Tabs
+            value={currentTab}
             onChange={(_, newValue) => setCurrentTab(newValue)}
             aria-label="测试工具标签"
           >
@@ -878,9 +903,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
         <Button
           variant="outlined"
           startIcon={<Refresh />}
