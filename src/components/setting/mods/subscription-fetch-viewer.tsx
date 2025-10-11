@@ -12,6 +12,7 @@ import {
   Divider,
   FormControl,
   InputLabel,
+  LinearProgress,
   List,
   ListItem,
   ListItemText,
@@ -37,6 +38,7 @@ import {
 } from "@/services/cmds";
 import { showNotice } from "@/services/noticeService";
 import { DialogRef } from "@/components/base";
+import { useBatchImportProgress } from "@/hooks/use-batch-import-progress";
 
 type FetchMode = "manual" | "daily" | "custom";
 
@@ -51,6 +53,21 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
   const [mode, setMode] = useState<FetchMode>("manual");
   const [customMinutes, setCustomMinutes] = useState<number | "">(1440);
   const [preview, setPreview] = useState<FetchPreviewResult | null>(null);
+  const [showProgressBar, setShowProgressBar] = useState(false);
+
+  const progressState = useBatchImportProgress(showProgressBar);
+  const progressPercent = useMemo(() => {
+    if (!showProgressBar) return 0;
+    return progressState.percent > 0 ? progressState.percent : syncing ? 10 : 0;
+  }, [progressState.percent, showProgressBar, syncing]);
+  const progressMessage = useMemo(() => {
+    if (!showProgressBar) return null;
+    return (
+      progressState.displayMessage ||
+      progressState.stageLabel ||
+      t("Processing...")
+    );
+  }, [progressState.displayMessage, progressState.stageLabel, showProgressBar, t]);
 
   useImperativeHandle(ref, () => ({
     open: () => {
@@ -157,6 +174,8 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
     }
 
     setSyncing(true);
+    setShowProgressBar(true);
+    progressState.reset();
     try {
       const summary: FetchSummary = await syncSubscriptionFromRemote(inputUrl.trim());
       showNotice(
@@ -181,6 +200,7 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
       showNotice("error", getErrorMessage(error), 4000);
     } finally {
       setSyncing(false);
+      setShowProgressBar(false);
     }
   };
 
@@ -293,6 +313,17 @@ export const SubscriptionFetchViewer = forwardRef<DialogRef>((_, ref) => {
     <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
       <DialogTitle>{t("Remote Subscription Manager")}</DialogTitle>
       <DialogContent>
+        {showProgressBar && (
+          <Box sx={{ mb: 2 }}>
+            <LinearProgress
+              variant={progressPercent > 0 && progressPercent < 100 ? "determinate" : "indeterminate"}
+              value={progressPercent}
+            />
+            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+              {progressMessage}
+            </Typography>
+          </Box>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t(
             "Configure a remote list URL. Each line in the file should contain one subscription link."
