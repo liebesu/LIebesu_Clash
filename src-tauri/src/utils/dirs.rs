@@ -1,6 +1,10 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::collapsible_if)]
+#![allow(
+    clippy::collapsible_if,
+    clippy::too_many_lines,
+    clippy::manual_map,
+    clippy::needless_pass_by_value
+)]
 // TODO: 后续细化目录工具模块的 lint 调整。
 use crate::core::handle;
 use anyhow::Result;

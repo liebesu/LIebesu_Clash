@@ -1,5 +1,13 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::manual_map,
+    clippy::match_like_matches_macro
+)]
 // TODO: 移除临时的 lint 豁免，逐步落地对应优化。
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -438,11 +446,8 @@ pub async fn update_search_index() -> Result<(), String> {
             let mut searchable_text = format!(
                 "{} {} {} {}",
                 item.name,
-                item.description
-                    .as_ref()
-                    .map(|s| s.clone())
-                    .unwrap_or_default(),
-                item.url.as_ref().map(|s| s.clone()).unwrap_or_default(),
+                item.description.as_deref().unwrap_or_default(),
+                item.url.as_deref().unwrap_or_default(),
                 item.tags.join(" ")
             );
 
@@ -738,18 +743,18 @@ fn apply_single_filter(item: &SubscriptionSearchItem, filter: &SearchFilter) -> 
             }
         }
         FilterOperator::GreaterThan => {
-            if let Ok(field_num) = field_value.parse::<f64>() {
-                if let Ok(filter_num) = filter.value.parse::<f64>() {
-                    return Ok(field_num > filter_num);
-                }
+            if let (Ok(field_num), Ok(filter_num)) =
+                (field_value.parse::<f64>(), filter.value.parse::<f64>())
+            {
+                return Ok(field_num > filter_num);
             }
             Ok(false)
         }
         FilterOperator::LessThan => {
-            if let Ok(field_num) = field_value.parse::<f64>() {
-                if let Ok(filter_num) = filter.value.parse::<f64>() {
-                    return Ok(field_num < filter_num);
-                }
+            if let (Ok(field_num), Ok(filter_num)) =
+                (field_value.parse::<f64>(), filter.value.parse::<f64>())
+            {
+                return Ok(field_num < filter_num);
             }
             Ok(false)
         }
@@ -849,10 +854,10 @@ fn calculate_relevance_scores(items: &mut [SubscriptionSearchItem], query: &str)
         }
 
         // 描述匹配
-        if let Some(desc) = &item.description {
-            if desc.to_lowercase().contains(&query_lower) {
-                score += 5.0;
-            }
+        if let Some(desc) = &item.description
+            && desc.to_lowercase().contains(&query_lower)
+        {
+            score += 5.0;
         }
 
         // 标签匹配
@@ -863,16 +868,16 @@ fn calculate_relevance_scores(items: &mut [SubscriptionSearchItem], query: &str)
         }
 
         // 国家和服务商匹配
-        if let Some(country) = &item.country {
-            if country.to_lowercase().contains(&query_lower) {
-                score += 2.0;
-            }
+        if let Some(country) = &item.country
+            && country.to_lowercase().contains(&query_lower)
+        {
+            score += 2.0;
         }
 
-        if let Some(provider) = &item.provider {
-            if provider.to_lowercase().contains(&query_lower) {
-                score += 2.0;
-            }
+        if let Some(provider) = &item.provider
+            && provider.to_lowercase().contains(&query_lower)
+        {
+            score += 2.0;
         }
 
         // 词语匹配
@@ -951,10 +956,10 @@ fn add_highlights(items: &mut Vec<&mut SubscriptionSearchItem>, query: &str) {
         }
 
         // 高亮描述
-        if let Some(desc) = &item.description {
-            if desc.to_lowercase().contains(&query_lower) {
-                highlights.insert("description".to_string(), vec![query.to_string()]);
-            }
+        if let Some(desc) = &item.description
+            && desc.to_lowercase().contains(&query_lower)
+        {
+            highlights.insert("description".to_string(), vec![query.to_string()]);
         }
 
         // 高亮标签

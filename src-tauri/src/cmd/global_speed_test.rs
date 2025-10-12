@@ -1,5 +1,13 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::map_entry,
+    clippy::manual_map
+)]
 // TODO: 清理临时豁免，逐步优化代码。
 use crate::{config::Config, ipc::IpcManager, utils::dirs};
 use anyhow::Result;
@@ -107,7 +115,7 @@ pub async fn start_global_speed_test(
     log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
 
     // 🔧 修复：针对1000+节点的大批量测速优化配置
-    let config = config.unwrap_or_else(|| SpeedTestConfig {
+    let config = config.unwrap_or(SpeedTestConfig {
         batch_size: 1,                 // 🔧 严格单节点处理，避免任何并发
         node_timeout_seconds: 3,       // 🔧 减少单节点超时，提高效率
         batch_timeout_seconds: 10,     // 🔧 批次超时大幅减少
@@ -270,7 +278,7 @@ pub async fn start_global_speed_test(
 
     // 第三步：批量测试所有节点
     let batch_size = config.batch_size;
-    let total_batches = (total_nodes + batch_size - 1) / batch_size;
+    let total_batches = total_nodes.div_ceil(batch_size);
     let mut successful_tests = 0;
     let mut failed_tests = 0;
 
@@ -599,7 +607,7 @@ fn parse_profile_nodes(
                                 .iter()
                                 .find_map(|&k| {
                                     proxy_map
-                                        .get(&serde_yaml_ng::Value::String(k.to_string()))
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
                                         .and_then(|v| v.as_str())
                                 })
                                 .unwrap_or("unknown");
@@ -609,7 +617,7 @@ fn parse_profile_nodes(
                                 "direct" | "reject" | "dns" | "block"
                             ) {
                                 log::debug!(target: "app", "⏭️ 跳过系统节点: {} (类型: {})", 
-                                          proxy_map.get(&serde_yaml_ng::Value::String("name".to_string()))
+                            proxy_map.get(serde_yaml_ng::Value::String("name".to_string()))
                                           .and_then(|v| v.as_str()).unwrap_or("unknown"), node_type);
                                 continue;
                             }
@@ -619,7 +627,7 @@ fn parse_profile_nodes(
                                 .iter()
                                 .find_map(|&k| {
                                     proxy_map
-                                        .get(&serde_yaml_ng::Value::String(k.to_string()))
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
                                         .and_then(|v| v.as_str())
                                 })
                                 .unwrap_or(&default_name);
@@ -629,7 +637,7 @@ fn parse_profile_nodes(
                                     .iter()
                                     .find_map(|&k| {
                                         proxy_map
-                                            .get(&serde_yaml_ng::Value::String(k.to_string()))
+                                            .get(serde_yaml_ng::Value::String(k.to_string()))
                                             .and_then(|v| v.as_str())
                                     })
                                     .unwrap_or("unknown");
@@ -638,7 +646,7 @@ fn parse_profile_nodes(
                                 .iter()
                                 .find_map(|&k| {
                                     proxy_map
-                                        .get(&serde_yaml_ng::Value::String(k.to_string()))
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
                                         .and_then(|v| v.as_u64())
                                 })
                                 .unwrap_or(0) as u16;
@@ -1170,11 +1178,11 @@ fn find_proxy_group_for_node(proxies: &serde_json::Value, node_name: &str) -> Re
         for (group_name, group_info) in proxies_obj {
             if let Some(all_nodes) = group_info.get("all").and_then(|v| v.as_array()) {
                 for node in all_nodes {
-                    if let Some(name) = node.as_str() {
-                        if name == node_name {
-                            log::debug!(target: "app", "🔍 节点 '{}' 属于组 '{}'", node_name, group_name);
-                            return Ok(group_name.clone());
-                        }
+                    if let Some(name) = node.as_str()
+                        && name == node_name
+                    {
+                        log::debug!(target: "app", "🔍 节点 '{}' 属于组 '{}'", node_name, group_name);
+                        return Ok(group_name.clone());
                     }
                 }
             }
@@ -1188,11 +1196,11 @@ fn find_proxy_group_for_node(proxies: &serde_json::Value, node_name: &str) -> Re
 
 /// 获取指定组当前选中的代理
 fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -> Result<String> {
-    if let Some(group_info) = proxies.as_object().and_then(|obj| obj.get(group_name)) {
-        if let Some(now) = group_info.get("now").and_then(|v| v.as_str()) {
-            log::debug!(target: "app", "📝 组 '{}' 当前选中: '{}'", group_name, now);
-            return Ok(now.to_string());
-        }
+    if let Some(group_info) = proxies.as_object().and_then(|obj| obj.get(group_name))
+        && let Some(now) = group_info.get("now").and_then(|v| v.as_str())
+    {
+        log::debug!(target: "app", "📝 组 '{}' 当前选中: '{}'", group_name, now);
+        return Ok(now.to_string());
     }
 
     log::warn!(target: "app", "⚠️ 无法获取组 '{}' 的当前选中节点，使用DIRECT作为备用", group_name);
@@ -1213,16 +1221,16 @@ async fn cleanup_stale_connections() -> Result<()> {
                     .iter()
                     .filter(|conn| {
                         // 检查连接是否可能是僵死的
-                        if let Some(metadata) = conn.get("metadata") {
-                            if let Some(host) = metadata.get("host").and_then(|h| h.as_str()) {
-                                // 如果是测试相关的连接且处于异常状态
-                                return host.contains("cloudflare.com")
-                                    || host.contains("cp.cloudflare.com")
-                                    || metadata
-                                        .get("process")
-                                        .and_then(|p| p.as_str())
-                                        .map_or(false, |p| p.contains("liebesu-clash"));
-                            }
+                        if let Some(metadata) = conn.get("metadata")
+                            && let Some(host) = metadata.get("host").and_then(|h| h.as_str())
+                        {
+                            // 如果是测试相关的连接且处于异常状态
+                            return host.contains("cloudflare.com")
+                                || host.contains("cp.cloudflare.com")
+                                || metadata
+                                    .get("process")
+                                    .and_then(|p| p.as_str())
+                                    .is_some_and(|p| p.contains("liebesu-clash"));
                         }
                         false
                     })

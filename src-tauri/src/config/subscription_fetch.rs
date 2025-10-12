@@ -1,6 +1,9 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::derivable_impls)]
+#![allow(
+    clippy::derivable_impls,
+    clippy::enum_variant_names,
+    clippy::too_many_lines
+)]
 // TODO: 清理配置模块 lint 并恢复默认实现。
 use serde::{Deserialize, Serialize};
 

@@ -1,5 +1,12 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
+#![allow(
+    clippy::unused_async,
+    clippy::collapsible_if,
+    clippy::manual_pattern_char_comparison,
+    clippy::useless_format,
+    clippy::useless_asref,
+    clippy::unwrap_used
+)]
 // TODO: 清理临时注释并逐项处理 Clippy 指出的问题。
 use super::CmdResult;
 use crate::{

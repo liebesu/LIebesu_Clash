@@ -1,5 +1,13 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
+#![allow(
+    clippy::unused_async,
+    clippy::manual_pattern_char_comparison,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::collapsible_if,
+    clippy::option_if_let_else,
+    clippy::future_not_send
+)]
 // TODO: 本文件含多个 IPC 命令及预览结构，后续逐步优化并去除临时豁免。
 use crate::config::{
     Config,

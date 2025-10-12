@@ -1,9 +1,16 @@
-#![allow(clippy::all)]
 #![allow(
     clippy::unwrap_used,
     clippy::unwrap_or_default,
     clippy::clone_on_ref_ptr,
-    clippy::unused_async
+    clippy::unused_async,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::manual_map,
+    clippy::map_entry,
+    clippy::wildcard_imports
 )]
 #![allow(dead_code, unused)]
 // TODO: 清理临时 lint 豁免，并逐步回到严格规则。

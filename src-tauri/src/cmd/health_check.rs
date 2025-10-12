@@ -1,6 +1,14 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::clone_on_ref_ptr, clippy::unwrap_used, clippy::unused_async)]
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::unused_async,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value
+)]
 // TODO: 后续分阶段处理健康检查模块的 Clippy 提示。
 use super::CmdResult;
 use crate::{
@@ -195,12 +203,11 @@ pub async fn get_subscription_details(uid: String) -> CmdResult<SubscriptionHeal
     let mut result = check_single_subscription(&profile).await;
 
     // 如果订阅可访问，尝试解析节点数量
-    if matches!(result.status, HealthStatus::Healthy | HealthStatus::Warning) {
-        if let Some(file_path) = &profile.file {
-            if let Ok(content) = tokio::fs::read_to_string(file_path).await {
-                result.node_count = Some(count_nodes_in_config(&content));
-            }
-        }
+    if matches!(result.status, HealthStatus::Healthy | HealthStatus::Warning)
+        && let Some(file_path) = &profile.file
+        && let Ok(content) = tokio::fs::read_to_string(file_path).await
+    {
+        result.node_count = Some(count_nodes_in_config(&content));
     }
 
     Ok(result)
@@ -337,12 +344,11 @@ async fn check_remote_subscription(url: &str) -> Result<SubscriptionResponse, St
 /// 统计配置文件中的节点数量
 fn count_nodes_in_config(content: &str) -> usize {
     // 尝试解析YAML格式
-    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content) {
-        if let Some(proxies) = yaml_value.get("proxies") {
-            if let Some(proxies_array) = proxies.as_sequence() {
-                return proxies_array.len();
-            }
-        }
+    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content)
+        && let Some(proxies) = yaml_value.get("proxies")
+        && let Some(proxies_array) = proxies.as_sequence()
+    {
+        return proxies_array.len();
     }
 
     // 如果YAML解析失败，尝试简单的文本统计

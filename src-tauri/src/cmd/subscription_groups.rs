@@ -1,6 +1,14 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::collapsible_if, clippy::unwrap_or_default)]
+#![allow(
+    clippy::collapsible_if,
+    clippy::unwrap_or_default,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::large_enum_variant,
+    clippy::unused_async,
+    clippy::map_entry,
+    clippy::enum_variant_names
+)]
 // TODO: 后续专门清理订阅分组模块的 lint 警告。
 use super::CmdResult;
 use crate::{config::Config, logging, utils::logging::Type};

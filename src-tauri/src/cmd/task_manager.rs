@@ -1,5 +1,12 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::manual_strip
+)]
 // TODO: 下一阶段逐条处理任务管理模块的 lint 警告。
 use super::CmdResult;
 use crate::{logging, utils::logging::Type};

@@ -1,6 +1,12 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::unwrap_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::too_many_arguments,
+    clippy::unused_async,
+    clippy::enum_variant_names,
+    clippy::too_many_lines,
+    clippy::needless_pass_by_value
+)]
 // TODO: 后续处理订阅批量管理模块 lint，当前先豁免。
 use crate::config::Config;
 use anyhow::{Result, anyhow};
@@ -78,7 +84,7 @@ pub async fn get_subscription_cleanup_preview(
             let url = profile.url.clone();
 
             // 获取最后更新时间
-            let last_updated = profile.updated.clone();
+            let last_updated = profile.updated;
             let last_update_time = if let Some(timestamp_str) = last_updated {
                 let timestamp = timestamp_str as i64;
                 DateTime::from_timestamp(timestamp, 0).map(|dt| dt.with_timezone(&Local))
@@ -94,7 +100,7 @@ pub async fn get_subscription_cleanup_preview(
 
             // 检查是否为收藏
             let is_favorite =
-                profile.selected.is_some() && profile.selected.as_ref().unwrap().len() > 0;
+                profile.selected.is_some() && !profile.selected.as_ref().unwrap().is_empty();
 
             // 获取分组信息（这里简化处理）
             let groups = vec![]; // TODO: 实际从分组管理中获取

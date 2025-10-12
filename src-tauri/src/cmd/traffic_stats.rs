@@ -1,6 +1,15 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::unwrap_used, clippy::unused_async)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::unused_async,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::new_ret_no_self,
+    clippy::needless_pass_by_value,
+    clippy::manual_map
+)]
 // TODO: 保留提醒，待后续清理流量统计模块 lint。
 use super::CmdResult;
 use crate::{config::Config, logging, utils::logging::Type};
@@ -761,74 +770,73 @@ async fn check_and_generate_alerts(
     storage: &mut TrafficStatsStorage,
     subscription_uid: &str,
 ) -> Result<()> {
-    if let Some(stats) = storage.stats.get(subscription_uid) {
-        if let Some(quota_info) = &stats.quota_info {
-            // 检查配额使用警告
-            if let Some(total_quota) = quota_info.total_quota_bytes {
-                let usage_ratio = stats.total_bytes as f64 / total_quota as f64;
+    if let Some(stats) = storage.stats.get(subscription_uid)
+        && let Some(quota_info) = &stats.quota_info
+    {
+        // 检查配额使用警告
+        if let Some(total_quota) = quota_info.total_quota_bytes {
+            let usage_ratio = stats.total_bytes as f64 / total_quota as f64;
 
-                if usage_ratio >= quota_info.warning_threshold && !quota_info.is_unlimited {
-                    let alert = TrafficAlert {
-                        alert_id: uuid::Uuid::new_v4().to_string(),
-                        subscription_uid: subscription_uid.to_string(),
-                        subscription_name: stats.subscription_name.clone(),
-                        alert_type: AlertType::QuotaUsage,
-                        message: format!("配额使用已达到 {:.1}%", usage_ratio * 100.0),
-                        threshold_value: quota_info.warning_threshold,
-                        current_value: usage_ratio,
-                        created_at: chrono::Utc::now().timestamp(),
-                        is_read: false,
-                        severity: if usage_ratio >= 0.9 {
-                            AlertSeverity::Critical
-                        } else if usage_ratio >= 0.8 {
-                            AlertSeverity::Warning
-                        } else {
-                            AlertSeverity::Info
-                        },
-                    };
+            if usage_ratio >= quota_info.warning_threshold && !quota_info.is_unlimited {
+                let alert = TrafficAlert {
+                    alert_id: uuid::Uuid::new_v4().to_string(),
+                    subscription_uid: subscription_uid.to_string(),
+                    subscription_name: stats.subscription_name.clone(),
+                    alert_type: AlertType::QuotaUsage,
+                    message: format!("配额使用已达到 {:.1}%", usage_ratio * 100.0),
+                    threshold_value: quota_info.warning_threshold,
+                    current_value: usage_ratio,
+                    created_at: chrono::Utc::now().timestamp(),
+                    is_read: false,
+                    severity: if usage_ratio >= 0.9 {
+                        AlertSeverity::Critical
+                    } else if usage_ratio >= 0.8 {
+                        AlertSeverity::Warning
+                    } else {
+                        AlertSeverity::Info
+                    },
+                };
 
-                    // 避免重复警告
-                    if !storage.alerts.iter().any(|a| {
-                        a.subscription_uid == subscription_uid
-                            && matches!(a.alert_type, AlertType::QuotaUsage)
-                            && !a.is_read
-                    }) {
-                        storage.alerts.push(alert);
-                    }
+                // 避免重复警告
+                if !storage.alerts.iter().any(|a| {
+                    a.subscription_uid == subscription_uid
+                        && matches!(a.alert_type, AlertType::QuotaUsage)
+                        && !a.is_read
+                }) {
+                    storage.alerts.push(alert);
                 }
             }
+        }
 
-            // 检查到期警告
-            if let Some(expire_date) = quota_info.expire_date {
-                let days_until_expire =
-                    (expire_date - chrono::Utc::now().timestamp()) / (24 * 3600);
+        // 检查到期警告
+        if let Some(expire_date) = quota_info.expire_date {
+            let days_until_expire = (expire_date - chrono::Utc::now().timestamp()) / (24 * 3600);
 
-                if days_until_expire <= 7 && days_until_expire > 0 {
-                    let alert = TrafficAlert {
-                        alert_id: uuid::Uuid::new_v4().to_string(),
-                        subscription_uid: subscription_uid.to_string(),
-                        subscription_name: stats.subscription_name.clone(),
-                        alert_type: AlertType::ExpirationDate,
-                        message: format!("订阅将在 {} 天后到期", days_until_expire),
-                        threshold_value: 7.0,
-                        current_value: days_until_expire as f64,
-                        created_at: chrono::Utc::now().timestamp(),
-                        is_read: false,
-                        severity: if days_until_expire <= 3 {
-                            AlertSeverity::Critical
-                        } else {
-                            AlertSeverity::Warning
-                        },
-                    };
+            if days_until_expire <= 7 && days_until_expire > 0 {
+                let alert = TrafficAlert {
+                    alert_id: uuid::Uuid::new_v4().to_string(),
+                    subscription_uid: subscription_uid.to_string(),
+                    subscription_name: stats.subscription_name.clone(),
+                    alert_type: AlertType::ExpirationDate,
+                    message: format!("订阅将在 {} 天后到期", days_until_expire),
+                    threshold_value: 7.0,
+                    current_value: days_until_expire as f64,
+                    created_at: chrono::Utc::now().timestamp(),
+                    is_read: false,
+                    severity: if days_until_expire <= 3 {
+                        AlertSeverity::Critical
+                    } else {
+                        AlertSeverity::Warning
+                    },
+                };
 
-                    // 避免重复警告
-                    if !storage.alerts.iter().any(|a| {
-                        a.subscription_uid == subscription_uid
-                            && matches!(a.alert_type, AlertType::ExpirationDate)
-                            && !a.is_read
-                    }) {
-                        storage.alerts.push(alert);
-                    }
+                // 避免重复警告
+                if !storage.alerts.iter().any(|a| {
+                    a.subscription_uid == subscription_uid
+                        && matches!(a.alert_type, AlertType::ExpirationDate)
+                        && !a.is_read
+                }) {
+                    storage.alerts.push(alert);
                 }
             }
         }
@@ -849,8 +857,7 @@ async fn calculate_traffic_prediction(stats: &SubscriptionTrafficStats) -> Traff
         .collect::<Vec<_>>();
 
     let predicted_monthly_usage = if recent_usage.len() >= 2 {
-        let avg_usage = recent_usage.iter().sum::<u64>() / recent_usage.len() as u64;
-        avg_usage
+        recent_usage.iter().sum::<u64>() / recent_usage.len() as u64
     } else {
         stats.total_bytes / std::cmp::max(1, stats.monthly_usage.len() as u64)
     };

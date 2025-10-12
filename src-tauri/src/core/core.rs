@@ -1,6 +1,16 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::unwrap_used, clippy::clone_on_ref_ptr, clippy::unused_async)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::clone_on_ref_ptr,
+    clippy::unused_async,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::single_match_else,
+    clippy::map_entry
+)]
 // TODO: 后续阶段逐条处理 CoreManager 相关的 Clippy 警告。
 use crate::{
     config::*,

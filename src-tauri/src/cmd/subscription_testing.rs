@@ -1,6 +1,14 @@
-#![allow(clippy::all)]
 #![allow(dead_code, unused)]
-#![allow(clippy::clone_on_ref_ptr, clippy::unwrap_used, clippy::unused_async)]
+#![allow(
+    clippy::clone_on_ref_ptr,
+    clippy::unwrap_used,
+    clippy::unused_async,
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value
+)]
 // TODO: 后续优化订阅测试模块，移除 lint 豁免。
 use super::CmdResult;
 use crate::{
@@ -29,11 +37,12 @@ pub enum TestType {
 /// 测试结果状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TestResultStatus {
-    Pass,    // 通过
-    Fail,    // 失败
-    Warning, // 警告
-    Timeout, // 超时
-    Error,   // 错误
+    Pass,     // 通过
+    Fail,     // 失败
+    Warning,  // 警告
+    Timeout,  // 超时
+    Error,    // 错误
+    Checking, // 检查中
 }
 
 /// 单个节点测试结果
@@ -468,43 +477,42 @@ fn parse_clash_config(content: &str) -> CmdResult<Vec<NodeInfo>> {
     let mut nodes = Vec::new();
 
     // 尝试解析YAML
-    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content) {
-        if let Some(proxies) = yaml_value.get("proxies") {
-            if let Some(proxies_array) = proxies.as_sequence() {
-                for proxy in proxies_array {
-                    if let Some(proxy_map) = proxy.as_mapping() {
-                        let node = NodeInfo {
-                            name: proxy_map
-                                .get("name")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("Unknown")
-                                .to_string(),
-                            node_type: proxy_map
-                                .get("type")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("unknown")
-                                .to_string(),
-                            server: proxy_map
-                                .get("server")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("127.0.0.1")
-                                .to_string(),
-                            port: proxy_map
-                                .get("port")
-                                .and_then(|v| v.as_u64())
-                                .unwrap_or(8080) as u16,
-                            cipher: proxy_map
-                                .get("cipher")
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_string()),
-                            password: proxy_map
-                                .get("password")
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_string()),
-                        };
-                        nodes.push(node);
-                    }
-                }
+    if let Ok(yaml_value) = serde_yaml_ng::from_str::<serde_yaml_ng::Value>(content)
+        && let Some(proxies) = yaml_value.get("proxies")
+        && let Some(proxies_array) = proxies.as_sequence()
+    {
+        for proxy in proxies_array {
+            if let Some(proxy_map) = proxy.as_mapping() {
+                let node = NodeInfo {
+                    name: proxy_map
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown")
+                        .to_string(),
+                    node_type: proxy_map
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string(),
+                    server: proxy_map
+                        .get("server")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("127.0.0.1")
+                        .to_string(),
+                    port: proxy_map
+                        .get("port")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(8080) as u16,
+                    cipher: proxy_map
+                        .get("cipher")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    password: proxy_map
+                        .get("password")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                };
+                nodes.push(node);
             }
         }
     }
@@ -593,21 +601,20 @@ async fn test_single_node(
                 }
                 TestType::Speed => {
                     // 执行速度测试
-                    if !config.skip_speed_test {
-                        if let Ok((download, upload)) = test_node_speed(&node, config).await {
-                            result.download_speed_mbps = Some(download);
-                            result.upload_speed_mbps = Some(upload);
-                        }
+                    if !config.skip_speed_test
+                        && let Ok((download, upload)) = test_node_speed(&node, config).await
+                    {
+                        result.download_speed_mbps = Some(download);
+                        result.upload_speed_mbps = Some(upload);
                     }
                 }
                 TestType::Stability => {
                     // 执行稳定性测试
-                    if !config.skip_stability_test {
-                        if let Ok((stability, loss_rate)) = test_node_stability(&node, config).await
-                        {
-                            result.stability_score = Some(stability);
-                            result.packet_loss_rate = Some(loss_rate);
-                        }
+                    if !config.skip_stability_test
+                        && let Ok((stability, loss_rate)) = test_node_stability(&node, config).await
+                    {
+                        result.stability_score = Some(stability);
+                        result.packet_loss_rate = Some(loss_rate);
                     }
                 }
                 TestType::Comprehensive => {
@@ -616,19 +623,18 @@ async fn test_single_node(
                         result.latency_ms = Some(avg_latency);
                     }
 
-                    if !config.skip_speed_test {
-                        if let Ok((download, upload)) = test_node_speed(&node, config).await {
-                            result.download_speed_mbps = Some(download);
-                            result.upload_speed_mbps = Some(upload);
-                        }
+                    if !config.skip_speed_test
+                        && let Ok((download, upload)) = test_node_speed(&node, config).await
+                    {
+                        result.download_speed_mbps = Some(download);
+                        result.upload_speed_mbps = Some(upload);
                     }
 
-                    if !config.skip_stability_test {
-                        if let Ok((stability, loss_rate)) = test_node_stability(&node, config).await
-                        {
-                            result.stability_score = Some(stability);
-                            result.packet_loss_rate = Some(loss_rate);
-                        }
+                    if !config.skip_stability_test
+                        && let Ok((stability, loss_rate)) = test_node_stability(&node, config).await
+                    {
+                        result.stability_score = Some(stability);
+                        result.packet_loss_rate = Some(loss_rate);
                     }
                 }
             }
@@ -668,9 +674,8 @@ async fn test_node_latency(node: &NodeInfo, config: &TestConfig) -> Result<u32, 
     let mut latencies = Vec::new();
 
     for _ in 0..config.latency_test_count {
-        match test_node_connectivity(node, config).await {
-            Ok(latency) => latencies.push(latency),
-            Err(_) => {} // 忽略单次失败
+        if let Ok(latency) = test_node_connectivity(node, config).await {
+            latencies.push(latency);
         }
 
         // 测试间隔
