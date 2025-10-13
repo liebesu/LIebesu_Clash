@@ -2,3 +2,4 @@
 // https://tauri.app/develop/state-management/#do-you-need-arc
 
 pub mod proxy;
+pub mod subscription_sync;

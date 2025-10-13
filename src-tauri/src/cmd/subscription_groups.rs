@@ -22,6 +22,21 @@ use tokio::sync::RwLock;
 static SUBSCRIPTION_GROUPS: Lazy<Arc<RwLock<GroupStorage>>> =
     Lazy::new(|| Arc::new(RwLock::new(GroupStorage::new())));
 
+pub async fn get_favorite_subscription_uids() -> Vec<String> {
+    let storage = SUBSCRIPTION_GROUPS.read().await;
+    let mut set = HashSet::new();
+
+    for group in storage.groups.values() {
+        if group.is_favorite || group.name == "收藏夹" {
+            for uid in &group.subscription_uids {
+                set.insert(uid.clone());
+            }
+        }
+    }
+
+    set.into_iter().collect()
+}
+
 /// 分组类型枚举
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum GroupType {
