@@ -25,11 +25,11 @@ pub async fn resolve_mixed_port() -> Option<u16> {
         let verge_ref = verge.latest_ref();
         verge_ref.verge_mixed_port
     };
-    
+
     if let Some(port) = verge_port {
         return Some(port);
     }
-    
+
     let clash_port = {
         let clash = Config::clash().await;
         let clash_ref = clash.latest_ref();

@@ -490,7 +490,7 @@ impl Timer {
         };
 
         let favorite_uids = get_favorite_subscription_uids().await;
-        
+
         let (immediate, remote_profiles) = {
             let mut store = SUBSCRIPTION_SYNC_STORE.inner.write();
             let preferences = store.preferences();
@@ -540,7 +540,7 @@ impl Timer {
 
             store.reset_queue(immediate.clone(), deferred);
             store.increment_startup_active(immediate.len());
-            
+
             (immediate, remote_profiles)
         };
 

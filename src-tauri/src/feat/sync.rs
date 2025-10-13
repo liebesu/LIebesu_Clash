@@ -2,8 +2,8 @@ use crate::cmd::subscription_groups::get_favorite_subscription_uids;
 use crate::config::{Config, PrfItem, PrfOption};
 use crate::core::{CoreManager, handle};
 use crate::state::subscription_sync::{SUBSCRIPTION_SYNC_STORE, SubscriptionSyncState, SyncPhase};
-use crate::{logging, utils::logging::Type};
 use crate::utils::network::{resolve_mixed_port, wait_for_port_ready};
+use crate::{logging, utils::logging::Type};
 use anyhow::{Context, Result, anyhow};
 use tokio::time::{Duration, sleep};
 
