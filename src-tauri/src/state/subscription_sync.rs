@@ -141,12 +141,12 @@ impl SubscriptionSyncManager {
         self.queue.is_empty()
     }
 
-    pub async fn acquire_permit(&self) -> OwnedSemaphorePermit {
+    pub async fn acquire_permit(&self) -> anyhow::Result<OwnedSemaphorePermit> {
         self.semaphore
             .clone()
             .acquire_owned()
             .await
-            .expect("subscription sync semaphore closed")
+            .map_err(|_| anyhow::anyhow!("subscription sync semaphore closed"))
     }
 
     pub fn mark_success(&mut self, uid: &str) {

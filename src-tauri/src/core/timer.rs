@@ -551,7 +551,15 @@ impl Timer {
                     let manager = SUBSCRIPTION_SYNC_STORE.inner.read();
                     manager.semaphore().clone()
                 };
-                let _permit = permit.acquire_owned().await.expect("semaphore closed");
+                let Ok(_permit) = permit.acquire_owned().await else {
+                    logging!(
+                        error,
+                        Type::Timer,
+                        "获取信号量失败，跳过启动同步: {}",
+                        uid_clone
+                    );
+                    return;
+                };
                 if let Err(err) =
                     feat::sync::schedule_subscription_sync(uid_clone.clone(), SyncPhase::Startup)
                         .await
@@ -606,7 +614,15 @@ impl Timer {
                             let manager = SUBSCRIPTION_SYNC_STORE.inner.read();
                             manager.semaphore().clone()
                         };
-                        let _permit = permit.acquire_owned().await.expect("semaphore closed");
+                        let Ok(_permit) = permit.acquire_owned().await else {
+                            logging!(
+                                error,
+                                Type::Timer,
+                                "获取信号量失败，跳过后台同步: {}",
+                                uid_clone
+                            );
+                            return;
+                        };
                         if let Err(err) = feat::sync::schedule_subscription_sync(
                             uid_clone.clone(),
                             SyncPhase::Background,

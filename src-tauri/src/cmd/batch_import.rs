@@ -357,19 +357,21 @@ fn parse_subscription_urls(content: &str) -> CmdResult<Vec<String>> {
     let mut urls = Vec::new();
 
     // 尝试解析JSON格式（仅当解析出非空结果时返回）
-    if let Ok(json_urls) = parse_json_urls(content) {
-        if !json_urls.is_empty() {
+    match parse_json_urls(content) {
+        Ok(json_urls) if !json_urls.is_empty() => {
             urls.extend(json_urls);
             return Ok(urls);
         }
+        _ => {}
     }
 
     // 尝试解析YAML格式（仅当解析出非空结果时返回）
-    if let Ok(yaml_urls) = parse_yaml_urls(content) {
-        if !yaml_urls.is_empty() {
+    match parse_yaml_urls(content) {
+        Ok(yaml_urls) if !yaml_urls.is_empty() => {
             urls.extend(yaml_urls);
             return Ok(urls);
         }
+        _ => {}
     }
 
     // 按行解析纯文本
@@ -459,14 +461,17 @@ fn parse_yaml_urls(content: &str) -> Result<Vec<String>, serde_yaml_ng::Error> {
                 urls.push(decoded);
             } else if let Some(mapping) = item.as_mapping() {
                 for (key, val) in mapping {
-                    if let (Some(key_str), Some(val_str)) = (key.as_str(), val.as_str()) {
-                        if key_str.to_lowercase().contains("url")
-                            || key_str.to_lowercase().contains("link")
-                        {
-                            let decoded =
-                                percent_decode_str(val_str).decode_utf8_lossy().to_string();
-                            urls.push(decoded);
-                        }
+                    let Some(key_str) = key.as_str() else {
+                        continue;
+                    };
+                    let Some(val_str) = val.as_str() else {
+                        continue;
+                    };
+                    let key_lower = key_str.to_lowercase();
+
+                    if key_lower.contains("url") || key_lower.contains("link") {
+                        let decoded = percent_decode_str(val_str).decode_utf8_lossy().to_string();
+                        urls.push(decoded);
                     }
                 }
             }
@@ -482,15 +487,19 @@ fn extract_url_from_json_object(obj: &serde_json::Value) -> Option<String> {
         // 尝试常见的URL字段名
         let url_fields = ["url", "link", "subscription", "sub", "href"];
         for field in &url_fields {
-            if let Some(url_value) = obj_map.get(*field) {
-                if let Some(url_str) = url_value.as_str() {
-                    let decoded = percent_decode_str(url_str).decode_utf8_lossy().to_string();
-                    if decoded.starts_with("http://") || decoded.starts_with("https://") {
-                        return Some(decoded);
-                    }
-                    return Some(url_str.to_string());
-                }
+            let Some(url_value) = obj_map.get(*field) else {
+                continue;
+            };
+            let Some(url_str) = url_value.as_str() else {
+                continue;
+            };
+            let decoded = percent_decode_str(url_str).decode_utf8_lossy().to_string();
+
+            if decoded.starts_with("http://") || decoded.starts_with("https://") {
+                return Some(decoded);
             }
+
+            return Some(url_str.to_string());
         }
     }
     None
@@ -499,8 +508,7 @@ fn extract_url_from_json_object(obj: &serde_json::Value) -> Option<String> {
 /// 从单行文本中提取URL
 fn extract_url_from_line(line: &str) -> Option<String> {
     // 直接是URL的情况（允许前缀有@这类标记）
-    let trimmed_leading =
-        line.trim_start_matches(|c: char| c == '@' || c == '-' || c == '*' || c == '•');
+    let trimmed_leading = line.trim_start_matches(['@', '-', '*', '•']);
     if trimmed_leading.starts_with("http://") || trimmed_leading.starts_with("https://") {
         return Some(trimmed_leading.to_string());
     }
@@ -598,7 +606,7 @@ async fn check_duplicates(urls: Vec<String>) -> CmdResult<(Vec<String>, Vec<Impo
         .as_ref()
         .unwrap_or(&empty_vec)
         .iter()
-        .filter_map(|item| item.url.as_ref().map(|url| url.clone()))
+        .filter_map(|item| item.url.clone())
         .collect();
 
     let mut new_urls = Vec::new();
@@ -963,10 +971,10 @@ async fn export_as_text(subscription_uids: Vec<String>) -> Result<String, String
 
     for uid in subscription_uids {
         // 从实际配置读取订阅URL
-        if let Some(item) = items.iter().find(|item| item.uid.as_ref() == Some(&uid)) {
-            if let Some(url) = &item.url {
-                lines.push(format!("{}", url));
-            }
+        if let Some(item) = items.iter().find(|item| item.uid.as_ref() == Some(&uid))
+            && let Some(url) = &item.url
+        {
+            lines.push(url.clone());
         }
     }
 
