@@ -20,7 +20,6 @@ import {
   Tooltip,
   Card,
   CardContent,
-  Grid,
   Divider,
 } from "@mui/material";
 import {
@@ -218,7 +217,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听取消事件
-      const cancelUnlisten = await listen("global-speed-test-cancelled", () => {
+      const _cancelUnlisten = await listen("global-speed-test-cancelled", () => {
         setTesting(false);
         setCancelling(false);
         setProgress(null);
@@ -355,17 +354,17 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     }
   };
 
-  const formatSpeed = (speed?: number) => {
+  const _formatSpeed = (speed?: number) => {
     if (!speed) return "N/A";
     return `${speed.toFixed(1)} Mbps`;
   };
 
-  const formatLatency = (latency?: number) => {
+  const _formatLatency = (latency?: number) => {
     if (!latency) return "N/A";
     return `${latency}ms`;
   };
 
-  const getStatusColor = (status: string) => {
+  const _getStatusColor = (status: string) => {
     switch (status) {
       case "success":
         return "success";
@@ -386,7 +385,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     return "#f44336"; // 红色 - 差
   };
 
-  const formatBytes = (bytes?: number) => {
+  const _formatBytes = (bytes?: number) => {
     if (!bytes) return "N/A";
     const units = ["B", "KB", "MB", "GB", "TB"];
     let size = bytes;
@@ -400,7 +399,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   };
 
-  const formatDate = (timestamp?: number) => {
+  const _formatDate = (timestamp?: number) => {
     if (!timestamp) return "N/A";
     return new Date(timestamp * 1000).toLocaleDateString("zh-CN", {
       year: "numeric",
@@ -409,7 +408,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     });
   };
 
-  const getSpeedColor = (speed?: number) => {
+  const _getSpeedColor = (speed?: number) => {
     if (!speed) return "#666";
     if (speed >= 100) return "#4caf50"; // 绿色 - 最优 (100+ Mbps)
     if (speed >= 50) return "#8bc34a"; // 浅绿色 - 优秀 (50+ Mbps)

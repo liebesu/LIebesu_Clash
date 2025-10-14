@@ -104,7 +104,7 @@ export const LayoutTraffic = () => {
         {trafficGraph && pageVisible && (
           <div
             style={{ width: "100%", height: 60, marginBottom: 6 }}
-            onClick={trafficRef.current?.toggleStyle}
+            onClick={() => trafficRef.current?.toggleStyle()}
           >
             <TrafficGraph ref={trafficRef} />
           </div>
@@ -161,7 +161,9 @@ export const LayoutTraffic = () => {
               }}
               color={isDebug ? "success.main" : "disabled"}
               onClick={async () => {
-                isDebug && (await gc());
+                if (isDebug) {
+                  await gc();
+                }
               }}
             >
               <MemoryRounded {...iconStyle} />

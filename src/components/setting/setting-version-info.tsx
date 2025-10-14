@@ -11,7 +11,6 @@ import {
 import {
   InfoOutlined,
   DeveloperModeOutlined,
-  MemoryOutlined,
   NetworkCheckOutlined,
 } from "@mui/icons-material";
 import { useClashInfo } from "@/hooks/use-clash";

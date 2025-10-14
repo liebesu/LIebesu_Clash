@@ -10,7 +10,6 @@ import {
   FormControlLabel,
   List,
   ListItem,
-  ListItemText,
   ListItemIcon,
   Typography,
   Box,

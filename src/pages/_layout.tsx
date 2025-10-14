@@ -378,7 +378,7 @@ const Layout = () => {
 
     let hasEventTriggered = false;
 
-    const setupEventListener = async () => {
+    const _setupEventListener = async () => {
       try {
         console.log("[Layout] 开始监听启动完成事件");
       } catch (err) {

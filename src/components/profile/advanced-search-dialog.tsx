@@ -25,19 +25,15 @@ import {
   Tabs,
   Paper,
   LinearProgress,
-  Alert,
   Autocomplete,
   Checkbox,
   FormControlLabel,
   Divider,
   Collapse,
-  Badge,
-  Tooltip,
   Avatar,
   ListItemAvatar,
   Menu,
   ListItemIcon,
-  Switch,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -49,26 +45,14 @@ import {
   History,
   Clear,
   Add,
-  Remove,
   ExpandMore,
-  ExpandLess,
-  Sort,
   ViewList,
   ViewModule,
   Star,
-  StarBorder,
   Edit,
   Delete,
   PlayArrow,
   Refresh,
-  Settings,
-  TrendingUp,
-  Public,
-  Business,
-  Speed,
-  Schedule,
-  Tag,
-  Analytics,
   MoreVert,
 } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
@@ -81,7 +65,6 @@ import {
   executeSavedSearch,
   getSearchHistory,
   clearSearchHistory,
-  getSearchSuggestions,
   getFieldValueSuggestions,
   updateSearchIndex,
   getSearchStatistics,
@@ -95,7 +78,6 @@ import {
   SubscriptionSearchItem,
   SavedSearch,
   SearchHistory,
-  SearchSuggestion,
   SearchStatistics,
 } from "@/services/cmds";
 import { showNotice } from "@/services/noticeService";
@@ -130,7 +112,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   open,
   onClose,
 }) => {
-  const { t } = useTranslation();
+  const _t = useTranslation();
 
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
@@ -173,7 +155,6 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   const [searchStats, setSearchStats] = useState<SearchStatistics | null>(null);
 
   // 建议和提示
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [fieldValueSuggestions, setFieldValueSuggestions] = useState<string[]>(
     [],
   );
@@ -447,7 +428,7 @@ const AdvancedSearchDialog: React.FC<AdvancedSearchDialogProps> = ({
   };
 
   // 高亮搜索结果
-  const highlightText = (text: string, highlights: string[]) => {
+  const _highlightText = (text: string, highlights: string[]) => {
     if (!highlights.length) return text;
 
     let highlightedText = text;

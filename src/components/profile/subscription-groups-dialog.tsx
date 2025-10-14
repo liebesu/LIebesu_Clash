@@ -12,26 +12,9 @@ import {
   Grid,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Tab,
-  Tabs,
   Paper,
   LinearProgress,
   Alert,
-  TextField,
-  Switch,
-  FormControlLabel,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Autocomplete,
   Avatar,
   Divider,
   Menu,
@@ -43,8 +26,6 @@ import {
   Add,
   Edit,
   Delete,
-  DragIndicator,
-  ExpandMore,
   Public,
   Business,
   SportsEsports,
@@ -153,19 +134,17 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
   open,
   onClose,
 }) => {
-  const { t } = useTranslation();
+  const _t = useTranslation();
 
   // 状态管理
-  const [currentTab, setCurrentTab] = useState(0);
+  const _currentTab = useState(0)[0];
   const [loading, setLoading] = useState(false);
 
   // 数据状态
   const [groups, setGroups] = useState<SubscriptionGroup[]>([]);
   const [statistics, setStatistics] = useState<GroupStatistics[]>([]);
   const [suggestions, setSuggestions] = useState<GroupSuggestion[]>([]);
-  const [editingGroup, setEditingGroup] = useState<SubscriptionGroup | null>(
-    null,
-  );
+  const _editingGroup = useState<SubscriptionGroup | null>(null)[0];
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // 菜单状态

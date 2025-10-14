@@ -12,10 +12,6 @@ import {
   Grid,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   Tab,
   Tabs,
   Paper,
@@ -37,7 +33,6 @@ import {
   MenuItem,
   ListItemIcon,
   Switch,
-  Tooltip,
 } from "@mui/material";
 import {
   Backup,
@@ -46,22 +41,13 @@ import {
   CloudDownload,
   Delete,
   GetApp,
-  Publish,
   ExpandMore,
   CheckCircle,
   Error,
-  Warning,
-  Info,
   Lock,
-  LockOpen,
   MoreVert,
   Sync,
-  SyncDisabled,
-  Schedule,
-  FolderZip,
   Storage,
-  Security,
-  Settings,
   Refresh,
   Visibility,
   VisibilityOff,
@@ -74,8 +60,6 @@ import {
   restoreBackup,
   deleteBackup,
   validateBackup,
-  exportBackup,
-  importBackup,
   setWebDAVConfig,
   getWebDAVConfig,
   syncToWebDAV,
@@ -123,7 +107,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   open,
   onClose,
 }) => {
-  const { t } = useTranslation();
+  const _t = useTranslation();
 
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
@@ -131,7 +115,6 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
 
   // 备份数据
   const [backups, setBackups] = useState<BackupInfo[]>([]);
-  const [selectedBackup, setSelectedBackup] = useState<BackupInfo | null>(null);
   const [backupDetails, setBackupDetails] = useState<BackupData | null>(null);
 
   // 创建备份状态
@@ -151,7 +134,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
   });
 
   // 恢复状态
-  const [restoreOptions, setRestoreOptions] = useState<RestoreOptions>({
+  const [_restoreOptions, _setRestoreOptions] = useState<RestoreOptions>({
     backup_id: "",
     restore_profiles: true,
     restore_settings: true,
@@ -291,7 +274,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
 
     setLoading(true);
     try {
-      const backupId = await createBackup(backupOptions);
+      const _backupId = await createBackup(backupOptions);
       showNotice("success", "备份创建成功");
       setCreateStep(0);
       loadBackups();
@@ -305,7 +288,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
 
   // 恢复备份
   const handleRestoreBackup = async (backup: BackupInfo) => {
-    if (backup.is_encrypted && !restoreOptions.password) {
+    if (backup.is_encrypted && !_restoreOptions.password) {
       showNotice("info", "加密备份需要密码");
       return;
     }
@@ -313,7 +296,7 @@ const BackupRestoreDialog: React.FC<BackupRestoreDialogProps> = ({
     setLoading(true);
     try {
       const options = {
-        ...restoreOptions,
+        ..._restoreOptions,
         backup_id: backup.backup_id,
       };
       const result = await restoreBackup(options);

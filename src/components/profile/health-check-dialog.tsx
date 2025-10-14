@@ -18,7 +18,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   Divider,
 } from "@mui/material";
 import {
@@ -54,7 +53,7 @@ const HealthCheckDialog: React.FC<HealthCheckDialogProps> = ({
   onClose,
   initialUid,
 }) => {
-  const { t } = useTranslation();
+  const _t = useTranslation();
   const [loading, setLoading] = useState(false);
   const [batchResult, setBatchResult] = useState<BatchHealthResult | null>(
     null,

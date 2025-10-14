@@ -50,7 +50,7 @@ const DuplicateCleanupDialog: React.FC<DuplicateCleanupDialogProps> = ({
           {t("Duplicate subscriptions message", { groups: groups.length })}
         </Typography>
 
-        {groups.map((group, index) => (
+        {groups.map((group, _index) => (
           <Box
             key={group.url}
             sx={{
