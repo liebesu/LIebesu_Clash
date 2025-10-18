@@ -15,6 +15,10 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   TextField,
   FormControlLabel,
   Checkbox,
@@ -29,6 +33,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Tooltip,
 } from "@mui/material";
 import {
   GetApp,
@@ -38,7 +43,10 @@ import {
   ExpandMore,
   Visibility,
   VisibilityOff,
+  FolderZip,
   Code,
+  Settings,
+  Group,
   Security,
   Public,
   Save,
@@ -64,7 +72,7 @@ const BatchExportDialog: React.FC<BatchExportDialogProps> = ({
   open,
   onClose,
 }) => {
-  const _t = useTranslation();
+  const { t } = useTranslation();
 
   // 状态管理
   const [loading, setLoading] = useState(false);

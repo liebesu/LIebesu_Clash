@@ -18,6 +18,11 @@ import {
   ListItemSecondaryAction,
   Switch,
   FormControlLabel,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   Tab,
   Tabs,
   Paper,
@@ -31,12 +36,17 @@ import {
   Add,
   Edit,
   Schedule,
+  TrendingUp,
   Assignment,
   Refresh,
+  Settings,
   Error,
 } from "@mui/icons-material";
+import { useTranslation } from "react-i18next";
 import {
   getAllTasks,
+  createTask,
+  updateTask,
   deleteTask,
   toggleTask,
   executeTaskImmediately,
@@ -44,6 +54,7 @@ import {
   createDefaultTasks,
   type TaskConfig,
   type TaskSystemOverview,
+  type TaskExecutionResult,
 } from "@/services/cmds";
 
 interface TaskManagerDialogProps {
@@ -76,6 +87,8 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
   open,
   onClose,
 }) => {
+  const { t } = useTranslation();
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -83,8 +96,8 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
   // 数据状态
   const [tasks, setTasks] = useState<TaskConfig[]>([]);
   const [overview, setOverview] = useState<TaskSystemOverview | null>(null);
-  const [_editingTask, _setEditingTask] = useState<TaskConfig | null>(null);
-  const [_createDialogOpen, _setCreateDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<TaskConfig | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // 状态图标映射
   const getStatusIcon = (status: string) => {

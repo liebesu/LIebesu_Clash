@@ -20,6 +20,7 @@ import {
   Tooltip,
   Card,
   CardContent,
+  Grid,
   Divider,
 } from "@mui/material";
 import {
@@ -217,16 +218,13 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听取消事件
-      const _cancelUnlisten = await listen(
-        "global-speed-test-cancelled",
-        () => {
-          setTesting(false);
-          setCancelling(false);
-          setProgress(null);
-          setCurrentTestingNodes(new Set());
-          showNotice("info", "测速已取消");
-        },
-      );
+      const cancelUnlisten = await listen("global-speed-test-cancelled", () => {
+        setTesting(false);
+        setCancelling(false);
+        setProgress(null);
+        setCurrentTestingNodes(new Set());
+        showNotice("info", "测速已取消");
+      });
 
       // 监听完成事件
       completeUnlisten = await listen<GlobalSpeedTestSummary>(
@@ -357,17 +355,17 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     }
   };
 
-  const _formatSpeed = (speed?: number) => {
+  const formatSpeed = (speed?: number) => {
     if (!speed) return "N/A";
     return `${speed.toFixed(1)} Mbps`;
   };
 
-  const _formatLatency = (latency?: number) => {
+  const formatLatency = (latency?: number) => {
     if (!latency) return "N/A";
     return `${latency}ms`;
   };
 
-  const _getStatusColor = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "success":
         return "success";
@@ -388,7 +386,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     return "#f44336"; // 红色 - 差
   };
 
-  const _formatBytes = (bytes?: number) => {
+  const formatBytes = (bytes?: number) => {
     if (!bytes) return "N/A";
     const units = ["B", "KB", "MB", "GB", "TB"];
     let size = bytes;
@@ -402,7 +400,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   };
 
-  const _formatDate = (timestamp?: number) => {
+  const formatDate = (timestamp?: number) => {
     if (!timestamp) return "N/A";
     return new Date(timestamp * 1000).toLocaleDateString("zh-CN", {
       year: "numeric",
@@ -411,7 +409,7 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
     });
   };
 
-  const _getSpeedColor = (speed?: number) => {
+  const getSpeedColor = (speed?: number) => {
     if (!speed) return "#666";
     if (speed >= 100) return "#4caf50"; // 绿色 - 最优 (100+ Mbps)
     if (speed >= 50) return "#8bc34a"; // 浅绿色 - 优秀 (50+ Mbps)

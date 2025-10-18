@@ -28,6 +28,9 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Paper,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import {
   Update as UpdateIcon,
@@ -35,6 +38,7 @@ import {
   Schedule as ScheduleIcon,
   Analytics as AnalyticsIcon,
   Warning as WarningIcon,
+  CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
   ExpandMore as ExpandMoreIcon,
@@ -54,6 +58,7 @@ import {
   type CleanupPreview,
   type BatchUpdateResult,
   type CleanupResult,
+  type SubscriptionInfo,
 } from "../../services/cmds";
 
 interface SubscriptionBatchManagerDialogProps {
@@ -64,7 +69,7 @@ interface SubscriptionBatchManagerDialogProps {
 export const SubscriptionBatchManagerDialog: React.FC<
   SubscriptionBatchManagerDialogProps
 > = ({ open, onClose }) => {
-  const _t = useTranslation();
+  const { t } = useTranslation();
 
   // State for different tabs/sections
   const [currentTab, setCurrentTab] = useState<
@@ -99,7 +104,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
 
   // Auto cleanup states
   const [autoCleanupEnabled, setAutoCleanupEnabled] = useState(false);
-  const [_autoCleanupRules, _setAutoCleanupRules] = useState<any>(null);
+  const [autoCleanupRules, setAutoCleanupRules] = useState<any>(null);
 
   // Load initial data
   useEffect(() => {

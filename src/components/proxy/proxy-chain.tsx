@@ -38,6 +38,8 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Delete as DeleteIcon,
   DragIndicator,
+  ClearAll,
+  Save,
   Link,
   LinkOff,
 } from "@mui/icons-material";
@@ -187,12 +189,12 @@ export const ProxyChain = ({
   proxyChain,
   onUpdateChain,
   chainConfigData,
-  onMarkUnsavedChanges: _onMarkUnsavedChanges,
+  onMarkUnsavedChanges,
 }: ProxyChainProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { proxies } = useAppData();
-  const [_hasUnsavedChanges, __setHasUnsavedChanges] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -242,7 +244,7 @@ export const ProxyChain = ({
       chainLengthRef.current !== proxyChain.length &&
       chainLengthRef.current !== 0
     ) {
-      _setHasUnsavedChanges(true);
+      setHasUnsavedChanges(true);
     }
     chainLengthRef.current = proxyChain.length;
   }, [proxyChain.length]);
@@ -263,7 +265,7 @@ export const ProxyChain = ({
         const newIndex = proxyChain.findIndex((item) => item.id === over?.id);
 
         onUpdateChain(arrayMove(proxyChain, oldIndex, newIndex));
-        _setHasUnsavedChanges(true);
+        setHasUnsavedChanges(true);
       }
     },
     [proxyChain, onUpdateChain],
@@ -273,14 +275,14 @@ export const ProxyChain = ({
     (id: string) => {
       const newChain = proxyChain.filter((item) => item.id !== id);
       onUpdateChain(newChain);
-      _setHasUnsavedChanges(true);
+      setHasUnsavedChanges(true);
     },
     [proxyChain, onUpdateChain],
   );
 
-  const _handleClearAll = useCallback(() => {
+  const handleClearAll = useCallback(() => {
     onUpdateChain([]);
-    __setHasUnsavedChanges(true);
+    setHasUnsavedChanges(true);
   }, [onUpdateChain]);
 
   const handleConnect = useCallback(async () => {
@@ -302,7 +304,7 @@ export const ProxyChain = ({
 
         // 清空链式代理配置UI
         // onUpdateChain([]);
-        // _setHasUnsavedChanges(false);
+        // setHasUnsavedChanges(false);
 
         // 强制更新连接状态
         setIsConnected(false);
@@ -339,7 +341,7 @@ export const ProxyChain = ({
       mutateProxies();
 
       // 清除未保存标记
-      _setHasUnsavedChanges(false);
+      setHasUnsavedChanges(false);
 
       console.log("Successfully connected to proxy chain");
     } catch (error) {
@@ -377,7 +379,7 @@ export const ProxyChain = ({
                   delay: undefined,
                 })) || [];
               onUpdateChain(chainItems);
-              _setHasUnsavedChanges(false);
+              setHasUnsavedChanges(false);
             } catch (parseError) {
               console.error("Failed to parse YAML:", parseError);
               onUpdateChain([]);
@@ -401,7 +403,7 @@ export const ProxyChain = ({
                   delay: undefined,
                 })) || [];
               onUpdateChain(chainItems);
-              _setHasUnsavedChanges(false);
+              setHasUnsavedChanges(false);
             } catch (jsonError) {
               console.error("Failed to parse as JSON either:", jsonError);
               onUpdateChain([]);
@@ -414,7 +416,7 @@ export const ProxyChain = ({
     } else if (chainConfigData === "") {
       // Empty string means no proxies available, show empty state
       onUpdateChain([]);
-      _setHasUnsavedChanges(false);
+      setHasUnsavedChanges(false);
     }
   }, [chainConfigData, onUpdateChain]);
 
@@ -485,7 +487,7 @@ export const ProxyChain = ({
               onClick={() => {
                 updateProxyChainConfigInRuntime(null);
                 onUpdateChain([]);
-                _setHasUnsavedChanges(false);
+                setHasUnsavedChanges(false);
               }}
               sx={{
                 color: theme.palette.error.main,

@@ -132,7 +132,7 @@ const ProfilePage = () => {
 
   // 配额超限对话框状态
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
-  const _quotaFailedProfiles = useState<string[]>([])[0];
+  const [quotaFailedProfiles, setQuotaFailedProfiles] = useState<string[]>([]);
 
   // 重复订阅清理对话框
   const [dupDialogOpen, setDupDialogOpen] = useState(false);
@@ -297,7 +297,7 @@ const ProfilePage = () => {
         async (event: any) => {
           const paths = event.payload.paths;
 
-          for (const file of paths) {
+          for (let file of paths) {
             if (!file.endsWith(".yaml") && !file.endsWith(".yml")) {
               showNotice("error", t("Only YAML Files Supported"));
               continue;
@@ -312,7 +312,7 @@ const ProfilePage = () => {
                 self_proxy: false,
               },
             } as IProfileItem;
-            const data = await readTextFile(file);
+            let data = await readTextFile(file);
             await createProfile(item, data);
             await mutateProfiles();
           }
@@ -713,7 +713,7 @@ const ProfilePage = () => {
       await deleteProfile(uid);
       mutateProfiles();
       mutateLogs();
-      if (current) await onEnhance(false);
+      current && (await onEnhance(false));
     } catch (err: any) {
       showNotice("error", err?.message || err.toString());
     } finally {
@@ -886,7 +886,7 @@ const ProfilePage = () => {
     try {
       // 对每组保留最新(updated 最大)的一个，删除其余
       for (const g of dupGroups) {
-        const _keep = g.items[0];
+        const keep = g.items[0];
         const toDelete = g.items.slice(1);
         for (const p of toDelete) {
           await onDelete(p.uid);

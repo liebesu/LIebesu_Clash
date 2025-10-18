@@ -20,8 +20,11 @@ import {
   Collapse,
   List,
   ListItem,
+  ListItemText,
   ListItemSecondaryAction,
   Divider,
+  Tab,
+  Tabs,
   Paper,
   Stepper,
   Step,
@@ -67,7 +70,7 @@ interface TabPanelProps {
   value: number;
 }
 
-function _TabPanel(props: TabPanelProps) {
+function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
   return (
     <div
@@ -87,11 +90,11 @@ const BatchImportDialog: React.FC<BatchImportDialogProps> = ({
   onClose,
   onImportComplete,
 }) => {
-  const _t = useTranslation();
-  const _fileInputRef = useRef<HTMLInputElement>(null);
+  const { t } = useTranslation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 状态管理
-  const _currentTab = useState(0)[0];
+  const [currentTab, setCurrentTab] = useState(0);
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
