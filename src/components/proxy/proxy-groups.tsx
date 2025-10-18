@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useLockFn } from "ahooks";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { providerHealthCheck, getGroupProxyDelays } from "@/services/cmds";
@@ -10,9 +10,7 @@ import { ProxyRender } from "./proxy-render";
 import delayManager from "@/services/delay";
 import { useTranslation } from "react-i18next";
 import { ScrollTopButton } from "../layout/scroll-top-button";
-import { Box, styled, Snackbar, Alert } from "@mui/material";
-import { memo } from "react";
-import { createPortal } from "react-dom";
+import { Box, Snackbar, Alert } from "@mui/material";
 import { ProxyChain } from "./proxy-chain";
 
 interface Props {

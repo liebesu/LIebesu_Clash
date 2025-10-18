@@ -11,10 +11,8 @@ import {
   CardContent,
   Grid,
   Chip,
-  IconButton,
   List,
   ListItem,
-  ListItemText,
   Select,
   MenuItem,
   FormControl,
@@ -23,23 +21,12 @@ import {
   Tabs,
   Paper,
   LinearProgress,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  TextField,
-  Switch,
-  FormControlLabel,
 } from "@mui/material";
 import {
   BarChart,
-  Timeline,
   DataUsage,
   Warning,
   CheckCircle,
@@ -47,17 +34,15 @@ import {
   CloudDownload,
   CloudUpload,
   Speed,
-  Schedule,
   ExpandMore,
   Refresh,
   GetApp,
   Settings,
   NotificationsActive,
 } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
 
 // 模拟数据接口 - 等待后端集成
-interface TrafficRecord {
+interface _TrafficRecord {
   subscription_uid: string;
   subscription_name: string;
   upload_bytes: number;
@@ -179,7 +164,6 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
   open,
   onClose,
 }) => {
-  const { t } = useTranslation();
 
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);

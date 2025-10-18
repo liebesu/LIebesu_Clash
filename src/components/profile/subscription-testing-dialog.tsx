@@ -11,7 +11,6 @@ import {
   CardContent,
   Grid,
   Chip,
-  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -23,7 +22,6 @@ import {
   Tabs,
   Paper,
   LinearProgress,
-  Alert,
   Table,
   TableBody,
   TableCell,
@@ -33,7 +31,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  CircularProgress,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -50,7 +47,6 @@ import {
   Error,
   Info,
 } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
 import {
   testSubscription,
   testAllSubscriptions,
@@ -61,7 +57,6 @@ import {
   type SubscriptionTestResult,
   type BatchTestResult,
   type NodeTestResult,
-  type TestConfig,
 } from "@/services/cmds";
 import { getProfiles } from "@/services/cmds";
 
@@ -97,7 +92,6 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   onClose,
   initialSubscriptionUid,
 }) => {
-  const { t } = useTranslation();
 
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
@@ -175,7 +169,7 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   };
 
   // 测试类型文本
-  const getTestTypeText = (type: TestType) => {
+  const _getTestTypeText = (type: TestType) => {
     switch (type) {
       case "Connectivity":
         return "连通性测试";

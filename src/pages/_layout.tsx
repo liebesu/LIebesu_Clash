@@ -36,7 +36,7 @@ import { useLocalStorage } from "foxact/use-local-storage";
 import { LogLevel } from "@/hooks/use-log-data";
 
 const appWindow = getCurrentWebviewWindow();
-export let portableFlag = false;
+export const portableFlag = false;
 
 dayjs.extend(relativeTime);
 

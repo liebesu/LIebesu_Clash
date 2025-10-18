@@ -48,9 +48,9 @@ export const ProxyHead = (props: Props) => {
   useEffect(() => {
     delayManager.setUrl(
       groupName,
-      testUrl || url || verge?.default_latency_test!,
+      testUrl || url || verge?.default_latency_test || "",
     );
-  }, [groupName, testUrl, verge?.default_latency_test]);
+  }, [groupName, testUrl, url, verge?.default_latency_test]);
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ...sx }}>
