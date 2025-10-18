@@ -254,7 +254,9 @@ export const GroupsEditorViewer = (props: Props) => {
       "proxy-groups": IProxyGroupConfig[];
     } | null;
 
-    const originProviderObj = yaml.load(data) as { "proxy-providers": {} } | null;
+    const originProviderObj = yaml.load(data) as {
+      "proxy-providers": {};
+    } | null;
     const originProvider = originProviderObj?.["proxy-providers"] || {};
 
     const moreProviderObj = yaml.load(mergeData) as {

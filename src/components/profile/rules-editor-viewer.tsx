@@ -384,7 +384,12 @@ export const RulesEditorViewer = (props: Props) => {
       "rule-providers": {};
     } | null;
     const globalRuleSet = globalRuleSetObj?.["rule-providers"] || {};
-    const ruleSet = Object.assign({}, originRuleSet, moreRuleSet, globalRuleSet);
+    const ruleSet = Object.assign(
+      {},
+      originRuleSet,
+      moreRuleSet,
+      globalRuleSet,
+    );
 
     const originSubRuleObj = yaml.load(data) as { "sub-rules": {} } | null;
     const originSubRule = originSubRuleObj?.["sub-rules"] || {};
@@ -394,7 +399,12 @@ export const RulesEditorViewer = (props: Props) => {
       "sub-rules": {};
     } | null;
     const globalSubRule = globalSubRuleObj?.["sub-rules"] || {};
-    const subRule = Object.assign({}, originSubRule, moreSubRule, globalSubRule);
+    const subRule = Object.assign(
+      {},
+      originSubRule,
+      moreSubRule,
+      globalSubRule,
+    );
     setProxyPolicyList(
       builtinProxyPolicies.concat(groups.map((group: any) => group.name)),
     );

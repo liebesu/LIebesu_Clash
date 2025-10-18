@@ -87,16 +87,15 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
   open,
   onClose,
 }) => {
-  
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // 数据状态
   const [groups, setGroups] = useState<SubscriptionGroup[]>([]);
   const [statistics, setStatistics] = useState<GroupStatistics[]>([]);
   const [suggestions, setSuggestions] = useState<GroupSuggestion[]>([]);
-  
+
   // 菜单状态
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
@@ -136,7 +135,10 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
   };
 
   // 处理菜单点击
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, groupId: string) => {
+  const handleMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    groupId: string,
+  ) => {
     setMenuAnchor(event.currentTarget);
     setSelectedGroupId(groupId);
   };
@@ -182,7 +184,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
     if (window.confirm("确定要删除这个分组吗？")) {
       try {
         await deleteSubscriptionGroup(groupId);
-        setGroups(prev => prev.filter(g => g.id !== groupId));
+        setGroups((prev) => prev.filter((g) => g.id !== groupId));
         showNotice("success", "分组删除成功");
         handleMenuClose();
       } catch (error) {
@@ -271,10 +273,13 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
   // 渲染分组列表
   const renderGroupsList = () => (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">
-          订阅分组 ({groups.length})
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6">订阅分组 ({groups.length})</Typography>
         <Box display="flex" gap={1}>
           <Button
             variant="outlined"
@@ -298,20 +303,25 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
 
       <Grid container spacing={2}>
         {groups.map((group) => {
-          const stat = statistics.find(s => s.group_id === group.id);
+          const stat = statistics.find((s) => s.group_id === group.id);
           return (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={group.id}>
               <Card variant="outlined" sx={{ position: "relative" }}>
                 <CardContent>
                   {/* 分组头部 */}
-                  <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    sx={{ mb: 2 }}
+                  >
                     <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar 
-                        sx={{ 
-                          bgcolor: group.color, 
-                          width: 32, 
+                      <Avatar
+                        sx={{
+                          bgcolor: group.color,
+                          width: 32,
                           height: 32,
-                          fontSize: "1rem"
+                          fontSize: "1rem",
                         }}
                       >
                         {getGroupTypeIcon(group.group_type)}
@@ -326,10 +336,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                       </Box>
                     </Box>
                     <Box display="flex" alignItems="center">
-                      <IconButton
-                        size="small"
-                        onClick={handleToggleFavorite}
-                      >
+                      <IconButton size="small" onClick={handleToggleFavorite}>
                         {group.is_favorite ? (
                           <Star color="warning" />
                         ) : (
@@ -346,37 +353,63 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                   </Box>
 
                   {/* 分组描述 */}
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
                     {group.description}
                   </Typography>
 
                   {/* 统计信息 */}
                   {stat && (
                     <Box>
-                      <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        sx={{ mb: 1 }}
+                      >
                         <Typography variant="body2">订阅数量:</Typography>
                         <Typography variant="body2" fontWeight="medium">
                           {stat.total_subscriptions}
                         </Typography>
                       </Box>
-                      <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        sx={{ mb: 1 }}
+                      >
                         <Typography variant="body2">节点总数:</Typography>
                         <Typography variant="body2" fontWeight="medium">
                           {stat.total_nodes}
                         </Typography>
                       </Box>
-                      <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        sx={{ mb: 1 }}
+                      >
                         <Typography variant="body2">平均延迟:</Typography>
                         <Typography variant="body2" fontWeight="medium">
                           {stat.avg_latency_ms.toFixed(0)}ms
                         </Typography>
                       </Box>
-                      <Box display="flex" justifyContent="space-between" sx={{ mb: 2 }}>
+                      <Box
+                        display="flex"
+                        justifyContent="space-between"
+                        sx={{ mb: 2 }}
+                      >
                         <Typography variant="body2">健康评分:</Typography>
-                        <Typography 
-                          variant="body2" 
+                        <Typography
+                          variant="body2"
                           fontWeight="medium"
-                          color={stat.health_score > 80 ? "success.main" : stat.health_score > 60 ? "warning.main" : "error.main"}
+                          color={
+                            stat.health_score > 80
+                              ? "success.main"
+                              : stat.health_score > 60
+                                ? "warning.main"
+                                : "error.main"
+                          }
                         >
                           {stat.health_score.toFixed(1)}
                         </Typography>
@@ -386,12 +419,17 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
 
                   {/* 标签 */}
                   {group.tags.length > 0 && (
-                    <Box display="flex" gap={0.5} flexWrap="wrap" sx={{ mb: 2 }}>
+                    <Box
+                      display="flex"
+                      gap={0.5}
+                      flexWrap="wrap"
+                      sx={{ mb: 2 }}
+                    >
                       {group.tags.map((tag, index) => (
-                        <Chip 
+                        <Chip
                           key={index}
-                          label={tag} 
-                          size="small" 
+                          label={tag}
+                          size="small"
                           variant="outlined"
                         />
                       ))}
@@ -403,7 +441,8 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                     <Box display="flex" alignItems="center" gap={1}>
                       <Autorenew fontSize="small" color="primary" />
                       <Typography variant="caption" color="primary">
-                        {group.auto_rules.filter(r => r.is_enabled).length} 个自动规则
+                        {group.auto_rules.filter((r) => r.is_enabled).length}{" "}
+                        个自动规则
                       </Typography>
                     </Box>
                   )}
@@ -420,7 +459,11 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
           <Typography color="text.secondary" sx={{ mb: 2 }}>
             暂无分组，创建第一个分组来整理您的订阅
           </Typography>
-          <Button variant="contained" startIcon={<Add />} onClick={handleCreateGroup}>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={handleCreateGroup}
+          >
             创建分组
           </Button>
         </Paper>
@@ -445,7 +488,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
           查看详情
         </MenuItem>
         <Divider />
-        <MenuItem 
+        <MenuItem
           onClick={() => handleDeleteGroup(selectedGroupId)}
           sx={{ color: "error.main" }}
         >
@@ -470,11 +513,16 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
           <Alert severity="info" sx={{ mb: 2 }}>
             基于您的订阅特征，我们为您推荐以下分组方案
           </Alert>
-          
+
           {suggestions.map((suggestion, index) => (
             <Card key={index} variant="outlined" sx={{ mb: 2 }}>
               <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="start" sx={{ mb: 2 }}>
+                <Box
+                  display="flex"
+                  justifyContent="space-between"
+                  alignItems="start"
+                  sx={{ mb: 2 }}
+                >
                   <Box display="flex" alignItems="center" gap={2}>
                     <Lightbulb color="primary" />
                     <Box>
@@ -482,8 +530,8 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                         {suggestion.suggested_name}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {getGroupTypeText(suggestion.suggested_type)} • 
-                        置信度: {(suggestion.confidence_score * 100).toFixed(0)}%
+                        {getGroupTypeText(suggestion.suggested_type)} • 置信度:{" "}
+                        {(suggestion.confidence_score * 100).toFixed(0)}%
                       </Typography>
                     </Box>
                   </Box>
@@ -495,20 +543,24 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                     应用建议
                   </Button>
                 </Box>
-                
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
                   {suggestion.reason}
                 </Typography>
-                
+
                 <Typography variant="body2" sx={{ mb: 1 }}>
                   将包含 {suggestion.suggested_subscriptions.length} 个订阅：
                 </Typography>
                 <Box display="flex" gap={0.5} flexWrap="wrap">
                   {suggestion.suggested_subscriptions.map((uid, idx) => (
-                    <Chip 
+                    <Chip
                       key={idx}
-                      label={`订阅 ${uid}`} 
-                      size="small" 
+                      label={`订阅 ${uid}`}
+                      size="small"
                       variant="outlined"
                     />
                   ))}
@@ -637,7 +689,7 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                 <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="success.main">
-                      {groups.filter(g => g.is_favorite).length}
+                      {groups.filter((g) => g.is_favorite).length}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       收藏分组
@@ -647,7 +699,10 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                 <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="info.main">
-                      {groups.reduce((sum, g) => sum + g.subscription_uids.length, 0)}
+                      {groups.reduce(
+                        (sum, g) => sum + g.subscription_uids.length,
+                        0,
+                      )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       管理订阅
@@ -657,7 +712,11 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
                 <Grid size={{ xs: 6, sm: 3 }}>
                   <Box textAlign="center">
                     <Typography variant="h4" color="warning.main">
-                      {groups.reduce((sum, g) => sum + g.auto_rules.filter(r => r.is_enabled).length, 0)}
+                      {groups.reduce(
+                        (sum, g) =>
+                          sum + g.auto_rules.filter((r) => r.is_enabled).length,
+                        0,
+                      )}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       活跃规则
@@ -682,9 +741,9 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs 
-            value={currentTab} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Tabs
+            value={currentTab}
             onChange={(_, newValue) => setCurrentTab(newValue)}
             aria-label="分组管理标签"
           >
@@ -708,13 +767,10 @@ const SubscriptionGroupsDialog: React.FC<SubscriptionGroupsDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
       </DialogActions>
     </Dialog>
   );
 };
 
 export default SubscriptionGroupsDialog;
-

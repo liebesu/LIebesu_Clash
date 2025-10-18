@@ -164,7 +164,6 @@ const TrafficStatsDialog: React.FC<TrafficStatsDialogProps> = ({
   open,
   onClose,
 }) => {
-
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);

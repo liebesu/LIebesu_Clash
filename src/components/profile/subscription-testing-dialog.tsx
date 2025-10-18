@@ -92,7 +92,6 @@ const SubscriptionTestingDialog: React.FC<SubscriptionTestingDialogProps> = ({
   onClose,
   initialSubscriptionUid,
 }) => {
-
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);

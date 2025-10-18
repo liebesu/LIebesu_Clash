@@ -217,13 +217,16 @@ export const GlobalSpeedTestDialog: React.FC<GlobalSpeedTestDialogProps> = ({
       );
 
       // 监听取消事件
-      const _cancelUnlisten = await listen("global-speed-test-cancelled", () => {
-        setTesting(false);
-        setCancelling(false);
-        setProgress(null);
-        setCurrentTestingNodes(new Set());
-        showNotice("info", "测速已取消");
-      });
+      const _cancelUnlisten = await listen(
+        "global-speed-test-cancelled",
+        () => {
+          setTesting(false);
+          setCancelling(false);
+          setProgress(null);
+          setCurrentTestingNodes(new Set());
+          showNotice("info", "测速已取消");
+        },
+      );
 
       // 监听完成事件
       completeUnlisten = await listen<GlobalSpeedTestSummary>(

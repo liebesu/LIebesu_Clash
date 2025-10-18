@@ -217,18 +217,17 @@ export async function getProxies(): Promise<{
   }, []);
 
   if (global?.all) {
-    const globalGroups: IProxyGroupItem[] = global.all.reduce<IProxyGroupItem[]>(
-      (acc, name) => {
-        if (proxyRecord[name]?.all) {
-          acc.push({
-            ...proxyRecord[name],
-            all: proxyRecord[name].all!.map((item) => generateItem(item)),
-          });
-        }
-        return acc;
-      },
-      [],
-    );
+    const globalGroups: IProxyGroupItem[] = global.all.reduce<
+      IProxyGroupItem[]
+    >((acc, name) => {
+      if (proxyRecord[name]?.all) {
+        acc.push({
+          ...proxyRecord[name],
+          all: proxyRecord[name].all!.map((item) => generateItem(item)),
+        });
+      }
+      return acc;
+    }, []);
 
     const globalNames = new Set(globalGroups.map((each) => each.name));
     groups = groups
