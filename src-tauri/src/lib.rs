@@ -812,7 +812,7 @@ pub fn run() {
                 if let (Ok(msg), Ok(title)) = (CString::new(error_msg), CString::new("启动错误"))
                 {
                     unsafe {
-                        MessageBoxA(ptr::null_mut(), msg.as_ptr(), title.as_ptr(), 0x10 | 0x0);
+                        MessageBoxA(ptr::null_mut(), msg.as_ptr(), title.as_ptr(), 0x10);
                     }
                 }
             }
