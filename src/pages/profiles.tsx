@@ -986,7 +986,7 @@ const ProfilePage = () => {
             <ContentCutRounded />
           </IconButton>
 
-          {/* 清理超额订阅 */}
+          {/* 清理订阅 */}
           <IconButton
             size="small"
             color="inherit"

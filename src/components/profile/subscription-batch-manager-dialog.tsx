@@ -31,6 +31,8 @@ import {
   Paper,
   IconButton,
   Tooltip,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   Update as UpdateIcon,
@@ -97,6 +99,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
     null,
   );
   const [cleanupInProgress, setCleanupInProgress] = useState(false);
+  const [cleanupTabValue, setCleanupTabValue] = useState(0);
 
   // Stats states
   const [stats, setStats] = useState<any>(null);
@@ -355,6 +358,103 @@ export const SubscriptionBatchManagerDialog: React.FC<
   const renderCleanupTab = () => (
     <Box>
       <Typography variant="h6" gutterBottom>
+        清理订阅
+      </Typography>
+
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <AlertTitle>清理功能</AlertTitle>
+        提供两种清理方式：清理超额订阅和清理过期订阅，帮助您管理订阅列表。
+      </Alert>
+
+      <Tabs
+        value={cleanupTabValue}
+        onChange={(_, newValue) => setCleanupTabValue(newValue)}
+        sx={{ mb: 2 }}
+      >
+        <Tab label="清理超额订阅" />
+        <Tab label="清理过期订阅" />
+      </Tabs>
+
+      {cleanupTabValue === 0 && renderOverQuotaCleanup()}
+      {cleanupTabValue === 1 && renderExpiredCleanup()}
+    </Box>
+  );
+
+  const renderOverQuotaCleanup = () => (
+    <Box>
+      <Typography variant="subtitle1" gutterBottom>
+        清理超额订阅
+      </Typography>
+      
+      <Alert severity="warning" sx={{ mb: 2 }}>
+        <AlertTitle>注意</AlertTitle>
+        将清理已超出流量额度的订阅，删除操作不可恢复，请谨慎操作。
+      </Alert>
+
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Typography variant="subtitle2" gutterBottom>
+            超额订阅统计
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            总订阅数: {cleanupPreview?.total_subscriptions || 0}
+          </Typography>
+          {cleanupPreview?.expired_subscriptions && cleanupPreview.expired_subscriptions.length > 0 && (
+            <Typography variant="body2" color="error">
+              超额订阅数: {cleanupPreview.expired_subscriptions.length}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {cleanupPreview?.expired_subscriptions && cleanupPreview.expired_subscriptions.length > 0 && (
+        <Card>
+          <CardContent>
+            <Typography variant="subtitle2" gutterBottom>
+              将删除的超额订阅
+            </Typography>
+            <List dense>
+              {cleanupPreview.expired_subscriptions.map((sub, index) => (
+                <ListItem key={index}>
+                  <ListItemIcon>
+                    <WarningIcon color="error" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={sub.name}
+                    secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : '未知'}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </CardContent>
+        </Card>
+      )}
+
+      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={handlePreviewCleanup}
+          disabled={cleanupInProgress}
+        >
+          预览清理
+        </Button>
+        <Button
+          variant="contained"
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={handleExecuteCleanup}
+          disabled={cleanupInProgress || !cleanupPreview?.expired_subscriptions?.length}
+        >
+          执行清理
+        </Button>
+      </Box>
+    </Box>
+  );
+
+  const renderExpiredCleanup = () => (
+    <Box>
+      <Typography variant="subtitle1" gutterBottom>
         清理过期订阅
       </Typography>
 
@@ -488,22 +588,15 @@ export const SubscriptionBatchManagerDialog: React.FC<
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
-                  <List>
+                  <List dense>
                     {cleanupPreview.expired_subscriptions.map((sub, index) => (
                       <ListItem key={index}>
                         <ListItemIcon>
-                          <WarningIcon color="warning" />
+                          <WarningIcon color="error" />
                         </ListItemIcon>
                         <ListItemText
                           primary={sub.name}
-                          secondary={`${sub.days_since_update}天未更新 ${sub.url ? "(远程)" : "(本地)"}`}
-                        />
-                        <Chip
-                          label={`${sub.days_since_update}天`}
-                          color={
-                            sub.days_since_update >= 7 ? "error" : "warning"
-                          }
-                          size="small"
+                          secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : '未知'}`}
                         />
                       </ListItem>
                     ))}
@@ -518,7 +611,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
       {cleanupResult && (
         <Alert severity="success">
           <AlertTitle>清理完成</AlertTitle>
-          成功删除了 {cleanupResult.deleted_count} 个过期订阅
+          成功删除了 {cleanupResult.deleted_count} 个过期订阅。
         </Alert>
       )}
     </Box>
