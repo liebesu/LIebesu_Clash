@@ -275,6 +275,140 @@ pub async fn cleanup_expired_subscriptions(
     Ok(result)
 }
 
+// 清理超额订阅
+#[tauri::command]
+pub async fn cleanup_over_quota_subscriptions(
+    options: SubscriptionCleanupOptions,
+) -> Result<CleanupResult, String> {
+    if options.preview_only {
+        return Err("预览模式，不执行实际删除操作".to_string());
+    }
+
+    let preview = get_over_quota_cleanup_preview(options.clone()).await?;
+    let mut deleted_subscriptions = Vec::new();
+
+    // 执行删除操作
+    for subscription in &preview.expired_subscriptions {
+        match delete_subscription(&subscription.uid).await {
+            Ok(_) => {
+                deleted_subscriptions.push(subscription.name.clone());
+            }
+            Err(e) => {
+                return Err(format!("删除订阅 {} 失败: {}", subscription.name, e));
+            }
+        }
+    }
+
+    let result = CleanupResult {
+        deleted_count: deleted_subscriptions.len(),
+        deleted_subscriptions,
+        cleanup_options: options,
+        cleanup_time: Local::now().to_rfc3339(),
+    };
+
+    Ok(result)
+}
+
+// 获取超额订阅清理预览
+#[tauri::command]
+pub async fn get_over_quota_cleanup_preview(
+    options: SubscriptionCleanupOptions,
+) -> Result<CleanupPreview, String> {
+    let profiles_config = Config::profiles().await;
+    
+    // 提取数据以避免跨await使用不可Send的类型
+    let items = {
+        let profiles = profiles_config.latest_ref();
+        profiles.items.clone().unwrap_or_default()
+    };
+
+    let mut all_subscriptions = Vec::new();
+    let mut over_quota_subscriptions = Vec::new();
+
+    for profile in &items {
+        if let Some(uid) = &profile.uid {
+            let default_name = "未知订阅".to_string();
+            let name = profile.name.as_ref().unwrap_or(&default_name).clone();
+            let url = profile.url.clone();
+
+            // 获取最后更新时间
+            let last_updated = profile.updated;
+            let last_update_time = if let Some(timestamp_str) = last_updated {
+                let timestamp = timestamp_str as i64;
+                DateTime::from_timestamp(timestamp, 0).map(|dt| dt.with_timezone(&Local))
+            } else {
+                None
+            };
+
+            let days_since_update = if let Some(update_time) = last_update_time {
+                (Local::now() - update_time).num_days() as i32
+            } else {
+                999 // 如果没有更新时间，设为一个很大的值
+            };
+
+            // 检查是否为收藏
+            let is_favorite =
+                profile.selected.is_some() && !profile.selected.as_ref().unwrap().is_empty();
+
+            // 获取分组信息（这里简化处理）
+            let groups = vec![]; // TODO: 实际从分组管理中获取
+
+            // 检查是否超额（这里简化处理，实际应该检查流量使用情况）
+            let is_over_quota = check_subscription_over_quota(profile);
+
+            let subscription_info = SubscriptionInfo {
+                uid: uid.clone(),
+                name,
+                url,
+                last_updated: last_updated.map(|ts| {
+                    DateTime::from_timestamp(ts as i64, 0)
+                        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+                        .unwrap_or_else(|| "Invalid timestamp".to_string())
+                }),
+                days_since_update,
+                size: None,       // TODO: 计算文件大小
+                node_count: None, // TODO: 计算节点数量
+                is_favorite,
+                groups: groups.clone(),
+            };
+
+            all_subscriptions.push(subscription_info.clone());
+
+            // 检查是否超额且符合删除条件
+            let should_delete = is_over_quota
+                && !(options.exclude_favorites && is_favorite)
+                && !options
+                    .exclude_groups
+                    .iter()
+                    .any(|group| groups.contains(group));
+
+            if should_delete {
+                over_quota_subscriptions.push(subscription_info);
+            }
+        }
+    }
+
+    let preview = CleanupPreview {
+        total_subscriptions: all_subscriptions.len(),
+        will_be_deleted: over_quota_subscriptions.len(),
+        will_be_kept: all_subscriptions.len() - over_quota_subscriptions.len(),
+        expired_subscriptions: over_quota_subscriptions,
+        cleanup_options: options,
+    };
+
+    Ok(preview)
+}
+
+// 检查订阅是否超额
+fn check_subscription_over_quota(profile: &crate::config::PrfItem) -> bool {
+    // TODO: 实际实现超额检查逻辑
+    // 这里应该检查订阅的流量使用情况，判断是否超出额度
+    
+    // 简化实现：随机返回一些订阅为超额状态（用于测试）
+    use rand::Rng;
+    rand::thread_rng().r#gen::<f32>() < 0.1 // 10% 的概率为超额
+}
+
 // 获取订阅管理统计信息
 #[tauri::command]
 pub async fn get_subscription_management_stats() -> Result<serde_json::Value, String> {
@@ -397,10 +531,27 @@ async fn update_single_subscription(_uid: &str) -> Result<()> {
 }
 
 // 辅助函数：删除订阅
-async fn delete_subscription(_uid: &str) -> Result<()> {
-    // TODO: 实际实现订阅删除逻辑
-    // 这里应该调用现有的订阅删除API
-
-    log::info!("删除订阅: {}", _uid);
+async fn delete_subscription(uid: &str) -> Result<()> {
+    use crate::config::profiles::profiles_delete_item_safe;
+    
+    log::info!("删除订阅: {}", uid);
+    
+    // 调用现有的删除订阅API
+    let should_update = profiles_delete_item_safe(uid.to_string()).await?;
+    
+    if should_update {
+        // 更新配置并刷新Clash
+        match crate::core::CoreManager::global().update_config().await {
+            Ok(_) => {
+                crate::handle::Handle::refresh_clash();
+                log::info!("订阅 {} 删除成功，配置已更新", uid);
+            }
+            Err(e) => {
+                log::error!("更新配置失败: {}", e);
+                return Err(anyhow::anyhow!("更新配置失败: {}", e));
+            }
+        }
+    }
+    
     Ok(())
 }

@@ -2303,6 +2303,26 @@ export async function cleanupExpiredSubscriptions(
 }
 
 /**
+ * 清理超额订阅
+ */
+export async function cleanupOverQuotaSubscriptions(
+  options: SubscriptionCleanupOptions,
+) {
+  return invoke<CleanupResult>("cleanup_over_quota_subscriptions", { options });
+}
+
+/**
+ * 获取超额订阅清理预览
+ */
+export async function getOverQuotaCleanupPreview(
+  options: SubscriptionCleanupOptions,
+) {
+  return invoke<CleanupPreview>("get_over_quota_cleanup_preview", {
+    options,
+  });
+}
+
+/**
  * 获取订阅管理统计信息
  */
 export async function getSubscriptionManagementStats() {

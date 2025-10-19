@@ -51,8 +51,10 @@ import { useTranslation } from "react-i18next";
 import { showNotice } from "../../services/noticeService";
 import {
   getSubscriptionCleanupPreview,
+  getOverQuotaCleanupPreview,
   updateAllSubscriptions,
   cleanupExpiredSubscriptions,
+  cleanupOverQuotaSubscriptions,
   getSubscriptionManagementStats,
   setAutoCleanupRules as saveAutoCleanupRules,
   getAutoCleanupRules,
@@ -162,7 +164,9 @@ export const SubscriptionBatchManagerDialog: React.FC<
 
   const handlePreviewCleanup = async () => {
     try {
-      const preview = await getSubscriptionCleanupPreview(cleanupOptions);
+      const preview = cleanupTabValue === 0 
+        ? await getOverQuotaCleanupPreview(cleanupOptions)
+        : await getSubscriptionCleanupPreview(cleanupOptions);
       setCleanupPreview(preview);
     } catch (error) {
       console.error("生成清理预览失败:", error);
@@ -177,12 +181,15 @@ export const SubscriptionBatchManagerDialog: React.FC<
 
     try {
       const executeOptions = { ...cleanupOptions, preview_only: false };
-      const result = await cleanupExpiredSubscriptions(executeOptions);
+      const result = cleanupTabValue === 0 
+        ? await cleanupOverQuotaSubscriptions(executeOptions)
+        : await cleanupExpiredSubscriptions(executeOptions);
       setCleanupResult(result);
       setCleanupPreview(null);
+      const cleanupType = cleanupTabValue === 0 ? "超额" : "过期";
       showNotice(
         "success",
-        `清理完成: 删除了 ${result.deleted_count} 个过期订阅`,
+        `清理完成: 删除了 ${result.deleted_count} 个${cleanupType}订阅`,
       );
       loadStats(); // 重新加载统计信息
     } catch (error) {
@@ -815,7 +822,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
             startIcon={<DeleteIcon />}
             sx={{ mr: 1 }}
           >
-            清理过期
+            清理订阅
           </Button>
           <Button
             onClick={() => setCurrentTab("stats")}

@@ -397,8 +397,10 @@ mod app_init {
             cmd::get_search_statistics,
             // Subscription batch manager commands
             cmd::get_subscription_cleanup_preview,
+            cmd::get_over_quota_cleanup_preview,
             cmd::update_all_subscriptions,
             cmd::cleanup_expired_subscriptions,
+            cmd::cleanup_over_quota_subscriptions,
             cmd::get_subscription_management_stats,
             cmd::set_auto_cleanup_rules,
             cmd::get_auto_cleanup_rules,
