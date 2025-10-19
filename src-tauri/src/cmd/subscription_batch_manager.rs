@@ -13,6 +13,7 @@ use anyhow::{Result, anyhow};
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCleanupOptions {
@@ -151,6 +152,11 @@ pub async fn get_subscription_cleanup_preview(
 // 批量更新所有订阅
 #[tauri::command]
 pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
+    use crate::feat::sync::schedule_subscription_sync;
+    use crate::state::subscription_sync::{SUBSCRIPTION_SYNC_STORE, SyncPhase};
+    use std::time::Duration;
+    use tokio::time::sleep;
+
     let profiles_config = Config::profiles().await;
     let remote_profiles: Vec<(String, String)> = {
         let profiles = profiles_config.latest_ref();
@@ -172,20 +178,53 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
             .collect()
     };
 
+    let total_count = remote_profiles.len();
     let mut updated_subscriptions = Vec::new();
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
 
-    let total_count = remote_profiles.len(); // 在移动前保存长度
+    // 使用并发控制进行批量更新
+    let concurrency_limit = {
+        let store = SUBSCRIPTION_SYNC_STORE.inner.read();
+        store.preferences().max_concurrency.max(1)
+    };
+
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency_limit));
+    let mut handles = Vec::new();
 
     for (uid, name) in remote_profiles {
-        match update_single_subscription(&uid).await {
-            Ok(_) => {
+        let semaphore = semaphore.clone();
+        let name_clone = name.clone();
+        
+        let handle = tokio::spawn(async move {
+            let _permit = match semaphore.acquire().await {
+                Ok(permit) => permit,
+                Err(e) => return Err((name_clone, format!("获取信号量失败: {}", e))),
+            };
+            
+            match schedule_subscription_sync(uid, SyncPhase::Background).await {
+                Ok(_) => Ok(name_clone),
+                Err(e) => Err((name_clone, e.to_string())),
+            }
+        });
+        
+        handles.push(handle);
+    }
+
+    // 等待所有任务完成
+    for handle in handles {
+        match handle.await {
+            Ok(Ok(name)) => {
                 updated_subscriptions.push(name);
             }
-            Err(e) => {
+            Ok(Err((name, error))) => {
                 failed_subscriptions.push(name.clone());
-                error_messages.insert(name, e.to_string());
+                error_messages.insert(name, error);
+            }
+            Err(e) => {
+                let error_msg = format!("任务执行失败: {}", e);
+                failed_subscriptions.push("未知订阅".to_string());
+                error_messages.insert("未知订阅".to_string(), error_msg);
             }
         }
     }
