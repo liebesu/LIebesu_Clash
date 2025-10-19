@@ -44,7 +44,7 @@ export const TrafficGraph = forwardRef<TrafficRef>((props, ref) => {
   }));
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const zero = { up: 0, down: 0 };
 
     const handleData = () => {
@@ -72,7 +72,7 @@ export const TrafficGraph = forwardRef<TrafficRef>((props, ref) => {
 
     if (!canvas) return;
 
-    const context = canvas.getContext("2d")!;
+    const context = canvas.getContext("2d");
 
     if (!context) return;
 
@@ -173,7 +173,11 @@ export const TrafficGraph = forwardRef<TrafficRef>((props, ref) => {
       context.globalAlpha = upLineAlpha;
       context.lineWidth = upLineWidth;
       context.strokeStyle = upLineColor;
-      lineStyle ? drawBezier(listUp, offset) : drawLine(listUp, offset);
+      if (lineStyle) {
+        drawBezier(listUp, offset);
+      } else {
+        drawLine(listUp, offset);
+      }
       context.stroke();
       context.closePath();
 
@@ -181,7 +185,11 @@ export const TrafficGraph = forwardRef<TrafficRef>((props, ref) => {
       context.globalAlpha = downLineAlpha;
       context.lineWidth = downLineWidth;
       context.strokeStyle = downLineColor;
-      lineStyle ? drawBezier(listDown, offset) : drawLine(listDown, offset);
+      if (lineStyle) {
+        drawBezier(listDown, offset);
+      } else {
+        drawLine(listDown, offset);
+      }
       context.stroke();
       context.closePath();
 

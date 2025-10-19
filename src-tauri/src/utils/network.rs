@@ -16,6 +16,49 @@ use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 use crate::config::Config;
+use std::net::TcpStream;
+
+/// 解析当前混合端口
+pub async fn resolve_mixed_port() -> Option<u16> {
+    let verge_port = {
+        let verge = Config::verge().await;
+        let verge_ref = verge.latest_ref();
+        verge_ref.verge_mixed_port
+    };
+
+    if let Some(port) = verge_port {
+        return Some(port);
+    }
+
+    let clash_port = {
+        let clash = Config::clash().await;
+        let clash_ref = clash.latest_ref();
+        clash_ref.get_mixed_port()
+    };
+    Some(clash_port)
+}
+
+/// 等待端口准备就绪（监听中）
+pub async fn wait_for_port_ready(
+    port: u16,
+    max_wait: Duration,
+    check_interval: Duration,
+) -> Result<()> {
+    let start = Instant::now();
+    let addr = format!("127.0.0.1:{}", port);
+
+    loop {
+        if TcpStream::connect_timeout(&addr.parse().unwrap(), Duration::from_millis(100)).is_ok() {
+            return Ok(());
+        }
+
+        if start.elapsed() >= max_wait {
+            return Err(anyhow::anyhow!("端口 {} 在 {:?} 内未就绪", port, max_wait));
+        }
+
+        tokio::time::sleep(check_interval).await;
+    }
+}
 
 #[derive(Debug)]
 pub struct HttpResponse {
@@ -176,7 +219,7 @@ impl NetworkManager {
             USER_AGENT,
             HeaderValue::from_str(
                 &user_agent
-                    .unwrap_or_else(|| format!("clash-verge/v{}", env!("CARGO_PKG_VERSION"))),
+                    .unwrap_or_else(|| format!("liebseu-clash/v{}", env!("CARGO_PKG_VERSION"))),
             )?,
         );
 

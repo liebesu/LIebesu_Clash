@@ -36,7 +36,7 @@ import { useLocalStorage } from "foxact/use-local-storage";
 import { LogLevel } from "@/hooks/use-log-data";
 
 const appWindow = getCurrentWebviewWindow();
-export let portableFlag = false;
+export const portableFlag = false;
 
 dayjs.extend(relativeTime);
 
@@ -378,7 +378,7 @@ const Layout = () => {
 
     let hasEventTriggered = false;
 
-    const setupEventListener = async () => {
+    const _setupEventListener = async () => {
       try {
         console.log("[Layout] 开始监听启动完成事件");
       } catch (err) {

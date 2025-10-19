@@ -1,4 +1,10 @@
-use crate::{config::Config, feat, logging, logging_error, singleton, utils::logging::Type};
+use crate::{
+    cmd::subscription_groups::get_favorite_subscription_uids,
+    config::Config,
+    feat, logging, logging_error, singleton,
+    state::subscription_sync::{SUBSCRIPTION_SYNC_STORE, SubscriptionSyncState, SyncPhase},
+    utils::logging::Type,
+};
 use anyhow::{Context, Result};
 use delay_timer::prelude::{DelayTimer, DelayTimerBuilder, TaskBuilder};
 use parking_lot::RwLock;
@@ -9,6 +15,7 @@ use std::{
         Arc,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
+    time::SystemTime,
 };
 
 type TaskID = u64;
@@ -90,49 +97,10 @@ impl Timer {
             }
         }
 
-        let cur_timestamp = chrono::Local::now().timestamp();
-
-        // Collect profiles that need immediate update
-        let profiles_to_update =
-            if let Some(items) = Config::profiles().await.latest_ref().get_items() {
-                items
-                    .iter()
-                    .filter_map(|item| {
-                        let interval = item.option.as_ref()?.update_interval? as i64;
-                        let updated = item.updated? as i64;
-                        let uid = item.uid.as_ref()?;
-
-                        if interval > 0 && cur_timestamp - updated >= interval * 60 {
-                            logging!(info, Type::Timer, "需要立即更新的配置: uid={}", uid);
-                            Some(uid.clone())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<String>>()
-            } else {
-                Vec::new()
-            };
-
-        // Advance tasks outside of locks to minimize lock contention
-        if !profiles_to_update.is_empty() {
-            logging!(
-                info,
-                Type::Timer,
-                "需要立即更新的配置数量: {}",
-                profiles_to_update.len()
-            );
-            let timer_map = self.timer_map.read();
-            let delay_timer = self.delay_timer.write();
-
-            for uid in profiles_to_update {
-                if let Some(task) = timer_map.get(&uid) {
-                    logging!(info, Type::Timer, "立即执行任务: uid={}", uid);
-                    if let Err(e) = delay_timer.advance_task(task.task_id) {
-                        logging!(warn, Type::Timer, "Failed to advance task {}: {}", uid, e);
-                    }
-                }
-            }
+        // 使用启动节流队列逻辑
+        logging!(info, Type::Timer, "准备启动节流队列...");
+        if let Err(e) = self.prepare_profiles().await {
+            logging_error!(Type::Timer, false, "启动节流队列准备失败: {}", e);
         }
 
         logging!(info, Type::Timer, "Timer initialization completed");
@@ -451,16 +419,40 @@ impl Timer {
         match tokio::time::timeout(std::time::Duration::from_secs(40), async {
             Self::emit_update_event(&uid, true);
 
-            let is_current = Config::profiles().await.latest_ref().current.as_ref() == Some(&uid);
-            logging!(
-                info,
-                Type::Timer,
-                "配置 {} 是否为当前激活配置: {}",
-                uid,
-                is_current
-            );
+            if uid.starts_with("remote-fetch-") {
+                logging!(info, Type::Timer, "执行远程订阅自动同步任务: {}", uid);
+                let handle = match crate::core::handle::Handle::global().app_handle() {
+                    Some(h) => h,
+                    None => {
+                        logging_error!(
+                            Type::Timer,
+                            false,
+                            "自动同步远程订阅失败: {}",
+                            "AppHandle 不可用"
+                        );
+                        return Ok(());
+                    }
+                };
 
-            feat::update_profile(uid.clone(), None, Some(is_current)).await
+                if let Err(err) =
+                    crate::cmd::sync_subscription_from_remote(handle, None, None).await
+                {
+                    logging_error!(Type::Timer, false, "自动同步远程订阅失败: {}", err);
+                }
+                Ok(())
+            } else {
+                let is_current =
+                    Config::profiles().await.latest_ref().current.as_ref() == Some(&uid);
+                logging!(
+                    info,
+                    Type::Timer,
+                    "配置 {} 是否为当前激活配置: {}",
+                    uid,
+                    is_current
+                );
+
+                feat::update_profile(uid.clone(), None, Some(is_current)).await
+            }
         })
         .await
         {
@@ -486,6 +478,163 @@ impl Timer {
 
         // Emit completed event
         Self::emit_update_event(&uid, false);
+    }
+
+    async fn prepare_profiles(&self) -> Result<Vec<(String, SubscriptionSyncState)>> {
+        let (items, current_uid) = {
+            let profiles = Config::profiles().await;
+            let profiles_ref = profiles.latest_ref();
+            let items = profiles_ref.get_items().cloned().unwrap_or_default();
+            let current_uid = profiles_ref.get_current().clone();
+            (items, current_uid)
+        };
+
+        let favorite_uids = get_favorite_subscription_uids().await;
+
+        let (immediate, remote_profiles) = {
+            let mut store = SUBSCRIPTION_SYNC_STORE.inner.write();
+            let preferences = store.preferences();
+
+            let mut remote_profiles: Vec<(String, SubscriptionSyncState)> = items
+                .into_iter()
+                .filter_map(|item| {
+                    let uid = item.uid?;
+                    let is_remote = item.itype.as_ref().is_some_and(|t| t == "remote");
+                    if !is_remote {
+                        return None;
+                    }
+
+                    let state = store.state_mut(&uid);
+                    state.is_current = current_uid.as_ref() == Some(&uid);
+                    state.is_favorite = favorite_uids.iter().any(|f| f == &uid);
+                    state.phase = SyncPhase::Startup;
+                    Some((uid, state.clone()))
+                })
+                .collect();
+
+            // 按收藏 + 当前优先排序
+            remote_profiles.sort_by(|a, b| match (a.1.is_favorite, b.1.is_favorite) {
+                (true, false) => std::cmp::Ordering::Less,
+                (false, true) => std::cmp::Ordering::Greater,
+                _ => match (a.1.is_current, b.1.is_current) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => {
+                        b.1.last_success
+                            .unwrap_or(SystemTime::UNIX_EPOCH)
+                            .cmp(&a.1.last_success.unwrap_or(SystemTime::UNIX_EPOCH))
+                    }
+                },
+            });
+
+            let immediate: Vec<String> = remote_profiles
+                .iter()
+                .take(preferences.startup_limit.max(1))
+                .map(|(uid, _)| uid.clone())
+                .collect();
+            let deferred: Vec<String> = remote_profiles
+                .iter()
+                .skip(preferences.startup_limit.max(1))
+                .map(|(uid, _)| uid.clone())
+                .collect();
+
+            store.reset_queue(immediate.clone(), deferred);
+            store.increment_startup_active(immediate.len());
+
+            (immediate, remote_profiles)
+        };
+
+        for uid in immediate {
+            let uid_clone = uid.clone();
+            tokio::spawn(async move {
+                let permit = {
+                    let manager = SUBSCRIPTION_SYNC_STORE.inner.read();
+                    manager.semaphore().clone()
+                };
+                let Ok(_permit) = permit.acquire_owned().await else {
+                    logging!(
+                        error,
+                        Type::Timer,
+                        "获取信号量失败，跳过启动同步: {}",
+                        uid_clone
+                    );
+                    return;
+                };
+                if let Err(err) =
+                    feat::sync::schedule_subscription_sync(uid_clone.clone(), SyncPhase::Startup)
+                        .await
+                {
+                    logging!(
+                        error,
+                        Type::Timer,
+                        "Startup sync failed for {}: {}",
+                        uid_clone,
+                        err
+                    );
+                }
+            });
+        }
+
+        self.start_background_dispatcher().await;
+
+        Ok(remote_profiles)
+    }
+
+    async fn start_background_dispatcher(&self) {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+
+                let (batch_size, deferred_batch) = {
+                    let mut store = SUBSCRIPTION_SYNC_STORE.inner.write();
+                    if !store.startup_completed() {
+                        // 等待启动队列完成
+                        continue;
+                    }
+                    let prefs = store.preferences();
+                    let batch = store.queue.drain_batch(prefs.max_concurrency);
+                    (prefs.max_concurrency, batch)
+                };
+
+                if deferred_batch.is_empty() {
+                    continue;
+                }
+
+                logging!(
+                    info,
+                    Type::Timer,
+                    "后台调度器: 开始处理 {} 个延迟订阅",
+                    deferred_batch.len()
+                );
+
+                for uid in deferred_batch {
+                    let uid_clone = uid.clone();
+                    tokio::spawn(async move {
+                        let permit = {
+                            let manager = SUBSCRIPTION_SYNC_STORE.inner.read();
+                            manager.semaphore().clone()
+                        };
+                        let Ok(_permit) = permit.acquire_owned().await else {
+                            logging!(
+                                error,
+                                Type::Timer,
+                                "获取信号量失败，跳过后台同步: {}",
+                                uid_clone
+                            );
+                            return;
+                        };
+                        if let Err(err) = feat::sync::schedule_subscription_sync(
+                            uid_clone.clone(),
+                            SyncPhase::Background,
+                        )
+                        .await
+                        {
+                            logging!(error, Type::Timer, "后台同步失败: {} - {}", uid_clone, err);
+                        }
+                    });
+                }
+            }
+        });
     }
 }
 

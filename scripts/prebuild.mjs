@@ -347,18 +347,18 @@ async function resolveResource(binInfo) {
       if (attempt > 1) {
         log_info(`Downloading ${url} (attempt ${attempt}/${maxRetries})`);
       }
-      
+
       const response = await fetch(url, {
         ...options,
         method: "GET",
         headers: { "Content-Type": "application/octet-stream" },
         timeout: 60000, // 60 seconds timeout
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const buffer = await response.arrayBuffer();
       await fsp.writeFile(path, new Uint8Array(buffer));
       log_success(`download finished: ${url}`);
@@ -366,16 +366,18 @@ async function resolveResource(binInfo) {
     } catch (error) {
       lastError = error;
       log_error(`Download attempt ${attempt} failed: ${error.message}`);
-      
+
       if (attempt < maxRetries) {
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
         log_info(`Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
-  throw new Error(`Failed to download ${url} after ${maxRetries} attempts. Last error: ${lastError.message}`);
+
+  throw new Error(
+    `Failed to download ${url} after ${maxRetries} attempts. Last error: ${lastError.message}`,
+  );
 }
 
 // SimpleSC.dll

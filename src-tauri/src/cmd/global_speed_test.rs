@@ -1,8 +1,15 @@
-use crate::{
-    config::Config,
-    ipc::IpcManager,
-    utils::dirs,
-};
+#![allow(dead_code, unused)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    clippy::enum_variant_names,
+    clippy::large_enum_variant,
+    clippy::needless_pass_by_value,
+    clippy::map_entry,
+    clippy::manual_map
+)]
+// TODO: 清理临时豁免，逐步优化代码。
+use crate::{config::Config, ipc::IpcManager, utils::dirs};
 use anyhow::Result;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -38,12 +45,12 @@ pub struct SpeedTestResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrafficInfo {
-    pub total: Option<u64>,          // 总流量 (字节)
-    pub used: Option<u64>,           // 已用流量 (字节)
-    pub remaining: Option<u64>,      // 剩余流量 (字节)
+    pub total: Option<u64>,                // 总流量 (字节)
+    pub used: Option<u64>,                 // 已用流量 (字节)
+    pub remaining: Option<u64>,            // 剩余流量 (字节)
     pub remaining_percentage: Option<f64>, // 剩余流量百分比
-    pub expire_time: Option<i64>,    // 到期时间 (时间戳)
-    pub expire_days: Option<i64>,    // 剩余天数
+    pub expire_time: Option<i64>,          // 到期时间 (时间戳)
+    pub expire_days: Option<i64>,          // 剩余天数
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +87,7 @@ pub struct GlobalSpeedTestSummary {
     pub failed_tests: usize,
     pub best_node: Option<SpeedTestResult>,
     pub top_10_nodes: Vec<SpeedTestResult>,
-    pub all_results: Vec<SpeedTestResult>,  // 所有节点结果（按评分排序）
+    pub all_results: Vec<SpeedTestResult>, // 所有节点结果（按评分排序）
     pub results_by_profile: HashMap<String, Vec<SpeedTestResult>>,
     pub duration_seconds: u64,
 }
@@ -96,29 +103,32 @@ pub struct SpeedTestConfig {
 
 /// 全局节点测速
 #[tauri::command]
-pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Option<SpeedTestConfig>) -> Result<String, String> {
+pub async fn start_global_speed_test(
+    app_handle: tauri::AppHandle,
+    config: Option<SpeedTestConfig>,
+) -> Result<String, String> {
     log::info!(target: "app", "🚀 [前端请求] 开始全局节点测速");
     log::info!(target: "app", "📋 [测速配置] {:?}", config);
-    
+
     // 重置取消标志
     CANCEL_FLAG.store(false, Ordering::SeqCst);
     log::info!(target: "app", "✅ [测速状态] 已重置取消标志");
-    
+
     // 🔧 修复：针对1000+节点的大批量测速优化配置
-    let config = config.unwrap_or_else(|| SpeedTestConfig {
-        batch_size: 1,                    // 🔧 严格单节点处理，避免任何并发
-        node_timeout_seconds: 3,          // 🔧 减少单节点超时，提高效率
-        batch_timeout_seconds: 10,        // 🔧 批次超时大幅减少
-        overall_timeout_seconds: 1800,    // 🔧 总超时增加到30分钟，适应1000+节点
-        max_concurrent: 1,                // 🔧 严格禁用并发
+    let config = config.unwrap_or(SpeedTestConfig {
+        batch_size: 1,                 // 🔧 严格单节点处理，避免任何并发
+        node_timeout_seconds: 3,       // 🔧 减少单节点超时，提高效率
+        batch_timeout_seconds: 10,     // 🔧 批次超时大幅减少
+        overall_timeout_seconds: 1800, // 🔧 总超时增加到30分钟，适应1000+节点
+        max_concurrent: 1,             // 🔧 严格禁用并发
     });
-    
+
     log::info!(target: "app", "⚙️ 测速配置: 批次大小={}, 节点超时={}s, 批次超时={}s, 总体超时={}s, 最大并发={}", 
               config.batch_size, config.node_timeout_seconds, config.batch_timeout_seconds, 
               config.overall_timeout_seconds, config.max_concurrent);
-    
+
     let _start_time = Instant::now();
-    
+
     // 安全地获取配置文件，立即克隆避免生命周期问题
     let profiles = {
         log::info!(target: "app", "📋 正在获取订阅配置...");
@@ -134,12 +144,12 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                     log::debug!(target: "app", "  配置 {}: {} (UID: {}, 类型: {})", i + 1, name, uid, itype);
                 }
                 items.clone()
-            },
+            }
             Some(_) => {
                 let error_msg = "订阅配置列表为空，请先添加订阅";
                 log::error!(target: "app", "❌ {}", error_msg);
                 return Err(error_msg.to_string());
-            },
+            }
             None => {
                 let error_msg = "没有找到任何订阅配置，请先添加订阅";
                 log::error!(target: "app", "❌ {}", error_msg);
@@ -150,31 +160,31 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
 
     // 第一步：预解析所有订阅，收集所有节点信息
     let mut all_nodes_with_profile = Vec::new();
-    
+
     log::info!(target: "app", "🔍 开始解析所有订阅节点...");
-    
+
     for (index, item) in profiles.iter().enumerate() {
         let profile_name = item.name.as_deref().unwrap_or("未命名");
         let profile_uid = item.uid.as_deref().unwrap_or("unknown");
         let profile_type = item.itype.as_deref().unwrap_or("unknown");
         let subscription_url = item.url.clone();
-        
+
         log::debug!(target: "app", "🔍 处理订阅 {}/{}: {} (类型: {})", 
                   index + 1, profiles.len(), profile_name, profile_type);
-        
+
         // 跳过系统配置项（script、merge 等）
         if matches!(profile_type.to_lowercase().as_str(), "script" | "merge") {
             log::debug!(target: "app", "⏭️ 跳过系统配置项: {} (类型: {})", profile_name, profile_type);
             continue;
         }
-        
+
         // 读取配置文件内容 - 优先使用 file_data，如果没有则从完整文件路径读取
         let profile_data = if let Some(file_data) = &item.file_data {
             log::info!(target: "app", "📄 使用内存中的配置数据 '{}' (长度: {} 字符)", profile_name, file_data.len());
             file_data.clone()
         } else if let Some(file_name) = &item.file {
             log::info!(target: "app", "📂 从文件读取配置 '{}': {}", profile_name, file_name);
-            
+
             // 构建完整的文件路径
             let full_path = match dirs::app_profiles_dir() {
                 Ok(profile_dir) => profile_dir.join(file_name),
@@ -183,7 +193,7 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
                     continue;
                 }
             };
-            
+
             match tokio::fs::read_to_string(&full_path).await {
                 Ok(data) => {
                     log::info!(target: "app", "✅ 成功读取配置文件 '{}' (长度: {} 字符)", profile_name, data.len());
@@ -199,58 +209,64 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             log::warn!(target: "app", "⚠️ 订阅 '{}' 没有配置数据或文件路径", profile_name);
             continue;
         };
-        
-            if profile_data.trim().is_empty() {
+
+        if profile_data.trim().is_empty() {
             log::warn!(target: "app", "⚠️ 订阅 '{}' 配置文件为空", profile_name);
-                continue;
-            }
-            
+            continue;
+        }
+
         log::info!(target: "app", "🔍 解析订阅 '{}' (数据长度: {} 字符)", profile_name, profile_data.len());
-            
-        match parse_profile_nodes(&profile_data, profile_name, profile_uid, profile_type, &subscription_url) {
-                Ok(nodes) => {
-                    if nodes.is_empty() {
+
+        match parse_profile_nodes(
+            &profile_data,
+            profile_name,
+            profile_uid,
+            profile_type,
+            &subscription_url,
+        ) {
+            Ok(nodes) => {
+                if nodes.is_empty() {
                     log::warn!(target: "app", "⚠️ 订阅 '{}' 未发现有效节点", profile_name);
-                    } else {
+                } else {
                     log::info!(target: "app", "✅ 订阅 '{}' 成功解析 {} 个节点", profile_name, nodes.len());
-                        for node in nodes {
-                            all_nodes_with_profile.push(node);
-                        }
+                    for node in nodes {
+                        all_nodes_with_profile.push(node);
                     }
                 }
-                Err(e) => {
+            }
+            Err(e) => {
                 log::error!(target: "app", "❌ 解析订阅 '{}' 失败: {}", profile_name, e);
-                log::error!(target: "app", "   订阅数据预览: {}", 
-                          if profile_data.len() > 200 { 
-                              format!("{}...", &profile_data[..200]) 
-        } else {
-                              profile_data.to_string() 
-                          });
+                log::error!(target: "app", "   订阅数据预览: {}",
+                                  if profile_data.len() > 200 {
+                                      format!("{}...", &profile_data[..200])
+                } else {
+                                      profile_data.to_string()
+                                  });
             }
         }
     }
 
     let total_nodes = all_nodes_with_profile.len();
-    
+
     if total_nodes == 0 {
         let error_details = vec![
             "没有找到任何可测试的节点",
             "可能的原因:",
             "1. 订阅配置为空或格式错误",
-            "2. 订阅中没有有效的代理节点", 
+            "2. 订阅中没有有效的代理节点",
             "3. 所有节点都被过滤掉了(如DIRECT、REJECT等)",
-            "4. 配置文件不存在或无法读取"
+            "4. 配置文件不存在或无法读取",
         ];
-        
+
         for msg in &error_details {
             log::error!(target: "app", "❌ {}", msg);
         }
-        
+
         return Err("没有找到任何可测试的节点，请检查订阅配置".to_string());
     }
 
     log::info!(target: "app", "🎯 共找到 {} 个节点，开始测速", total_nodes);
-    
+
     let mut all_results = Vec::new();
     let _start_time = Instant::now();
 
@@ -259,13 +275,13 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
     if let Err(e) = check_clash_availability().await {
         log::warn!(target: "app", "⚠️ Clash服务不可用，将使用TCP连接测试: {}", e);
     }
-    
+
     // 第三步：批量测试所有节点
     let batch_size = config.batch_size;
-    let total_batches = (total_nodes + batch_size - 1) / batch_size;
+    let total_batches = total_nodes.div_ceil(batch_size);
     let mut successful_tests = 0;
     let mut failed_tests = 0;
-    
+
     // 添加超时保护，防止整个测速过程卡死
     let overall_timeout = std::time::Duration::from_secs(config.overall_timeout_seconds);
     let start_time = Instant::now();
@@ -276,16 +292,16 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             log::info!(target: "app", "🛑 测速已被取消");
             return Err("测速已被用户取消".to_string());
         }
-        
+
         // 检查总体超时
         if start_time.elapsed() > overall_timeout {
             log::warn!(target: "app", "⏰ 测速超时，已运行 {} 秒", start_time.elapsed().as_secs());
             return Err("测速超时，请检查网络连接或减少节点数量".to_string());
         }
-        
+
         log::info!(target: "app", "📦 处理批次 {}/{} (包含 {} 个节点)", 
                   batch_index + 1, total_batches, chunk.len());
-        
+
         // 发送批次开始事件
         let progress = GlobalSpeedTestProgress {
             current_node: format!("批次 {}/{}", batch_index + 1, total_batches),
@@ -301,143 +317,147 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
             estimated_remaining_seconds: ((total_batches - batch_index) * 15).max(1) as u64,
         };
         let _ = app_handle.emit("global-speed-test-progress", progress);
-        
+
         // 🔧 修复：顺序测试批次节点，避免并发竞争导致假死
         log::info!(target: "app", "🔄 [批次处理] 开始顺序测试批次 {}/{} 的 {} 个节点", 
                   batch_index + 1, total_batches, chunk.len());
-        
+
         let mut batch_results: Vec<Result<SpeedTestResult, anyhow::Error>> = Vec::new();
-        
+
         for (node_index, node) in chunk.iter().enumerate() {
             // 检查取消标志
             if CANCEL_FLAG.load(Ordering::SeqCst) {
                 log::info!(target: "app", "⏹️ [取消检查] 用户取消测速，停止当前批次");
                 break;
             }
-            
+
             log::info!(target: "app", "🎯 [节点测试] 开始测试节点 {}/{}: {} (来自: {})", 
                       node_index + 1, chunk.len(), node.node_name, node.profile_name);
-            
+
             // 发送节点测试开始事件
             let completed_count = all_results.len();
             let update = NodeTestUpdate {
-                        node_name: node.node_name.clone(),
-                        profile_name: node.profile_name.clone(),
+                node_name: node.node_name.clone(),
+                profile_name: node.profile_name.clone(),
                 status: "testing".to_string(),
-                        latency_ms: None,
+                latency_ms: None,
                 error_message: None,
                 completed: completed_count,
                 total: total_nodes,
             };
             let _ = app_handle.emit("node-test-update", update);
-            
+
             // 🔧 修复：顺序测试单个节点，避免并发竞争
             let node_start_time = Instant::now();
             let result = test_single_node(node, config.node_timeout_seconds).await;
             let node_duration = node_start_time.elapsed();
-            
-            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}", 
-                      node.node_name, node_duration, 
-                      if result.is_available { 
-                          format!("成功 ({}ms)", result.latency.unwrap_or(0)) 
-                      } else { 
-                          "失败".to_string() 
-                      });
-            
+
+            log::info!(target: "app", "✅ [节点测试] 节点 {} 测试完成，耗时: {:?}, 结果: {}",
+            node.node_name, node_duration,
+            if result.is_available {
+                format!("成功 ({}ms)", result.latency.unwrap_or(0))
+            } else {
+                "失败".to_string()
+            });
+
             batch_results.push(Ok(result));
-            
+
             // 🔧 优化：减少节点间隔，提高1000+节点测速效率
             if node_index < chunk.len() - 1 {
                 log::debug!(target: "app", "⏳ [节点间隔] 等待100ms，避免资源竞争...");
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
         }
-        
+
         log::info!(target: "app", "✅ [批次处理] 批次 {}/{} 测试完成，共处理 {} 个节点", 
                   batch_index + 1, total_batches, batch_results.len());
-        
+
         // 🔧 修复：直接处理顺序测试结果
         {
             // 处理所有测试结果
             let results_len = batch_results.len(); // 🔧 先保存长度
             for result in batch_results {
-                    // 检查取消标志
-                    if CANCEL_FLAG.load(Ordering::SeqCst) {
-                        log::info!(target: "app", "🛑 批次 {} 处理被取消", batch_index + 1);
-                        break;
-                    }
-                    
-                    match result {
-                        Ok(test_result) => {
-                            if test_result.is_available {
-                                successful_tests += 1;
-                            } else {
-                                failed_tests += 1;
-                            }
-                            
-                            // 发送节点完成事件（非阻塞）
-                            let update = NodeTestUpdate {
-                                node_name: test_result.node_name.clone(),
-                                profile_name: test_result.profile_name.clone(),
-                                status: if test_result.is_available { "success".to_string() } else { "failed".to_string() },
-                                latency_ms: test_result.latency,
-                                error_message: test_result.error_message.clone(),
-                                completed: all_results.len() + 1,
-            total: total_nodes,
-                            };
-                            let _ = app_handle.emit("node-test-update", update);
-                            
-                            all_results.push(test_result);
-                        }
-                        Err(e) => {
-                            log::error!(target: "app", "❌ 节点测试任务失败: {}", e);
+                // 检查取消标志
+                if CANCEL_FLAG.load(Ordering::SeqCst) {
+                    log::info!(target: "app", "🛑 批次 {} 处理被取消", batch_index + 1);
+                    break;
+                }
+
+                match result {
+                    Ok(test_result) => {
+                        if test_result.is_available {
+                            successful_tests += 1;
+                        } else {
                             failed_tests += 1;
                         }
+
+                        // 发送节点完成事件（非阻塞）
+                        let update = NodeTestUpdate {
+                            node_name: test_result.node_name.clone(),
+                            profile_name: test_result.profile_name.clone(),
+                            status: if test_result.is_available {
+                                "success".to_string()
+                            } else {
+                                "failed".to_string()
+                            },
+                            latency_ms: test_result.latency,
+                            error_message: test_result.error_message.clone(),
+                            completed: all_results.len() + 1,
+                            total: total_nodes,
+                        };
+                        let _ = app_handle.emit("node-test-update", update);
+
+                        all_results.push(test_result);
+                    }
+                    Err(e) => {
+                        log::error!(target: "app", "❌ 节点测试任务失败: {}", e);
+                        failed_tests += 1;
                     }
                 }
-                log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results_len);
+            }
+            log::info!(target: "app", "✅ 批次 {} 完成，处理了 {} 个结果", batch_index + 1, results_len);
         }
-        
+
         let completed = all_results.len();
         let percentage = (completed as f64 / total_nodes as f64) * 100.0;
         log::info!(target: "app", "📊 进度: {}/{} ({:.1}%) - 成功: {}, 失败: {}", 
                   completed, total_nodes, percentage, successful_tests, failed_tests);
-        
+
         // 🚀 添加批次间延迟和连接清理，避免资源耗尽和连接堆积
         if batch_index + 1 < total_batches {
             log::debug!(target: "app", "⏸️ 批次间休息和清理，避免资源耗尽");
-            
+
             // 批次间清理连接
             if let Err(e) = cleanup_stale_connections().await {
                 log::warn!(target: "app", "批次间连接清理失败: {}", e);
             }
-            
+
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         }
     }
-    
+
     let duration = start_time.elapsed();
     log::info!(target: "app", "🏁 全局测速完成，耗时 {:.2} 秒", duration.as_secs_f64());
-    
+
     // 第三步：分析结果
     let summary = analyze_results(all_results, duration);
-    
+
     // 保存结果供后续使用
     *LATEST_RESULTS.lock() = Some(summary.clone());
-    
+
     // 发送完成事件
     let _ = app_handle.emit("global-speed-test-complete", summary.clone());
-    
-    log::info!(target: "app", "📈 测速统计: 总计 {} 个节点，成功 {} 个，失败 {} 个", 
+
+    log::info!(target: "app", "📈 测速统计: 总计 {} 个节点，成功 {} 个，失败 {} 个",
               summary.total_nodes, summary.successful_tests, summary.failed_tests);
-    
+
     if let Some(best) = &summary.best_node {
-        log::info!(target: "app", "🏆 最佳节点: {} (延迟: {}ms, 评分: {:.2})", 
-                  best.node_name, 
-                  best.latency.unwrap_or(0), 
+        log::info!(target: "app", "🏆 最佳节点: {} (延迟: {}ms, 评分: {:.2})",
+                  best.node_name,
+                  best.latency.unwrap_or(0),
                   best.score);
     }
-    
+
     Ok("全局节点测速完成".to_string())
 }
 
@@ -445,17 +465,17 @@ pub async fn start_global_speed_test(app_handle: tauri::AppHandle, config: Optio
 #[tauri::command]
 pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<(), String> {
     log::info!(target: "app", "🛑 [前端请求] 用户取消全局测速");
-    
+
     // 设置取消标志
     CANCEL_FLAG.store(true, Ordering::SeqCst);
     log::info!(target: "app", "✅ [取消状态] 已设置取消标志为true");
-    
+
     // 发送取消事件到前端
     let _ = app_handle.emit("global-speed-test-cancelled", ());
-    
+
     // 等待一小段时间确保事件发送
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    
+
     log::info!(target: "app", "✅ 全局测速取消信号已发送");
     Ok(())
 }
@@ -464,7 +484,7 @@ pub async fn cancel_global_speed_test(app_handle: tauri::AppHandle) -> Result<()
 #[tauri::command]
 pub async fn apply_best_node() -> Result<String, String> {
     log::info!(target: "app", "🎯 尝试应用最佳节点");
-    
+
     let best_node = {
         let results = LATEST_RESULTS.lock();
         match &*results {
@@ -475,15 +495,18 @@ pub async fn apply_best_node() -> Result<String, String> {
             }
         }
     };
-    
+
     match best_node {
         Some(best_node) => {
             log::info!(target: "app", "🔄 应用最佳节点: {} ({}:{})", 
                       best_node.node_name, best_node.server, best_node.port);
-            
+
             // 使用 IpcManager 来切换节点
             let ipc_manager = IpcManager::global();
-            match ipc_manager.update_proxy(&best_node.profile_uid, &best_node.node_name).await {
+            match ipc_manager
+                .update_proxy(&best_node.profile_uid, &best_node.node_name)
+                .await
+            {
                 Ok(_) => {
                     let success_msg = format!("已切换到最佳节点: {}", best_node.node_name);
                     log::info!(target: "app", "✅ {}", success_msg);
@@ -507,7 +530,7 @@ pub async fn apply_best_node() -> Result<String, String> {
 #[tauri::command]
 pub async fn switch_to_node(profile_uid: String, node_name: String) -> Result<String, String> {
     log::info!(target: "app", "🔄 切换到指定节点: {} (订阅: {})", node_name, profile_uid);
-    
+
     // 使用 IpcManager 来切换节点
     let ipc_manager = IpcManager::global();
     match ipc_manager.update_proxy(&profile_uid, &node_name).await {
@@ -541,101 +564,117 @@ struct NodeInfo {
 
 /// 解析订阅配置获取节点信息
 fn parse_profile_nodes(
-    profile_data: &str, 
-    profile_name: &str, 
-    profile_uid: &str, 
-    profile_type: &str, 
-    subscription_url: &Option<String>
+    profile_data: &str,
+    profile_name: &str,
+    profile_uid: &str,
+    profile_type: &str,
+    subscription_url: &Option<String>,
 ) -> Result<Vec<NodeInfo>, String> {
     let mut nodes = Vec::new();
-    
+
     if profile_data.trim().is_empty() {
         log::error!(target: "app", "❌ 配置文件为空: {}", profile_name);
         return Err("配置文件为空".to_string());
     }
-    
+
     log::info!(target: "app", "🔍 开始解析配置文件 '{}'，长度: {} 字符", profile_name, profile_data.len());
-    log::debug!(target: "app", "   配置数据预览: {}", 
-              if profile_data.len() > 500 { 
-                  format!("{}...", &profile_data[..500]) 
-              } else { 
-                  profile_data.to_string() 
-              });
-    
+    log::debug!(target: "app", "   配置数据预览: {}",
+    if profile_data.len() > 500 {
+        format!("{}...", &profile_data[..500])
+    } else {
+        profile_data.to_string()
+    });
+
     // 首先尝试解析 YAML 格式
     match serde_yaml_ng::from_str::<serde_yaml_ng::Value>(profile_data) {
         Ok(yaml_value) => {
             log::info!(target: "app", "✅ YAML 解析成功: {}", profile_name);
             log::debug!(target: "app", "   YAML根级字段: {:?}", yaml_value.as_mapping().map(|m| m.keys().collect::<Vec<_>>()));
-            
+
             // 尝试多种可能的节点字段名
             let possible_keys = ["proxies", "Proxy", "proxy", "servers", "nodes", "outbounds"];
             let mut found_nodes = false;
-            
+
             for key in &possible_keys {
                 if let Some(proxies) = yaml_value.get(key).and_then(|p| p.as_sequence()) {
                     log::info!(target: "app", "🎯 找到节点列表 '{}' (订阅: {}), 包含 {} 个节点", key, profile_name, proxies.len());
                     found_nodes = true;
-                    
+
                     for (i, proxy) in proxies.iter().enumerate() {
                         if let Some(proxy_map) = proxy.as_mapping() {
                             // 跳过非代理节点（如 DIRECT, REJECT 等）
                             let node_type = ["type", "Type", "protocol", "Protocol"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                    .and_then(|v| v.as_str()))
+                                .find_map(|&k| {
+                                    proxy_map
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
+                                        .and_then(|v| v.as_str())
+                                })
                                 .unwrap_or("unknown");
-                            
-                            if matches!(node_type.to_lowercase().as_str(), "direct" | "reject" | "dns" | "block") {
+
+                            if matches!(
+                                node_type.to_lowercase().as_str(),
+                                "direct" | "reject" | "dns" | "block"
+                            ) {
                                 log::debug!(target: "app", "⏭️ 跳过系统节点: {} (类型: {})", 
-                                          proxy_map.get(&serde_yaml_ng::Value::String("name".to_string()))
+                            proxy_map.get(serde_yaml_ng::Value::String("name".to_string()))
                                           .and_then(|v| v.as_str()).unwrap_or("unknown"), node_type);
                                 continue;
                             }
-                            
+
                             let default_name = format!("Node-{}", i + 1);
                             let node_name = ["name", "Name", "tag", "Tag"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                    .and_then(|v| v.as_str()))
+                                .find_map(|&k| {
+                                    proxy_map
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
+                                        .and_then(|v| v.as_str())
+                                })
                                 .unwrap_or(&default_name);
-                            
-                            let server = ["server", "Server", "hostname", "Hostname", "host", "Host"]
-                                .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                    .and_then(|v| v.as_str()))
-                                .unwrap_or("unknown");
-                            
+
+                            let server =
+                                ["server", "Server", "hostname", "Hostname", "host", "Host"]
+                                    .iter()
+                                    .find_map(|&k| {
+                                        proxy_map
+                                            .get(serde_yaml_ng::Value::String(k.to_string()))
+                                            .and_then(|v| v.as_str())
+                                    })
+                                    .unwrap_or("unknown");
+
                             let port = ["port", "Port"]
                                 .iter()
-                                .find_map(|&k| proxy_map.get(&serde_yaml_ng::Value::String(k.to_string()))
-                                    .and_then(|v| v.as_u64()))
+                                .find_map(|&k| {
+                                    proxy_map
+                                        .get(serde_yaml_ng::Value::String(k.to_string()))
+                                        .and_then(|v| v.as_u64())
+                                })
                                 .unwrap_or(0) as u16;
-                            
+
                             if server != "unknown" && port > 0 {
                                 log::debug!(target: "app", "📍 解析节点: {} ({}:{}, 类型: {})", 
                                           node_name, server, port, node_type);
-                            
-                            let node = NodeInfo {
+
+                                let node = NodeInfo {
                                     node_name: node_name.to_string(),
                                     node_type: node_type.to_string(),
                                     server: server.to_string(),
-                                port,
-                                profile_name: profile_name.to_string(),
-                                profile_uid: profile_uid.to_string(),
-                                profile_type: profile_type.to_string(),
-                                subscription_url: subscription_url.clone(),
+                                    port,
+                                    profile_name: profile_name.to_string(),
+                                    profile_uid: profile_uid.to_string(),
+                                    profile_type: profile_type.to_string(),
+                                    subscription_url: subscription_url.clone(),
                                     traffic_info: None, // 可以在这里解析流量信息
-                            };
-                            
-                            nodes.push(node);
+                                };
+
+                                nodes.push(node);
+                            }
                         }
-                    }
                     }
                     break;
                 }
             }
-            
+
             if !found_nodes {
                 log::warn!(target: "app", "⚠️ 在 YAML 中未找到节点列表 '{}'，尝试的字段: {:?}", profile_name, possible_keys);
                 log::debug!(target: "app", "   YAML 结构: {:?}", yaml_value);
@@ -643,65 +682,72 @@ fn parse_profile_nodes(
         }
         Err(e) => {
             log::warn!(target: "app", "⚠️ YAML 解析失败 '{}': {}, 尝试 JSON 解析", profile_name, e);
-            
+
             // 如果 YAML 解析失败，尝试 JSON
             match serde_json::from_str::<serde_json::Value>(profile_data) {
                 Ok(json_value) => {
                     log::info!(target: "app", "JSON 解析成功");
-                    
-                    let possible_keys = ["proxies", "Proxy", "proxy", "servers", "nodes", "outbounds"];
+
+                    let possible_keys =
+                        ["proxies", "Proxy", "proxy", "servers", "nodes", "outbounds"];
                     for key in &possible_keys {
                         if let Some(proxies) = json_value.get(key).and_then(|p| p.as_array()) {
                             log::info!(target: "app", "找到 JSON 节点列表 '{}', 包含 {} 个节点", key, proxies.len());
-                            
+
                             for (i, proxy) in proxies.iter().enumerate() {
                                 if let Some(proxy_obj) = proxy.as_object() {
                                     let node_type = ["type", "Type", "protocol", "Protocol"]
                                         .iter()
                                         .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_str()))
                                         .unwrap_or("unknown");
-                                    
-                                    if matches!(node_type.to_lowercase().as_str(), "direct" | "reject" | "dns" | "block") {
+
+                                    if matches!(
+                                        node_type.to_lowercase().as_str(),
+                                        "direct" | "reject" | "dns" | "block"
+                                    ) {
                                         continue;
                                     }
-                                    
+
                                     let default_name = format!("Node-{}", i + 1);
                                     let node_name = ["name", "Name", "tag", "Tag"]
                                         .iter()
                                         .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_str()))
                                         .unwrap_or(&default_name);
-                                    
-                                    let server = ["server", "Server", "hostname", "Hostname", "host", "Host"]
-                                        .iter()
-                                        .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_str()))
-                                        .unwrap_or("unknown");
-                                    
+
+                                    let server = [
+                                        "server", "Server", "hostname", "Hostname", "host", "Host",
+                                    ]
+                                    .iter()
+                                    .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_str()))
+                                    .unwrap_or("unknown");
+
                                     let port = ["port", "Port"]
                                         .iter()
                                         .find_map(|&k| proxy_obj.get(k).and_then(|v| v.as_u64()))
-                                        .unwrap_or(0) as u16;
-                                    
+                                        .unwrap_or(0)
+                                        as u16;
+
                                     if server != "unknown" && port > 0 {
-                                    let node = NodeInfo {
+                                        let node = NodeInfo {
                                             node_name: node_name.to_string(),
                                             node_type: node_type.to_string(),
                                             server: server.to_string(),
-                                        port,
-                                        profile_name: profile_name.to_string(),
-                                        profile_uid: profile_uid.to_string(),
-                                        profile_type: profile_type.to_string(),
-                                        subscription_url: subscription_url.clone(),
+                                            port,
+                                            profile_name: profile_name.to_string(),
+                                            profile_uid: profile_uid.to_string(),
+                                            profile_type: profile_type.to_string(),
+                                            subscription_url: subscription_url.clone(),
                                             traffic_info: None,
-                                    };
-                                    
-                                    nodes.push(node);
+                                        };
+
+                                        nodes.push(node);
                                     }
                                 }
                             }
                             break;
                         }
                     }
-                    
+
                     // 不需要found_nodes检查，直接继续
                 }
                 Err(json_err) => {
@@ -709,12 +755,15 @@ fn parse_profile_nodes(
                     log::error!(target: "app", "   配置数据可能不是有效的 YAML 或 JSON 格式");
                     log::debug!(target: "app", "   YAML 错误: {:?}", e);
                     log::debug!(target: "app", "   JSON 错误: {:?}", json_err);
-                    return Err(format!("配置文件 '{}' 解析失败，既不是有效的 YAML 也不是 JSON 格式。YAML 错误: {}，JSON 错误: {}", profile_name, e, json_err));
+                    return Err(format!(
+                        "配置文件 '{}' 解析失败，既不是有效的 YAML 也不是 JSON 格式。YAML 错误: {}，JSON 错误: {}",
+                        profile_name, e, json_err
+                    ));
                 }
             }
         }
     }
-    
+
     // 如果还是没有找到节点，返回错误
     if nodes.is_empty() {
         log::warn!(target: "app", "⚠️ 订阅 '{}' 未找到任何有效节点", profile_name);
@@ -724,7 +773,7 @@ fn parse_profile_nodes(
         log::warn!(target: "app", "   3. 节点配置格式不正确");
         return Err(format!("订阅 '{}' 中没有找到有效的代理节点", profile_name));
     }
-    
+
     log::info!(target: "app", "📊 解析完成 '{}': 找到 {} 个有效节点", profile_name, nodes.len());
     Ok(nodes)
 }
@@ -733,30 +782,30 @@ fn parse_profile_nodes(
 async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestResult {
     log::info!(target: "app", "🔍 开始真实代理测试节点: {} ({}:{}) 来自订阅: {}", 
               node.node_name, node.server, node.port, node.profile_name);
-    
+
     let _start_time = Instant::now();
-    
+
     // 确保配置文件已激活（可选，取决于实现）
     if let Err(e) = ensure_profile_activated(&node.profile_uid).await {
         log::warn!(target: "app", "⚠️ 无法激活配置文件 {}: {}", node.profile_uid, e);
     }
-    
+
     // 首先尝试使用Clash API进行真实的代理延迟测试
     match test_proxy_via_clash(&node.node_name, timeout_seconds).await {
         Ok(latency) => {
             let score = calculate_score(Some(latency), true);
-            
+
             log::info!(target: "app", "✅ 节点 {} 代理测试成功，延迟: {}ms, 评分: {:.2}", 
                       node.node_name, latency, score);
-            
+
             SpeedTestResult {
                 node_name: node.node_name.clone(),
-            node_type: node.node_type.clone(),
-            server: node.server.clone(),
-            port: node.port,
-            profile_name: node.profile_name.clone(),
-            profile_uid: node.profile_uid.clone(),
-            subscription_url: node.subscription_url.clone(),
+                node_type: node.node_type.clone(),
+                server: node.server.clone(),
+                port: node.port,
+                profile_name: node.profile_name.clone(),
+                profile_uid: node.profile_uid.clone(),
+                subscription_url: node.subscription_url.clone(),
                 latency: Some(latency),
                 is_available: true,
                 error_message: None,
@@ -767,25 +816,25 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
         }
         Err(e) => {
             log::warn!(target: "app", "❌ 节点 {} 代理测试失败: {}", node.node_name, e);
-            
+
             // 如果Clash API测试失败，降级到TCP连接测试作为备用
             log::info!(target: "app", "🔄 节点 {} 降级到TCP连接测试", node.node_name);
-            
+
             match test_tcp_connection(&node.server, node.port, timeout_seconds).await {
                 Ok(latency) => {
                     let score = calculate_score(Some(latency), true) * 0.5; // 降级测试评分减半
-                    
+
                     log::info!(target: "app", "⚠️ 节点 {} TCP连接成功(降级)，延迟: {}ms, 评分: {:.2}", 
                               node.node_name, latency, score);
-    
-    SpeedTestResult {
-        node_name: node.node_name.clone(),
-        node_type: node.node_type.clone(),
-        server: node.server.clone(),
-        port: node.port,
-        profile_name: node.profile_name.clone(),
-        profile_uid: node.profile_uid.clone(),
-        subscription_url: node.subscription_url.clone(),
+
+                    SpeedTestResult {
+                        node_name: node.node_name.clone(),
+                        node_type: node.node_type.clone(),
+                        server: node.server.clone(),
+                        port: node.port,
+                        profile_name: node.profile_name.clone(),
+                        profile_uid: node.profile_uid.clone(),
+                        subscription_url: node.subscription_url.clone(),
                         latency: Some(latency),
                         is_available: true,
                         error_message: Some(format!("代理测试失败，降级到TCP测试: {}", e)),
@@ -796,7 +845,7 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
                 }
                 Err(tcp_error) => {
                     let error_msg = format!("代理测试失败: {}; TCP测试也失败: {}", e, tcp_error);
-                    
+
                     SpeedTestResult {
                         node_name: node.node_name.clone(),
                         node_type: node.node_type.clone(),
@@ -821,10 +870,10 @@ async fn test_single_node(node: &NodeInfo, timeout_seconds: u64) -> SpeedTestRes
 /// 确保配置文件已激活（如果需要的话）
 async fn ensure_profile_activated(profile_uid: &str) -> Result<()> {
     log::debug!(target: "app", "🔧 确保配置文件已激活: {}", profile_uid);
-    
+
     // 这里可以添加激活配置文件的逻辑
     // 例如：Config::activate_profile(profile_uid).await?;
-    
+
     // 目前先简单返回成功，实际使用时可能需要检查当前活动的配置文件
     Ok(())
 }
@@ -832,11 +881,11 @@ async fn ensure_profile_activated(profile_uid: &str) -> Result<()> {
 /// 检查Clash服务是否可用
 async fn check_clash_availability() -> Result<()> {
     let ipc = IpcManager::global();
-    
+
     // 快速检查Clash API是否响应
     let check_timeout = std::time::Duration::from_secs(2); // 只给2秒检查时间
     let version_call = ipc.get_version();
-    
+
     match tokio::time::timeout(check_timeout, version_call).await {
         Ok(Ok(_)) => {
             log::debug!(target: "app", "✅ Clash服务可用");
@@ -857,17 +906,16 @@ async fn check_clash_availability() -> Result<()> {
 
 /// 通过临时切换节点进行真实代理延迟测试（修复测速逻辑）
 async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u64> {
-    
     // 获取IPC管理器实例
     let ipc = IpcManager::global();
-    
+
     log::debug!(target: "app", "🎯 开始真实代理测速：临时切换到节点 '{}'", node_name);
-    
+
     // 检查节点名称
     if node_name.is_empty() {
         return Err(anyhow::anyhow!("节点名称为空"));
     }
-    
+
     // Step 1: 获取当前代理配置（用于恢复）
     let original_proxies = match ipc.get_proxies().await {
         Ok(proxies) => {
@@ -879,35 +927,34 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
             return Err(anyhow::anyhow!("获取当前代理配置失败: {}", e));
         }
     };
-    
-    
+
     // Step 2: 找到包含目标节点的代理组
     let target_group = find_proxy_group_for_node(&original_proxies, node_name)?;
     log::debug!(target: "app", "🔍 找到目标节点所在组: '{}'", target_group);
-    
+
     // Step 3: 获取当前选中的节点（用于恢复）
     let original_selected = get_selected_proxy_for_group(&original_proxies, &target_group)?;
     log::debug!(target: "app", "📝 当前选中节点: '{}'", original_selected);
-    
+
     // Step 4: 临时切换到目标节点
     if let Err(e) = ipc.update_proxy(&target_group, node_name).await {
         log::error!(target: "app", "❌ 切换到目标节点失败: {}", e);
         return Err(anyhow::anyhow!("切换到目标节点失败: {}", e));
     }
     log::debug!(target: "app", "🔄 已临时切换到节点: '{}'", node_name);
-    
+
     // 🚀 优化：减少等待时间，避免累积延迟
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-    
+
     // Step 5: 进行真实的延迟测试（现在通过目标节点）
     let test_url = Some("https://cp.cloudflare.com/generate_204".to_string());
     let timeout_ms = (timeout_seconds * 1000) as i32;
     let start_time = std::time::Instant::now();
-    
+
     let test_result = {
         let api_call = ipc.test_proxy_delay("GLOBAL", test_url, timeout_ms); // 测试当前生效的代理
         let overall_timeout = std::time::Duration::from_secs(timeout_seconds + 3);
-        
+
         // 取消检查
         let cancel_check = async {
             loop {
@@ -917,7 +964,7 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             }
         };
-        
+
         // 竞争执行
         match tokio::select! {
             result = api_call => Ok(result),
@@ -938,18 +985,19 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
                         Err(anyhow::anyhow!("API响应不是有效JSON"))
                     }
                 }
-                Err(e) => Err(anyhow::anyhow!("API调用失败: {}", e))
+                Err(e) => Err(anyhow::anyhow!("API调用失败: {}", e)),
             },
             Err(e) => Err(e),
         }
     };
-    
+
     // Step 6: 恢复原始代理配置（无论测试成功与否）
     let restore_result = tokio::time::timeout(
         std::time::Duration::from_secs(5), // 🚀 恢复操作也要有超时
-        ipc.update_proxy(&target_group, &original_selected)
-    ).await;
-    
+        ipc.update_proxy(&target_group, &original_selected),
+    )
+    .await;
+
     match restore_result {
         Ok(Ok(_)) => {
             log::debug!(target: "app", "🔄 已恢复到原始节点: '{}'", original_selected);
@@ -961,15 +1009,15 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
             log::error!(target: "app", "⚠️ 恢复原始代理配置超时");
         }
     }
-    
+
     // 🚀 添加小延迟确保恢复操作完成，避免连续切换冲突
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-    
+
     // 🔧 强制清理可能的僵死连接
     if let Err(e) = cleanup_stale_connections().await {
         log::warn!(target: "app", "⚠️ 清理僵死连接失败: {}", e);
     }
-    
+
     // 返回测试结果
     test_result
 }
@@ -977,21 +1025,19 @@ async fn test_proxy_via_clash(node_name: &str, timeout_seconds: u64) -> Result<u
 /// TCP连接测试（作为备用方案）
 async fn test_tcp_connection(server: &str, port: u16, timeout_seconds: u64) -> Result<u64> {
     let start_time = Instant::now();
-    
+
     match tokio::time::timeout(
         std::time::Duration::from_secs(timeout_seconds),
-        tokio::net::TcpStream::connect(format!("{}:{}", server, port))
-    ).await {
+        tokio::net::TcpStream::connect(format!("{}:{}", server, port)),
+    )
+    .await
+    {
         Ok(Ok(_stream)) => {
             let latency = start_time.elapsed().as_millis() as u64;
             Ok(latency)
         }
-        Ok(Err(e)) => {
-            Err(anyhow::anyhow!("TCP连接失败: {}", e))
-        }
-        Err(_) => {
-            Err(anyhow::anyhow!("TCP连接超时 ({}秒)", timeout_seconds))
-        }
+        Ok(Err(e)) => Err(anyhow::anyhow!("TCP连接失败: {}", e)),
+        Err(_) => Err(anyhow::anyhow!("TCP连接超时 ({}秒)", timeout_seconds)),
     }
 }
 
@@ -1000,7 +1046,7 @@ fn calculate_score(latency: Option<u64>, is_available: bool) -> f64 {
     if !is_available {
         return 0.0;
     }
-    
+
     match latency {
         Some(lat) => {
             // 基于延迟的评分算法
@@ -1010,7 +1056,7 @@ fn calculate_score(latency: Option<u64>, is_available: bool) -> f64 {
             // 101-200ms: 70-84分
             // 201-500ms: 40-69分
             // 500ms+: 0-39分
-            
+
             if lat <= 50 {
                 100.0 - (lat as f64 * 0.1)
             } else if lat <= 100 {
@@ -1031,24 +1077,42 @@ fn calculate_score(latency: Option<u64>, is_available: bool) -> f64 {
 fn identify_region(server: &str) -> Option<String> {
     // 简单的地区识别逻辑，基于服务器地址
     let server_lower = server.to_lowercase();
-    
+
     if server_lower.contains("hk") || server_lower.contains("hongkong") {
         Some("香港".to_string())
     } else if server_lower.contains("sg") || server_lower.contains("singapore") {
         Some("新加坡".to_string())
-    } else if server_lower.contains("jp") || server_lower.contains("japan") || server_lower.contains("tokyo") {
+    } else if server_lower.contains("jp")
+        || server_lower.contains("japan")
+        || server_lower.contains("tokyo")
+    {
         Some("日本".to_string())
-    } else if server_lower.contains("us") || server_lower.contains("america") || server_lower.contains("usa") {
+    } else if server_lower.contains("us")
+        || server_lower.contains("america")
+        || server_lower.contains("usa")
+    {
         Some("美国".to_string())
-    } else if server_lower.contains("uk") || server_lower.contains("london") || server_lower.contains("britain") {
+    } else if server_lower.contains("uk")
+        || server_lower.contains("london")
+        || server_lower.contains("britain")
+    {
         Some("英国".to_string())
-    } else if server_lower.contains("kr") || server_lower.contains("korea") || server_lower.contains("seoul") {
+    } else if server_lower.contains("kr")
+        || server_lower.contains("korea")
+        || server_lower.contains("seoul")
+    {
         Some("韩国".to_string())
     } else if server_lower.contains("tw") || server_lower.contains("taiwan") {
         Some("台湾".to_string())
-    } else if server_lower.contains("de") || server_lower.contains("germany") || server_lower.contains("frankfurt") {
+    } else if server_lower.contains("de")
+        || server_lower.contains("germany")
+        || server_lower.contains("frankfurt")
+    {
         Some("德国".to_string())
-    } else if server_lower.contains("fr") || server_lower.contains("france") || server_lower.contains("paris") {
+    } else if server_lower.contains("fr")
+        || server_lower.contains("france")
+        || server_lower.contains("paris")
+    {
         Some("法国".to_string())
     } else if server_lower.contains("ca") || server_lower.contains("canada") {
         Some("加拿大".to_string())
@@ -1060,17 +1124,24 @@ fn identify_region(server: &str) -> Option<String> {
 }
 
 /// 分析测速结果
-fn analyze_results(mut results: Vec<SpeedTestResult>, duration: std::time::Duration) -> GlobalSpeedTestSummary {
+fn analyze_results(
+    mut results: Vec<SpeedTestResult>,
+    duration: std::time::Duration,
+) -> GlobalSpeedTestSummary {
     let total_nodes = results.len();
     let successful_tests = results.iter().filter(|r| r.is_available).count();
     let failed_tests = total_nodes - successful_tests;
-    
+
     // 按评分排序（降序）
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-    
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
     // 获取最佳节点
     let best_node = results.iter().find(|r| r.is_available).cloned();
-    
+
     // 获取前10名可用节点
     let top_10_nodes: Vec<SpeedTestResult> = results
         .iter()
@@ -1078,7 +1149,7 @@ fn analyze_results(mut results: Vec<SpeedTestResult>, duration: std::time::Durat
         .take(10)
         .cloned()
         .collect();
-    
+
     // 按订阅分组结果
     let mut results_by_profile: HashMap<String, Vec<SpeedTestResult>> = HashMap::new();
     for result in &results {
@@ -1087,7 +1158,7 @@ fn analyze_results(mut results: Vec<SpeedTestResult>, duration: std::time::Durat
             .or_insert_with(Vec::new)
             .push(result.clone());
     }
-    
+
     GlobalSpeedTestSummary {
         total_nodes,
         tested_nodes: total_nodes,
@@ -1107,17 +1178,17 @@ fn find_proxy_group_for_node(proxies: &serde_json::Value, node_name: &str) -> Re
         for (group_name, group_info) in proxies_obj {
             if let Some(all_nodes) = group_info.get("all").and_then(|v| v.as_array()) {
                 for node in all_nodes {
-                    if let Some(name) = node.as_str() {
-                        if name == node_name {
-                            log::debug!(target: "app", "🔍 节点 '{}' 属于组 '{}'", node_name, group_name);
-                            return Ok(group_name.clone());
-                        }
+                    if let Some(name) = node.as_str()
+                        && name == node_name
+                    {
+                        log::debug!(target: "app", "🔍 节点 '{}' 属于组 '{}'", node_name, group_name);
+                        return Ok(group_name.clone());
                     }
                 }
             }
         }
     }
-    
+
     // 如果没找到，尝试GLOBAL组
     log::warn!(target: "app", "⚠️ 未找到节点 '{}' 所属组，尝试使用GLOBAL组", node_name);
     Ok("GLOBAL".to_string())
@@ -1125,13 +1196,13 @@ fn find_proxy_group_for_node(proxies: &serde_json::Value, node_name: &str) -> Re
 
 /// 获取指定组当前选中的代理
 fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -> Result<String> {
-    if let Some(group_info) = proxies.as_object().and_then(|obj| obj.get(group_name)) {
-        if let Some(now) = group_info.get("now").and_then(|v| v.as_str()) {
-            log::debug!(target: "app", "📝 组 '{}' 当前选中: '{}'", group_name, now);
-            return Ok(now.to_string());
-        }
+    if let Some(group_info) = proxies.as_object().and_then(|obj| obj.get(group_name))
+        && let Some(now) = group_info.get("now").and_then(|v| v.as_str())
+    {
+        log::debug!(target: "app", "📝 组 '{}' 当前选中: '{}'", group_name, now);
+        return Ok(now.to_string());
     }
-    
+
     log::warn!(target: "app", "⚠️ 无法获取组 '{}' 的当前选中节点，使用DIRECT作为备用", group_name);
     Ok("DIRECT".to_string())
 }
@@ -1140,7 +1211,7 @@ fn get_selected_proxy_for_group(proxies: &serde_json::Value, group_name: &str) -
 async fn cleanup_stale_connections() -> Result<()> {
     log::debug!(target: "app", "🧹 [连接清理] 开始清理僵死连接");
     let ipc = IpcManager::global();
-    
+
     // 获取当前所有连接
     log::debug!(target: "app", "📡 [连接清理] 正在获取当前连接列表...");
     match ipc.get_connections().await {
@@ -1150,23 +1221,25 @@ async fn cleanup_stale_connections() -> Result<()> {
                     .iter()
                     .filter(|conn| {
                         // 检查连接是否可能是僵死的
-                        if let Some(metadata) = conn.get("metadata") {
-                            if let Some(host) = metadata.get("host").and_then(|h| h.as_str()) {
-                                // 如果是测试相关的连接且处于异常状态
-                                return host.contains("cloudflare.com") || 
-                                       host.contains("cp.cloudflare.com") ||
-                                       metadata.get("process").and_then(|p| p.as_str())
-                                           .map_or(false, |p| p.contains("liebesu-clash"));
-                            }
+                        if let Some(metadata) = conn.get("metadata")
+                            && let Some(host) = metadata.get("host").and_then(|h| h.as_str())
+                        {
+                            // 如果是测试相关的连接且处于异常状态
+                            return host.contains("cloudflare.com")
+                                || host.contains("cp.cloudflare.com")
+                                || metadata
+                                    .get("process")
+                                    .and_then(|p| p.as_str())
+                                    .is_some_and(|p| p.contains("liebesu-clash"));
                         }
                         false
                     })
                     .collect();
-                
+
                 if !stale_connections.is_empty() {
                     let total_connections = stale_connections.len(); // 🔧 提前获取长度避免借用问题
                     log::info!(target: "app", "🧹 [连接清理] 发现 {} 个可能的僵死连接，开始批量清理", total_connections);
-                    
+
                     // 批量关闭僵死连接
                     let mut cleaned_count = 0;
                     for conn in stale_connections {
@@ -1183,7 +1256,7 @@ async fn cleanup_stale_connections() -> Result<()> {
                             }
                         }
                     }
-                    
+
                     log::info!(target: "app", "✅ [连接清理] 清理完成，成功清理 {}/{} 个连接", cleaned_count, total_connections);
                 } else {
                     log::debug!(target: "app", "✨ [连接清理] 未发现需要清理的僵死连接");
@@ -1194,6 +1267,6 @@ async fn cleanup_stale_connections() -> Result<()> {
             log::debug!(target: "app", "❌ [连接清理] 获取连接列表失败: {}", e);
         }
     }
-    
+
     Ok(())
 }

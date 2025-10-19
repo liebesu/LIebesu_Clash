@@ -129,14 +129,16 @@ const ProfilePage = () => {
   const [disabled, setDisabled] = useState(false);
   const [activatings, setActivatings] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // 配额超限对话框状态
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false);
   const [quotaFailedProfiles, setQuotaFailedProfiles] = useState<string[]>([]);
 
   // 重复订阅清理对话框
   const [dupDialogOpen, setDupDialogOpen] = useState(false);
-  const [dupGroups, setDupGroups] = useState<{ url: string; items: IProfileItem[] }[]>([]);
+  const [dupGroups, setDupGroups] = useState<
+    { url: string; items: IProfileItem[] }[]
+  >([]);
 
   // 健康检查对话框状态
   const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
@@ -148,28 +150,35 @@ const ProfilePage = () => {
   const [taskManagerDialogOpen, setTaskManagerDialogOpen] = useState(false);
 
   // 订阅测试对话框状态
-  const [subscriptionTestingDialogOpen, setSubscriptionTestingDialogOpen] = useState(false);
+  const [subscriptionTestingDialogOpen, setSubscriptionTestingDialogOpen] =
+    useState(false);
 
   // 流量统计对话框状态
   const [trafficStatsDialogOpen, setTrafficStatsDialogOpen] = useState(false);
 
   // 订阅分组对话框状态
-  const [subscriptionGroupsDialogOpen, setSubscriptionGroupsDialogOpen] = useState(false);
+  const [subscriptionGroupsDialogOpen, setSubscriptionGroupsDialogOpen] =
+    useState(false);
 
   // 备份恢复对话框状态
   const [backupRestoreDialogOpen, setBackupRestoreDialogOpen] = useState(false);
 
   // 高级搜索对话框状态
-  const [advancedSearchDialogOpen, setAdvancedSearchDialogOpen] = useState(false);
+  const [advancedSearchDialogOpen, setAdvancedSearchDialogOpen] =
+    useState(false);
 
   // 批量导出对话框状态
   const [batchExportDialogOpen, setBatchExportDialogOpen] = useState(false);
 
   // 订阅批量管理对话框状态
-  const [subscriptionBatchManagerDialogOpen, setSubscriptionBatchManagerDialogOpen] = useState(false);
+  const [
+    subscriptionBatchManagerDialogOpen,
+    setSubscriptionBatchManagerDialogOpen,
+  ] = useState(false);
 
   // 全局测速对话框状态
-  const [globalSpeedTestDialogOpen, setGlobalSpeedTestDialogOpen] = useState(false);
+  const [globalSpeedTestDialogOpen, setGlobalSpeedTestDialogOpen] =
+    useState(false);
 
   // 检测重复分组
   const detectDuplicateGroups = async () => {
@@ -183,7 +192,10 @@ const ProfilePage = () => {
       map[key].push(p);
     }
     return Object.entries(map)
-      .map(([url, list]) => ({ url, items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)) }))
+      .map(([url, list]) => ({
+        url,
+        items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)),
+      }))
       .filter((g) => g.items.length > 1);
   };
 
@@ -713,12 +725,27 @@ const ProfilePage = () => {
   const isQuotaError = (error: any) => {
     const errorMsg = error?.message || error?.toString() || "";
     const quotaKeywords = [
-      "quota", "limit", "exceeded", "over", "traffic", "bandwidth",
-      "配额", "限制", "超出", "流量", "额度", "用完", "耗尽",
-      "expired", "expiry", "expire", "到期", "过期"
+      "quota",
+      "limit",
+      "exceeded",
+      "over",
+      "traffic",
+      "bandwidth",
+      "配额",
+      "限制",
+      "超出",
+      "流量",
+      "额度",
+      "用完",
+      "耗尽",
+      "expired",
+      "expiry",
+      "expire",
+      "到期",
+      "过期",
     ];
-    return quotaKeywords.some(keyword => 
-      errorMsg.toLowerCase().includes(keyword.toLowerCase())
+    return quotaKeywords.some((keyword) =>
+      errorMsg.toLowerCase().includes(keyword.toLowerCase()),
     );
   };
 
@@ -728,17 +755,17 @@ const ProfilePage = () => {
     const throttleMutate = throttle(mutateProfiles, 2000, {
       trailing: true,
     });
-    
+
     const quotaFailedUIDs: string[] = [];
     const normalFailedUIDs: string[] = [];
-    
+
     const updateOne = async (uid: string) => {
       try {
         await updateProfile(uid);
         throttleMutate();
       } catch (err: any) {
         console.error(`更新订阅 ${uid} 失败:`, err);
-        
+
         // 检查是否为配额相关错误
         if (isQuotaError(err)) {
           quotaFailedUIDs.push(uid);
@@ -758,39 +785,51 @@ const ProfilePage = () => {
         );
         const change = Object.fromEntries(items.map((e) => [e.uid, true]));
 
-        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(async () => {
-          // 先检测重复订阅（仅远程）
-          const remotes = (await getProfiles())?.items?.filter((p: IProfileItem) => p.type === "remote") || [];
-          const map: Record<string, IProfileItem[]> = {};
-          for (const p of remotes) {
-            const key = p.url ? standardizeUrl(p.url) : "";
-            if (!key) continue;
-            map[key] = map[key] || [];
-            map[key].push(p);
-          }
-          const groups = Object.entries(map)
-            .map(([url, list]) => ({ url, items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)) }))
-            .filter((g) => g.items.length > 1);
+        Promise.allSettled(items.map((e) => updateOne(e.uid))).then(
+          async () => {
+            // 先检测重复订阅（仅远程）
+            const remotes =
+              (await getProfiles())?.items?.filter(
+                (p: IProfileItem) => p.type === "remote",
+              ) || [];
+            const map: Record<string, IProfileItem[]> = {};
+            for (const p of remotes) {
+              const key = p.url ? standardizeUrl(p.url) : "";
+              if (!key) continue;
+              map[key] = map[key] || [];
+              map[key].push(p);
+            }
+            const groups = Object.entries(map)
+              .map(([url, list]) => ({
+                url,
+                items: list.sort((a, b) => (b.updated || 0) - (a.updated || 0)),
+              }))
+              .filter((g) => g.items.length > 1);
 
-          if (groups.length > 0) {
-            setDupGroups(groups);
-            setDupDialogOpen(true);
-          }
+            if (groups.length > 0) {
+              setDupGroups(groups);
+              setDupDialogOpen(true);
+            }
 
-          // 再处理配额超限的情况
-          if (quotaFailedUIDs.length > 0) {
-            setQuotaFailedProfiles(quotaFailedUIDs);
-            setQuotaDialogOpen(true);
-            showNotice("info", t("Quota exceeded detected"), 3000);
-          }
-          
-          // 显示正常的错误信息
-          if (normalFailedUIDs.length > 0) {
-            showNotice("error", `${normalFailedUIDs.length} subscriptions failed to update`, 3000);
-          }
-          
-          resolve(undefined);
-        });
+            // 再处理配额超限的情况
+            if (quotaFailedUIDs.length > 0) {
+              setQuotaFailedProfiles(quotaFailedUIDs);
+              setQuotaDialogOpen(true);
+              showNotice("info", t("Quota exceeded detected"), 3000);
+            }
+
+            // 显示正常的错误信息
+            if (normalFailedUIDs.length > 0) {
+              showNotice(
+                "error",
+                `${normalFailedUIDs.length} subscriptions failed to update`,
+                3000,
+              );
+            }
+
+            resolve(undefined);
+          },
+        );
         return { ...cache, ...change };
       });
     });
@@ -809,7 +848,7 @@ const ProfilePage = () => {
 
   const handleQuotaDialogConfirm = async (selectedProfiles: string[]) => {
     setQuotaDialogOpen(false);
-    
+
     if (selectedProfiles.length === 0) {
       setQuotaFailedProfiles([]);
       return;
@@ -820,11 +859,19 @@ const ProfilePage = () => {
       for (const uid of selectedProfiles) {
         await onDelete(uid);
       }
-      
-      showNotice("success", t("Selected subscriptions deleted", { count: selectedProfiles.length }), 3000);
+
+      showNotice(
+        "success",
+        t("Selected subscriptions deleted", { count: selectedProfiles.length }),
+        3000,
+      );
       setQuotaFailedProfiles([]);
     } catch (error: any) {
-      showNotice("error", error?.message || "Failed to delete subscriptions", 3000);
+      showNotice(
+        "error",
+        error?.message || "Failed to delete subscriptions",
+        3000,
+      );
     }
   };
 
@@ -939,7 +986,7 @@ const ProfilePage = () => {
             <ContentCutRounded />
           </IconButton>
 
-          {/* 清理超额订阅 */}
+          {/* 清理订阅 */}
           <IconButton
             size="small"
             color="inherit"
@@ -1248,7 +1295,7 @@ const ProfilePage = () => {
         }}
       />
       <ConfigViewer ref={configRef} />
-      
+
       <QuotaExceededDialog
         open={quotaDialogOpen}
         profiles={profileItems}

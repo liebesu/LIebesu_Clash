@@ -2,7 +2,7 @@ import axios from "axios";
 
 async function getChatId() {
   const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  
+
   if (!TELEGRAM_BOT_TOKEN) {
     console.log("❌ 错误: 未找到 TELEGRAM_BOT_TOKEN 环境变量");
     console.log("");
@@ -10,7 +10,9 @@ async function getChatId() {
     console.log("export TELEGRAM_BOT_TOKEN='your_bot_token_here'");
     console.log("");
     console.log("或者从 GitHub Secrets 获取:");
-    console.log("gh secret get TELEGRAM_BOT_TOKEN --repo liebesu/LIebesu_Clash");
+    console.log(
+      "gh secret get TELEGRAM_BOT_TOKEN --repo liebesu/LIebesu_Clash",
+    );
     return;
   }
 
@@ -26,11 +28,11 @@ async function getChatId() {
     console.log("⏳ 正在获取最新消息...");
 
     const response = await axios.get(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates`
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates`,
     );
 
     const updates = response.data.result;
-    
+
     if (updates.length === 0) {
       console.log("❌ 没有找到消息，请先发送消息给机器人");
       return;
@@ -48,7 +50,9 @@ async function getChatId() {
       console.log("");
       console.log("🔧 下一步操作：");
       console.log(`运行以下命令设置 Chat ID：`);
-      console.log(`gh secret set TELEGRAM_CHAT_ID --body "${chatId}" --repo liebesu/LIebesu_Clash`);
+      console.log(
+        `gh secret set TELEGRAM_CHAT_ID --body "${chatId}" --repo liebesu/LIebesu_Clash`,
+      );
     } else {
       console.log("❌ 无法获取 Chat ID，请确保已发送消息给机器人");
     }

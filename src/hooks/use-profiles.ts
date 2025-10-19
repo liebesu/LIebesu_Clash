@@ -4,6 +4,7 @@ import {
   patchProfile,
   patchProfilesConfig,
   forceRefreshProxies,
+  getRemoteSubscriptionConfig,
 } from "@/services/cmds";
 import { getProxies, updateProxy } from "@/services/cmds";
 
@@ -46,6 +47,8 @@ export const useProfiles = () => {
       }
 
       await mutateProfiles();
+      // 配置变更后刷新远程订阅配置，保持定时任务最新
+      await mutate("remoteSubscriptionConfig", getRemoteSubscriptionConfig());
 
       return success;
     } catch (error) {
@@ -54,6 +57,7 @@ export const useProfiles = () => {
       }
 
       await mutateProfiles();
+      await mutate("remoteSubscriptionConfig", getRemoteSubscriptionConfig());
       throw error;
     }
   };

@@ -217,20 +217,19 @@ export async function getProxies(): Promise<{
   }, []);
 
   if (global?.all) {
-    let globalGroups: IProxyGroupItem[] = global.all.reduce<IProxyGroupItem[]>(
-      (acc, name) => {
-        if (proxyRecord[name]?.all) {
-          acc.push({
-            ...proxyRecord[name],
-            all: proxyRecord[name].all!.map((item) => generateItem(item)),
-          });
-        }
-        return acc;
-      },
-      [],
-    );
+    const globalGroups: IProxyGroupItem[] = global.all.reduce<
+      IProxyGroupItem[]
+    >((acc, name) => {
+      if (proxyRecord[name]?.all) {
+        acc.push({
+          ...proxyRecord[name],
+          all: proxyRecord[name].all!.map((item) => generateItem(item)),
+        });
+      }
+      return acc;
+    }, []);
 
-    let globalNames = new Set(globalGroups.map((each) => each.name));
+    const globalNames = new Set(globalGroups.map((each) => each.name));
     groups = groups
       .filter((group) => {
         return !globalNames.has(group.name);
@@ -674,7 +673,7 @@ export async function saveWebdavConfig(
 }
 
 export async function listWebDavBackup() {
-  let list: IWebDavFile[] = await invoke<IWebDavFile[]>("list_webdav_backup");
+  const list: IWebDavFile[] = await invoke<IWebDavFile[]>("list_webdav_backup");
   list.map((item) => {
     item.filename = item.href.split("/").pop() as string;
   });
@@ -803,13 +802,13 @@ export async function cleanupHealthCheckCache() {
 // ===== 批量导入相关 =====
 
 export interface BatchImportResult {
-  total_input: number;       // 输入的总数
-  valid_urls: number;        // 有效的URL数量
-  imported: number;          // 成功导入的数量
-  duplicates: number;        // 重复的数量
-  failed: number;            // 失败的数量
-  results: ImportResult[];   // 详细结果
-  import_duration: number;   // 导入耗时（毫秒）
+  total_input: number; // 输入的总数
+  valid_urls: number; // 有效的URL数量
+  imported: number; // 成功导入的数量
+  duplicates: number; // 重复的数量
+  failed: number; // 失败的数量
+  results: ImportResult[]; // 详细结果
+  import_duration: number; // 导入耗时（毫秒）
 }
 
 export interface ImportResult {
@@ -821,11 +820,11 @@ export interface ImportResult {
 }
 
 export interface BatchImportOptions {
-  skip_duplicates: boolean;    // 跳过重复项
+  skip_duplicates: boolean; // 跳过重复项
   auto_generate_names: boolean; // 自动生成名称
-  name_prefix?: string;        // 名称前缀
+  name_prefix?: string; // 名称前缀
   default_user_agent?: string; // 默认User-Agent
-  update_interval?: number;    // 更新间隔（分钟）
+  update_interval?: number; // 更新间隔（分钟）
 }
 
 /**
@@ -833,7 +832,7 @@ export interface BatchImportOptions {
  */
 export async function batchImportFromText(
   textContent: string,
-  options?: BatchImportOptions
+  options?: BatchImportOptions,
 ) {
   // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("batch_import_from_text", {
@@ -848,7 +847,7 @@ export async function batchImportFromText(
  */
 export async function batchImportFromFile(
   filePath: string,
-  options?: BatchImportOptions
+  options?: BatchImportOptions,
 ) {
   // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("batch_import_from_file", {
@@ -870,7 +869,7 @@ export async function batchImportFromClipboard(options?: BatchImportOptions) {
  */
 export async function previewBatchImport(
   textContent: string,
-  options?: BatchImportOptions
+  options?: BatchImportOptions,
 ) {
   // 兼容不同后端参数命名（snake_case 与 camelCase）
   return invoke<BatchImportResult>("preview_batch_import", {
@@ -880,15 +879,77 @@ export async function previewBatchImport(
   });
 }
 
+// ===== 远程订阅抓取 =====
+
+export interface RemoteSubscriptionConfig {
+  enabled: boolean;
+  source_url?: string | null;
+  mode: "manual" | "daily" | "custom";
+  custom_interval_minutes?: number | null;
+  last_sync_at?: number | null;
+  last_result?: {
+    fetched_urls: number;
+    imported: number;
+    duplicates: number;
+    failed: number;
+    message?: string | null;
+  } | null;
+}
+
+export interface FetchPreviewItem {
+  url: string;
+  status: string;
+  name?: string;
+  error_message?: string;
+}
+
+export interface FetchPreviewResult {
+  total: number;
+  valid: number;
+  invalid: number;
+  duplicate: number;
+  preview: FetchPreviewItem[];
+}
+
+export interface FetchSummary {
+  fetched_urls: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  message?: string | null;
+}
+
+export async function getRemoteSubscriptionConfig() {
+  return invoke<RemoteSubscriptionConfig>("get_remote_subscription_config");
+}
+
+export async function saveRemoteSubscriptionConfig(
+  config: RemoteSubscriptionConfig,
+) {
+  return invoke<void>("save_remote_subscription_config", { config });
+}
+
+export async function fetchSubscriptionPreview(sourceUrl: string) {
+  return invoke<FetchPreviewResult>("fetch_subscription_preview", {
+    source_url: sourceUrl,
+  });
+}
+
+export async function syncSubscriptionFromRemote(sourceUrl?: string) {
+  return invoke<FetchSummary>("sync_subscription_from_remote", {
+    source_url: sourceUrl,
+  });
+}
+
 // ===== 批量导出相关 =====
 
 export interface ExportOptions {
-  format: string;              // 导出格式: json, yaml, txt, clash
-  include_settings: boolean;   // 是否包含设置
-  include_groups: boolean;     // 是否包含分组信息
-  compress: boolean;           // 是否压缩
-  encrypt: boolean;            // 是否加密
-  password?: string;           // 加密密码
+  format: string; // 导出格式: json, yaml, txt, clash
+  include_settings: boolean; // 是否包含设置
+  include_groups: boolean; // 是否包含分组信息
+  compress: boolean; // 是否压缩
+  encrypt: boolean; // 是否加密
+  password?: string; // 加密密码
 }
 
 export interface ExportPreview {
@@ -915,7 +976,7 @@ export interface ExportableSubscription {
  */
 export async function batchExportSubscriptions(
   subscriptionUids: string[],
-  options: ExportOptions
+  options: ExportOptions,
 ) {
   // 兼容 snake_case 与 camelCase
   return invoke<string>("batch_export_subscriptions", {
@@ -931,7 +992,7 @@ export async function batchExportSubscriptions(
 export async function exportSubscriptionsToFile(
   subscriptionUids: string[],
   filePath: string,
-  options: ExportOptions
+  options: ExportOptions,
 ) {
   // 兼容 snake_case 与 camelCase
   return invoke<void>("export_subscriptions_to_file", {
@@ -948,7 +1009,7 @@ export async function exportSubscriptionsToFile(
  */
 export async function previewExport(
   subscriptionUids: string[],
-  options: ExportOptions
+  options: ExportOptions,
 ) {
   // 兼容 snake_case 与 camelCase
   return invoke<ExportPreview>("preview_export", {
@@ -1064,14 +1125,19 @@ export async function toggleTask(taskId: string, enabled: boolean) {
  * 立即执行任务
  */
 export async function executeTaskImmediately(taskId: string) {
-  return invoke<TaskExecutionResult>("execute_task_immediately", { task_id: taskId });
+  return invoke<TaskExecutionResult>("execute_task_immediately", {
+    task_id: taskId,
+  });
 }
 
 /**
  * 获取任务执行历史
  */
 export async function getTaskExecutionHistory(taskId: string, limit?: number) {
-  return invoke<TaskExecutionResult[]>("get_task_execution_history", { task_id: taskId, limit });
+  return invoke<TaskExecutionResult[]>("get_task_execution_history", {
+    task_id: taskId,
+    limit,
+  });
 }
 
 /**
@@ -1176,15 +1242,20 @@ export interface TestConfig {
   skip_stability_test: boolean;
 }
 
-export type TestType = "Connectivity" | "Latency" | "Speed" | "Stability" | "Comprehensive";
+export type TestType =
+  | "Connectivity"
+  | "Latency"
+  | "Speed"
+  | "Stability"
+  | "Comprehensive";
 
 /**
  * 测试单个订阅
  */
 export async function testSubscription(
-  subscriptionUid: string, 
-  testType: TestType, 
-  config?: TestConfig
+  subscriptionUid: string,
+  testType: TestType,
+  config?: TestConfig,
 ) {
   return invoke<SubscriptionTestResult>("test_subscription", {
     subscription_uid: subscriptionUid,
@@ -1196,7 +1267,10 @@ export async function testSubscription(
 /**
  * 批量测试所有订阅
  */
-export async function testAllSubscriptions(testType: TestType, config?: TestConfig) {
+export async function testAllSubscriptions(
+  testType: TestType,
+  config?: TestConfig,
+) {
   return invoke<BatchTestResult>("test_all_subscriptions", {
     test_type: testType,
     config,
@@ -1215,7 +1289,10 @@ export async function quickConnectivityTest(subscriptionUid: string) {
 /**
  * 获取节点质量排名
  */
-export async function getNodeQualityRanking(subscriptionUid: string, limit?: number) {
+export async function getNodeQualityRanking(
+  subscriptionUid: string,
+  limit?: number,
+) {
   return invoke<NodeTestResult[]>("get_node_quality_ranking", {
     subscription_uid: subscriptionUid,
     limit,
@@ -1237,7 +1314,7 @@ export async function getOptimizationSuggestions(subscriptionUid: string) {
 export async function schedulePeriodicTest(
   subscriptionUids: string[],
   testType: TestType,
-  intervalHours: number
+  intervalHours: number,
 ) {
   return invoke<string>("schedule_periodic_test", {
     subscription_uids: subscriptionUids,
@@ -1310,7 +1387,12 @@ export interface TrafficAlert {
   alert_id: string;
   subscription_uid: string;
   subscription_name: string;
-  alert_type: "QuotaUsage" | "ExpirationDate" | "HighUsage" | "SpeedDrop" | "ConnectionIssue";
+  alert_type:
+    | "QuotaUsage"
+    | "ExpirationDate"
+    | "HighUsage"
+    | "SpeedDrop"
+    | "ConnectionIssue";
   message: string;
   threshold_value: number;
   current_value: number;
@@ -1351,7 +1433,7 @@ export async function recordTrafficUsage(
   subscriptionUid: string,
   uploadBytes: number,
   downloadBytes: number,
-  durationSeconds: number
+  durationSeconds: number,
 ) {
   return invoke<void>("record_traffic_usage", {
     subscription_uid: subscriptionUid,
@@ -1404,7 +1486,9 @@ export async function markAlertAsRead(alertId: string) {
  * 清理历史数据
  */
 export async function cleanupTrafficHistory(daysToKeep: number) {
-  return invoke<number>("cleanup_traffic_history", { days_to_keep: daysToKeep });
+  return invoke<number>("cleanup_traffic_history", {
+    days_to_keep: daysToKeep,
+  });
 }
 
 /**
@@ -1413,7 +1497,7 @@ export async function cleanupTrafficHistory(daysToKeep: number) {
 export async function exportTrafficData(
   subscriptionUid?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
 ) {
   return invoke<string>("export_traffic_data", {
     subscription_uid: subscriptionUid,
@@ -1425,7 +1509,10 @@ export async function exportTrafficData(
 /**
  * 设置订阅配额信息
  */
-export async function setSubscriptionQuota(subscriptionUid: string, quotaInfo: QuotaInfo) {
+export async function setSubscriptionQuota(
+  subscriptionUid: string,
+  quotaInfo: QuotaInfo,
+) {
   return invoke<void>("set_subscription_quota", {
     subscription_uid: subscriptionUid,
     quota_info: quotaInfo,
@@ -1460,8 +1547,26 @@ export interface SubscriptionGroup {
 }
 
 export interface AutoRule {
-  rule_type: "NameContains" | "NameMatches" | "UrlContains" | "UrlMatches" | "TagEquals" | "SpeedRange" | "LatencyRange";
-  condition: "Contains" | "NotContains" | "Equals" | "NotEquals" | "StartsWith" | "EndsWith" | "Matches" | "NotMatches" | "GreaterThan" | "LessThan" | "Between";
+  rule_type:
+    | "NameContains"
+    | "NameMatches"
+    | "UrlContains"
+    | "UrlMatches"
+    | "TagEquals"
+    | "SpeedRange"
+    | "LatencyRange";
+  condition:
+    | "Contains"
+    | "NotContains"
+    | "Equals"
+    | "NotEquals"
+    | "StartsWith"
+    | "EndsWith"
+    | "Matches"
+    | "NotMatches"
+    | "GreaterThan"
+    | "LessThan"
+    | "Between";
   value: string;
   is_enabled: boolean;
 }
@@ -1532,13 +1637,18 @@ export async function getAllSubscriptionGroups() {
  * 获取单个分组
  */
 export async function getSubscriptionGroup(groupId: string) {
-  return invoke<SubscriptionGroup>("get_subscription_group", { group_id: groupId });
+  return invoke<SubscriptionGroup>("get_subscription_group", {
+    group_id: groupId,
+  });
 }
 
 /**
  * 添加订阅到分组
  */
-export async function addSubscriptionToGroup(groupId: string, subscriptionUid: string) {
+export async function addSubscriptionToGroup(
+  groupId: string,
+  subscriptionUid: string,
+) {
   return invoke<void>("add_subscription_to_group", {
     group_id: groupId,
     subscription_uid: subscriptionUid,
@@ -1548,7 +1658,10 @@ export async function addSubscriptionToGroup(groupId: string, subscriptionUid: s
 /**
  * 从分组中移除订阅
  */
-export async function removeSubscriptionFromGroup(groupId: string, subscriptionUid: string) {
+export async function removeSubscriptionFromGroup(
+  groupId: string,
+  subscriptionUid: string,
+) {
   return invoke<void>("remove_subscription_from_group", {
     group_id: groupId,
     subscription_uid: subscriptionUid,
@@ -1569,7 +1682,7 @@ export async function getSubscriptionGroups(subscriptionUid: string) {
  */
 export async function batchAddSubscriptionsToGroup(
   groupId: string,
-  subscriptionUids: string[]
+  subscriptionUids: string[],
 ) {
   return invoke<BatchOperationResult>("batch_add_subscriptions_to_group", {
     group_id: groupId,
@@ -1582,7 +1695,7 @@ export async function batchAddSubscriptionsToGroup(
  */
 export async function batchRemoveSubscriptionsFromGroup(
   groupId: string,
-  subscriptionUids: string[]
+  subscriptionUids: string[],
 ) {
   return invoke<BatchOperationResult>("batch_remove_subscriptions_from_group", {
     group_id: groupId,
@@ -2010,7 +2123,12 @@ export interface SearchSuggestion {
   relevance: number;
 }
 
-export type SuggestionType = "Query" | "Filter" | "Tag" | "Country" | "Provider";
+export type SuggestionType =
+  | "Query"
+  | "Filter"
+  | "Tag"
+  | "Country"
+  | "Provider";
 
 export interface SearchStatistics {
   total_searches: number;
@@ -2045,7 +2163,7 @@ export async function quickSearch(query: string, limit?: number) {
 export async function saveSearch(
   name: string,
   description: string,
-  criteria: SearchCriteria
+  criteria: SearchCriteria,
 ) {
   return invoke<string>("save_search", { name, description, criteria });
 }
@@ -2160,8 +2278,12 @@ export interface CleanupResult {
 /**
  * 获取订阅清理预览
  */
-export async function getSubscriptionCleanupPreview(options: SubscriptionCleanupOptions) {
-  return invoke<CleanupPreview>("get_subscription_cleanup_preview", { options });
+export async function getSubscriptionCleanupPreview(
+  options: SubscriptionCleanupOptions,
+) {
+  return invoke<CleanupPreview>("get_subscription_cleanup_preview", {
+    options,
+  });
 }
 
 /**
@@ -2174,8 +2296,30 @@ export async function updateAllSubscriptions() {
 /**
  * 清理过期订阅
  */
-export async function cleanupExpiredSubscriptions(options: SubscriptionCleanupOptions) {
+export async function cleanupExpiredSubscriptions(
+  options: SubscriptionCleanupOptions,
+) {
   return invoke<CleanupResult>("cleanup_expired_subscriptions", { options });
+}
+
+/**
+ * 清理超额订阅
+ */
+export async function cleanupOverQuotaSubscriptions(
+  options: SubscriptionCleanupOptions,
+) {
+  return invoke<CleanupResult>("cleanup_over_quota_subscriptions", { options });
+}
+
+/**
+ * 获取超额订阅清理预览
+ */
+export async function getOverQuotaCleanupPreview(
+  options: SubscriptionCleanupOptions,
+) {
+  return invoke<CleanupPreview>("get_over_quota_cleanup_preview", {
+    options,
+  });
 }
 
 /**
@@ -2188,7 +2332,10 @@ export async function getSubscriptionManagementStats() {
 /**
  * 设置自动清理规则
  */
-export async function setAutoCleanupRules(enabled: boolean, cleanupOptions: SubscriptionCleanupOptions) {
+export async function setAutoCleanupRules(
+  enabled: boolean,
+  cleanupOptions: SubscriptionCleanupOptions,
+) {
   return invoke<void>("set_auto_cleanup_rules", { enabled, cleanupOptions });
 }
 
@@ -2211,14 +2358,16 @@ export async function startGlobalSpeedTest(config?: {
   overallTimeout: number;
   maxConcurrent: number;
 }): Promise<string> {
-  return invoke<string>("start_global_speed_test", { 
-    config: config ? {
-      batch_size: config.batchSize,
-      node_timeout_seconds: config.nodeTimeout,
-      batch_timeout_seconds: config.batchTimeout,
-      overall_timeout_seconds: config.overallTimeout,
-      max_concurrent: config.maxConcurrent,
-    } : undefined
+  return invoke<string>("start_global_speed_test", {
+    config: config
+      ? {
+          batch_size: config.batchSize,
+          node_timeout_seconds: config.nodeTimeout,
+          batch_timeout_seconds: config.batchTimeout,
+          overall_timeout_seconds: config.overallTimeout,
+          max_concurrent: config.maxConcurrent,
+        }
+      : undefined,
   });
 }
 
@@ -2236,6 +2385,12 @@ export async function cancelGlobalSpeedTest(): Promise<string> {
 /**
  * 切换到指定节点
  */
-export async function switchToNode(profileUid: string, nodeName: string): Promise<string> {
-  return invoke<string>("switch_to_node", { profile_uid: profileUid, node_name: nodeName });
+export async function switchToNode(
+  profileUid: string,
+  nodeName: string,
+): Promise<string> {
+  return invoke<string>("switch_to_node", {
+    profile_uid: profileUid,
+    node_name: nodeName,
+  });
 }

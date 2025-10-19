@@ -181,7 +181,7 @@ class DelayManager {
 
         await this.checkDelay(currName, group, timeout);
         if (listener) listener();
-      } catch (error) {
+      } catch {
         // 批量测试时，单个代理失败是正常的，不输出错误日志
         // 设置为错误状态
         this.setDelay(currName, group, 1e6);

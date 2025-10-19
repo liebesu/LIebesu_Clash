@@ -1,5 +1,8 @@
 use crate::{
-    config::{DEFAULT_PAC, deserialize_encrypted, serialize_encrypted},
+    config::{
+        DEFAULT_PAC, deserialize_encrypted, serialize_encrypted,
+        subscription_fetch::RemoteSubscriptionConfig,
+    },
     logging,
     utils::{dirs, help, i18n, logging::Type},
 };
@@ -206,6 +209,9 @@ pub struct IVerge {
 
     /// 服务状态跟踪
     pub service_state: Option<crate::core::service::ServiceState>,
+
+    /// 远程订阅拉取配置
+    pub subscription_fetch: Option<RemoteSubscriptionConfig>,
 }
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -273,7 +279,7 @@ impl IVerge {
         // 修正后保存配置
         if needs_fix {
             logging!(info, Type::Config, true, "正在保存修正后的配置文件...");
-            help::save_yaml(&config_path, &config, Some("# Clash Verge Config")).await?;
+            help::save_yaml(&config_path, &config, Some("# Liebesu_Clash Config")).await?;
             logging!(
                 info,
                 Type::Config,
@@ -398,6 +404,7 @@ impl IVerge {
             enable_builtin_enhanced: Some(true),
             auto_log_clean: Some(2), // 1: 1天, 2: 7天, 3: 30天, 4: 90天
             webdav_url: None,
+            subscription_fetch: Some(Default::default()),
             webdav_username: None,
             webdav_password: None,
             enable_tray_speed: Some(false),
@@ -415,7 +422,7 @@ impl IVerge {
 
     /// Save IVerge App Config
     pub async fn save_file(&self) -> Result<()> {
-        help::save_yaml(&dirs::verge_path()?, &self, Some("# Clash Verge Config")).await
+        help::save_yaml(&dirs::verge_path()?, &self, Some("# Liebesu_Clash Config")).await
     }
 
     /// patch verge config
@@ -485,6 +492,7 @@ impl IVerge {
         patch!(proxy_layout_column);
         patch!(test_list);
         patch!(auto_log_clean);
+        patch!(subscription_fetch);
 
         patch!(webdav_url);
         patch!(webdav_username);

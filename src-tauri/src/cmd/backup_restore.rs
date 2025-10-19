@@ -1,11 +1,11 @@
 // use crate::utils::{config, help};
 use anyhow::{Context, Result};
 use chrono::Utc;
+use nanoid::nanoid;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use nanoid::nanoid;
 
 /// 备份数据结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,10 +30,10 @@ pub struct BackupData {
 /// 备份类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BackupType {
-    Full,       // 完整备份
-    Profiles,   // 仅订阅
-    Settings,   // 仅设置
-    Custom,     // 自定义选择
+    Full,     // 完整备份
+    Profiles, // 仅订阅
+    Settings, // 仅设置
+    Custom,   // 自定义选择
 }
 
 /// 订阅备份数据
@@ -181,28 +181,31 @@ pub struct BackupVersion {
 fn get_backup_dir() -> Result<PathBuf> {
     let app_dir = crate::utils::dirs::app_home_dir()
         .map_err(|e| anyhow::anyhow!("Failed to get app data directory: {}", e))?;
-    
+
     log::info!(target: "app", "App data directory: {:?}", app_dir);
-    
+
     let backup_dir = app_dir.join("backups");
-    
+
     if !backup_dir.exists() {
         log::info!(target: "app", "Creating backup directory: {:?}", backup_dir);
         fs::create_dir_all(&backup_dir)
             .with_context(|| format!("Failed to create backup directory: {:?}", backup_dir))?;
     }
-    
+
     // 验证目录是否可写
     if !backup_dir.is_dir() {
-        return Err(anyhow::anyhow!("Backup path exists but is not a directory: {:?}", backup_dir));
+        return Err(anyhow::anyhow!(
+            "Backup path exists but is not a directory: {:?}",
+            backup_dir
+        ));
     }
-    
+
     // 测试写入权限
     let test_file = backup_dir.join(".write_test");
     fs::write(&test_file, "test")
         .with_context(|| format!("Backup directory is not writable: {:?}", backup_dir))?;
     let _ = fs::remove_file(&test_file); // 忽略删除错误
-    
+
     log::info!(target: "app", "Backup directory ready: {:?}", backup_dir);
     Ok(backup_dir)
 }
@@ -211,11 +214,11 @@ fn get_backup_dir() -> Result<PathBuf> {
 fn calculate_checksum(file_path: &Path) -> Result<String> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+
     let mut file = File::open(file_path)?;
     let mut contents = Vec::new();
     file.read_to_end(&mut contents)?;
-    
+
     let mut hasher = DefaultHasher::new();
     contents.hash(&mut hasher);
     Ok(format!("{:x}", hasher.finish()))
@@ -238,11 +241,11 @@ fn encrypt_data(data: &[u8], password: &str) -> Result<Vec<u8>> {
     // 简单的XOR加密 - 实际应用应使用AES等强加密
     let key = password.as_bytes();
     let mut encrypted = Vec::new();
-    
+
     for (i, &byte) in data.iter().enumerate() {
         encrypted.push(byte ^ key[i % key.len()]);
     }
-    
+
     Ok(encrypted)
 }
 
@@ -258,7 +261,7 @@ fn decrypt_data(data: &[u8], password: &str) -> Result<Vec<u8>> {
 pub async fn create_backup(options: BackupOptions) -> Result<String, String> {
     let backup_id = nanoid!();
     let timestamp = Utc::now().timestamp();
-    
+
     // 收集备份数据
     let mut backup_data = BackupData {
         backup_id: backup_id.clone(),
@@ -286,22 +289,20 @@ pub async fn create_backup(options: BackupOptions) -> Result<String, String> {
     if options.include_profiles {
         // TODO: 从实际的配置文件读取订阅数据
         // 这里使用模拟数据
-        backup_data.profiles = vec![
-            ProfileBackup {
-                uid: "profile1".to_string(),
-                name: "示例订阅1".to_string(),
-                desc: Some("示例描述".to_string()),
-                file: None,
-                url: Some("https://example.com/sub1".to_string()),
-                selected: vec!["proxy1".to_string()],
-                chain: vec![],
-                valid: true,
-                updated: Some(timestamp as u64),
-                option: None,
-                home: None,
-                extra: None,
-            }
-        ];
+        backup_data.profiles = vec![ProfileBackup {
+            uid: "profile1".to_string(),
+            name: "示例订阅1".to_string(),
+            desc: Some("示例描述".to_string()),
+            file: None,
+            url: Some("https://example.com/sub1".to_string()),
+            selected: vec!["proxy1".to_string()],
+            chain: vec![],
+            valid: true,
+            updated: Some(timestamp as u64),
+            option: None,
+            home: None,
+            extra: None,
+        }];
     }
 
     // 备份设置数据
@@ -358,17 +359,17 @@ pub async fn create_backup(options: BackupOptions) -> Result<String, String> {
     }
 
     // 保存到文件
-    let backup_dir = get_backup_dir()
-        .map_err(|e| format!("Failed to get backup directory: {}", e))?;
-    
-    let file_name = format!("backup_{}_{}.bak", 
-        backup_data.backup_name.replace(" ", "_"), 
+    let backup_dir =
+        get_backup_dir().map_err(|e| format!("Failed to get backup directory: {}", e))?;
+
+    let file_name = format!(
+        "backup_{}_{}.bak",
+        backup_data.backup_name.replace(" ", "_"),
         timestamp
     );
     let file_path = backup_dir.join(&file_name);
 
-    fs::write(&file_path, &data)
-        .map_err(|e| format!("Failed to write backup file: {}", e))?;
+    fs::write(&file_path, &data).map_err(|e| format!("Failed to write backup file: {}", e))?;
 
     // 计算校验和和文件大小
     let file_size = data.len() as u64;
@@ -392,8 +393,7 @@ pub async fn create_backup(options: BackupOptions) -> Result<String, String> {
     };
 
     // 保存备份索引
-    save_backup_index(&backup_info)
-        .map_err(|e| format!("Failed to save backup index: {}", e))?;
+    save_backup_index(&backup_info).map_err(|e| format!("Failed to save backup index: {}", e))?;
 
     Ok(backup_id)
 }
@@ -401,17 +401,16 @@ pub async fn create_backup(options: BackupOptions) -> Result<String, String> {
 /// 获取所有备份
 #[tauri::command]
 pub async fn get_all_backups() -> Result<Vec<BackupInfo>, String> {
-    load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))
+    load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))
 }
 
 /// 获取备份详情
 #[tauri::command]
 pub async fn get_backup_details(backup_id: String) -> Result<BackupData, String> {
-    let backups = load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))?;
-    
-    let backup_info = backups.iter()
+    let backups = load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))?;
+
+    let backup_info = backups
+        .iter()
         .find(|b| b.backup_id == backup_id)
         .ok_or("Backup not found")?;
 
@@ -428,12 +427,11 @@ pub async fn get_backup_details(backup_id: String) -> Result<BackupData, String>
 
     // 解压数据
     // 假设所有备份都是压缩的，实际应记录压缩状态
-    data = decompress_data(&data)
-        .unwrap_or(data); // 如果解压失败，可能未压缩
+    data = decompress_data(&data).unwrap_or(data); // 如果解压失败，可能未压缩
 
     // 反序列化备份数据
-    let backup_data: BackupData = serde_json::from_slice(&data)
-        .map_err(|e| format!("Failed to parse backup data: {}", e))?;
+    let backup_data: BackupData =
+        serde_json::from_slice(&data).map_err(|e| format!("Failed to parse backup data: {}", e))?;
 
     Ok(backup_data)
 }
@@ -470,7 +468,9 @@ pub async fn restore_backup(options: RestoreOptions) -> Result<RestoreResult, St
 
         match create_backup(backup_options).await {
             Ok(backup_id) => result.backup_created = Some(backup_id),
-            Err(e) => result.warnings.push(format!("Failed to create pre-restore backup: {}", e)),
+            Err(e) => result
+                .warnings
+                .push(format!("Failed to create pre-restore backup: {}", e)),
         }
     }
 
@@ -478,7 +478,9 @@ pub async fn restore_backup(options: RestoreOptions) -> Result<RestoreResult, St
     let backup_data = match get_backup_details(options.backup_id).await {
         Ok(data) => data,
         Err(e) => {
-            result.errors.push(format!("Failed to get backup details: {}", e));
+            result
+                .errors
+                .push(format!("Failed to get backup details: {}", e));
             result.operation_duration_ms = start_time.elapsed().as_millis() as u64;
             return Ok(result);
         }
@@ -523,22 +525,22 @@ pub async fn restore_backup(options: RestoreOptions) -> Result<RestoreResult, St
 /// 删除备份
 #[tauri::command]
 pub async fn delete_backup(backup_id: String) -> Result<(), String> {
-    let mut backups = load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))?;
-    
+    let mut backups =
+        load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))?;
+
     if let Some(pos) = backups.iter().position(|b| b.backup_id == backup_id) {
         let backup_info = backups.remove(pos);
-        
+
         // 删除备份文件
         if Path::new(&backup_info.file_path).exists() {
             fs::remove_file(&backup_info.file_path)
                 .map_err(|e| format!("Failed to delete backup file: {}", e))?;
         }
-        
+
         // 更新索引
         save_backup_index_list(&backups)
             .map_err(|e| format!("Failed to update backup index: {}", e))?;
-            
+
         Ok(())
     } else {
         Err("Backup not found".to_string())
@@ -548,10 +550,10 @@ pub async fn delete_backup(backup_id: String) -> Result<(), String> {
 /// 验证备份
 #[tauri::command]
 pub async fn validate_backup(backup_id: String) -> Result<bool, String> {
-    let backups = load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))?;
-    
-    let backup_info = backups.iter()
+    let backups = load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))?;
+
+    let backup_info = backups
+        .iter()
         .find(|b| b.backup_id == backup_id)
         .ok_or("Backup not found")?;
 
@@ -570,10 +572,10 @@ pub async fn validate_backup(backup_id: String) -> Result<bool, String> {
 /// 导出备份
 #[tauri::command]
 pub async fn export_backup(backup_id: String, export_path: String) -> Result<(), String> {
-    let backups = load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))?;
-    
-    let backup_info = backups.iter()
+    let backups = load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))?;
+
+    let backup_info = backups
+        .iter()
         .find(|b| b.backup_id == backup_id)
         .ok_or("Backup not found")?;
 
@@ -588,23 +590,22 @@ pub async fn export_backup(backup_id: String, export_path: String) -> Result<(),
 #[tauri::command]
 pub async fn import_backup(import_path: String, backup_name: String) -> Result<String, String> {
     let backup_id = nanoid!();
-    
+
     // 读取导入文件
-    let data = fs::read(&import_path)
-        .map_err(|e| format!("Failed to read import file: {}", e))?;
+    let data = fs::read(&import_path).map_err(|e| format!("Failed to read import file: {}", e))?;
 
     // 复制到备份目录
-    let backup_dir = get_backup_dir()
-        .map_err(|e| format!("Failed to get backup directory: {}", e))?;
-    
-    let file_name = format!("imported_{}_{}.bak", 
-        backup_name.replace(" ", "_"), 
+    let backup_dir =
+        get_backup_dir().map_err(|e| format!("Failed to get backup directory: {}", e))?;
+
+    let file_name = format!(
+        "imported_{}_{}.bak",
+        backup_name.replace(" ", "_"),
         Utc::now().timestamp()
     );
     let file_path = backup_dir.join(&file_name);
 
-    fs::write(&file_path, &data)
-        .map_err(|e| format!("Failed to write backup file: {}", e))?;
+    fs::write(&file_path, &data).map_err(|e| format!("Failed to write backup file: {}", e))?;
 
     // 计算校验和
     let checksum = calculate_checksum(&file_path)
@@ -627,8 +628,7 @@ pub async fn import_backup(import_path: String, backup_name: String) -> Result<S
     };
 
     // 保存到索引
-    save_backup_index(&backup_info)
-        .map_err(|e| format!("Failed to save backup index: {}", e))?;
+    save_backup_index(&backup_info).map_err(|e| format!("Failed to save backup index: {}", e))?;
 
     Ok(backup_id)
 }
@@ -705,8 +705,7 @@ pub async fn get_sync_status() -> Result<SyncStatus, String> {
 /// 清理旧备份
 #[tauri::command]
 pub async fn cleanup_old_backups(keep_days: u32, keep_count: u32) -> Result<u32, String> {
-    let backups = load_backup_index()
-        .map_err(|e| format!("Failed to load backup index: {}", e))?;
+    let backups = load_backup_index().map_err(|e| format!("Failed to load backup index: {}", e))?;
 
     let cutoff_time = Utc::now().timestamp() - (keep_days as i64 * 24 * 3600);
     let mut sorted_backups = backups.clone();
@@ -745,10 +744,10 @@ fn save_backup_index(backup_info: &BackupInfo) -> Result<()> {
 fn save_backup_index_list(backups: &[BackupInfo]) -> Result<()> {
     let backup_dir = get_backup_dir()?;
     let index_file = backup_dir.join("backup_index.json");
-    
+
     let json_data = serde_json::to_string_pretty(backups)?;
     fs::write(index_file, json_data)?;
-    
+
     Ok(())
 }
 
@@ -756,13 +755,13 @@ fn save_backup_index_list(backups: &[BackupInfo]) -> Result<()> {
 fn load_backup_index() -> Result<Vec<BackupInfo>> {
     let backup_dir = get_backup_dir()?;
     let index_file = backup_dir.join("backup_index.json");
-    
+
     if !index_file.exists() {
         return Ok(Vec::new());
     }
-    
+
     let json_data = fs::read_to_string(index_file)?;
     let backups: Vec<BackupInfo> = serde_json::from_str(&json_data)?;
-    
+
     Ok(backups)
 }

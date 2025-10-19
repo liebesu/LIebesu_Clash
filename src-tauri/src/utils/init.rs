@@ -259,7 +259,7 @@ async fn init_dns_config() -> Result<()> {
         help::save_yaml(
             &dns_path,
             &default_dns_config,
-            Some("# Clash Verge DNS Config"),
+            Some("# Liebesu_Clash DNS Config"),
         )
         .await?;
     }
@@ -300,7 +300,7 @@ async fn initialize_config_files() -> Result<()> {
         && !path.exists()
     {
         let template = IClashTemp::template().0;
-        help::save_yaml(&path, &template, Some("# Clash Verge"))
+        help::save_yaml(&path, &template, Some("# Liebesu_Clash"))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create clash config: {}", e))?;
         logging!(
@@ -316,7 +316,7 @@ async fn initialize_config_files() -> Result<()> {
         && !path.exists()
     {
         let template = IVerge::template();
-        help::save_yaml(&path, &template, Some("# Clash Verge"))
+        help::save_yaml(&path, &template, Some("# Liebesu_Clash"))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create verge config: {}", e))?;
         logging!(
@@ -332,7 +332,7 @@ async fn initialize_config_files() -> Result<()> {
         && !path.exists()
     {
         let template = IProfiles::template();
-        help::save_yaml(&path, &template, Some("# Clash Verge"))
+        help::save_yaml(&path, &template, Some("# Liebesu_Clash"))
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create profiles config: {}", e))?;
         logging!(
@@ -467,8 +467,8 @@ pub fn init_scheme() -> Result<()> {
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let (clash, _) = hkcu.create_subkey("Software\\Classes\\Clash")?;
-    clash.set_value("", &"Clash Verge")?;
-    clash.set_value("URL Protocol", &"Clash Verge URL Scheme Protocol")?;
+    clash.set_value("", &"Liebesu_Clash")?;
+    clash.set_value("URL Protocol", &"Liebesu_Clash URL Scheme Protocol")?;
     let (default_icon, _) = hkcu.create_subkey("Software\\Classes\\Clash\\DefaultIcon")?;
     default_icon.set_value("", &app_exe)?;
     let (command, _) = hkcu.create_subkey("Software\\Classes\\Clash\\Shell\\Open\\Command")?;
@@ -480,7 +480,7 @@ pub fn init_scheme() -> Result<()> {
 pub fn init_scheme() -> Result<()> {
     let output = std::process::Command::new("xdg-mime")
         .arg("default")
-        .arg("clash-verge.desktop")
+        .arg("liebseu-clash.desktop")
         .arg("x-scheme-handler/clash")
         .output()?;
     if !output.status.success() {

@@ -6,10 +6,12 @@ mod encrypt;
 mod prfitem;
 pub mod profiles;
 mod runtime;
+pub mod subscription_fetch;
 mod verge;
 
 pub use self::{
-    clash::*, config::*, draft::*, encrypt::*, prfitem::*, profiles::*, runtime::*, verge::*,
+    clash::*, config::*, draft::*, encrypt::*, prfitem::*, profiles::*, runtime::*,
+    subscription_fetch::*, verge::*,
 };
 
 pub const DEFAULT_PAC: &str = r#"function FindProxyForURL(url, host) {

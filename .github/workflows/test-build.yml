@@ -6,21 +6,21 @@ on:
     branches:
       - fix/batch-import-preview
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/test-build.yml'
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/test-build.yml"
   pull_request:
     branches:
       - main
       - master
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/test-build.yml'
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/test-build.yml"
 
 permissions: write-all
 
@@ -36,7 +36,7 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Install dependencies (macOS only)
         if: runner.os == 'macOS'

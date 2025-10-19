@@ -583,7 +583,7 @@ pub async fn check_ipc_service_status() -> Result<JsonResponse> {
         }
         Err(e) => {
             logging!(error, Type::Service, true, "IPC通信失败: {}", e);
-            bail!("无法连接到Clash Verge Service: {}", e)
+            bail!("无法连接到 Liebesu_Clash Service: {}", e)
         }
     }
 }
@@ -666,7 +666,7 @@ pub async fn check_service_version() -> Result<String> {
         }
         Err(e) => {
             logging!(error, Type::Service, true, "IPC通信失败: {}", e);
-            bail!("无法连接到Clash Verge Service: {}", e)
+            bail!("无法连接到 Liebesu_Clash Service: {}", e)
         }
     }
 }
@@ -813,7 +813,7 @@ pub(super) async fn start_with_existing_service(config_file: &PathBuf) -> Result
         }
         Err(e) => {
             logging!(error, Type::Service, true, "启动核心IPC通信失败: {}", e);
-            bail!("无法连接到Clash Verge Service: {}", e)
+            bail!("无法连接到 Liebesu_Clash Service: {}", e)
         }
     }
 }
@@ -906,7 +906,7 @@ pub(super) async fn stop_core_by_service() -> Result<()> {
     let payload = serde_json::json!({});
     let response = send_ipc_request(IpcCommand::StopClash, payload)
         .await
-        .context("无法连接到Clash Verge Service")?;
+        .context("无法连接到 Liebesu_Clash Service")?;
 
     if !response.success {
         bail!(response.error.unwrap_or_else(|| "停止核心失败".to_string()));

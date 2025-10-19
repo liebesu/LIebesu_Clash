@@ -7,6 +7,7 @@
 ### **日志位置**
 
 根据系统不同，日志文件位于：
+
 - **Windows**: `%APPDATA%\io.github.liebesu.clash\logs\`
 - **macOS**: `~/Library/Logs/io.github.liebesu.clash/`
 - **Linux**: `~/.local/share/io.github.liebesu.clash/logs/`
@@ -14,6 +15,7 @@
 ### **诊断控制台模式（仅 Windows）**
 
 在 Windows 发布版本中，应用现在会：
+
 1. **显示诊断控制台**：双击应用时会显示控制台窗口
 2. **实时显示启动日志**：所有启动步骤都会在控制台中显示
 3. **错误对话框**：如果出现致命错误，会显示 Windows 消息框
@@ -22,6 +24,7 @@
 ### **增强的启动日志**
 
 现在会记录以下信息：
+
 ```
 === Liebesu_Clash 应用启动 ===
 时间: 2024-01-20 10:30:45 UTC
@@ -64,13 +67,16 @@ Tauri 初始化完成
 ### **使用方法**
 
 #### **对于用户**
+
 1. 双击 `Liebesu_Clash.exe` 启动应用
 2. 如果出现问题，会显示诊断控制台窗口
 3. 截图控制台内容并提供给开发者
 4. 日志文件也保存在 `%APPDATA%\io.github.liebesu.clash\logs\` 中
 
 #### **对于开发者**
+
 查看构建输出中的详细信息：
+
 ```bash
 # GitHub Actions 中现在会显示：
 Generated tauri.personal.conf.json content:
@@ -103,12 +109,14 @@ File: Liebesu_Clash_2.4.3_x64-setup.exe
 ### **临时禁用诊断控制台**
 
 如果需要禁用诊断控制台（正常用户使用），可以：
+
 1. 重新编译时使用 `debug_assertions` 模式
 2. 或者修改 `main.rs` 中的条件编译
 
 ### **日志级别配置**
 
 日志级别可通过应用设置调整：
+
 - `Off`: 不记录日志
 - `Error`: 只记录错误
 - `Warn`: 警告和错误

@@ -1,6 +1,7 @@
 use crate::singleton;
 use parking_lot::RwLock;
 use std::{
+    collections::HashMap,
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -40,6 +41,14 @@ struct ErrorMessage {
     message: String,
 }
 
+/// 消息聚合条目
+#[derive(Debug, Clone)]
+struct MessageEntry {
+    first_time: Instant,
+    last_time: Instant,
+    count: usize,
+}
+
 /// 全局前端通知系统
 #[derive(Debug)]
 struct NotificationSystem {
@@ -50,6 +59,8 @@ struct NotificationSystem {
     last_emit_time: RwLock<Instant>,
     /// 当通知系统失败超过阈值时，进入紧急模式
     emergency_mode: RwLock<bool>,
+    /// 消息聚合桶：key = "status::message", value = 聚合信息
+    message_bucket: Arc<RwLock<HashMap<String, MessageEntry>>>,
 }
 
 impl Default for NotificationSystem {
@@ -67,6 +78,41 @@ impl NotificationSystem {
             stats: EventStats::default(),
             last_emit_time: RwLock::new(Instant::now()),
             emergency_mode: RwLock::new(false),
+            message_bucket: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// 聚合消息，返回是否应该发送
+    fn aggregate_message(&self, status: &str, message: &str) -> Option<String> {
+        let key = format!("{}::{}", status, message);
+        let mut bucket = self.message_bucket.write();
+        let now = Instant::now();
+
+        // 清理超过60秒的旧条目
+        bucket.retain(|_, entry| now.duration_since(entry.last_time).as_secs() < 60);
+
+        if let Some(entry) = bucket.get_mut(&key) {
+            entry.last_time = now;
+            entry.count += 1;
+
+            // 如果在10秒内出现超过5次相同消息，聚合显示
+            if now.duration_since(entry.first_time).as_secs() < 10 && entry.count >= 5 {
+                let aggregated = format!("{} (×{})", message, entry.count);
+                entry.count = 0; // 重置计数
+                entry.first_time = now;
+                return Some(aggregated);
+            }
+            None // 暂不发送，继续聚合
+        } else {
+            bucket.insert(
+                key,
+                MessageEntry {
+                    first_time: now,
+                    last_time: now,
+                    count: 1,
+                },
+            );
+            Some(message.to_string()) // 首次出现，直接发送
         }
     }
 
@@ -410,8 +456,8 @@ impl Handle {
 
             let mut errors = handle.startup_errors.write();
             errors.push(ErrorMessage {
-                status: status_str,
-                message: msg_str,
+                status: status_str.clone(),
+                message: msg_str.clone(),
             });
             return;
         }
@@ -422,10 +468,13 @@ impl Handle {
 
         let system_opt = handle.notification_system.read();
         if let Some(system) = system_opt.as_ref() {
-            system.send_event(FrontendEvent::NoticeMessage {
-                status: status_str,
-                message: msg_str,
-            });
+            // 使用消息聚合
+            if let Some(aggregated_msg) = system.aggregate_message(&status_str, &msg_str) {
+                system.send_event(FrontendEvent::NoticeMessage {
+                    status: status_str,
+                    message: aggregated_msg,
+                });
+            }
         }
     }
 

@@ -15,16 +15,19 @@ LIebesu_Clash 是一个独立的 Clash 客户端，基于 Clash Verge Rev 开发
 LIebesu_Clash 使用以下独立目录存储配置和数据：
 
 ### Windows
+
 ```
 %LOCALAPPDATA%\io.github.liebesu.liebesu-clash\
 ```
 
 ### macOS
+
 ```
 ~/Library/Application Support/io.github.liebesu.liebesu-clash/
 ```
 
 ### Linux
+
 ```
 ~/.local/share/io.github.liebesu.liebesu-clash/
 ```
@@ -32,29 +35,33 @@ LIebesu_Clash 使用以下独立目录存储配置和数据：
 ## 🔧 技术细节
 
 ### 应用标识符
+
 - 生产环境: `io.github.liebesu.liebesu-clash`
 - 开发环境: `io.github.liebesu.liebesu-clash.dev`
 
 ### 深度链接协议
+
 - 协议名: `liebesu-clash://`
 
 ### IPC 通信
+
 - Unix: `liebesu-mihomo.sock`
 - Windows: `\\.\pipe\liebesu-mihomo`
 
 ### 自启动配置
+
 - Windows: `LIebesu_Clash.lnk`
 
 ## 🛠️ 与原版的区别
 
-| 项目 | 原版 Clash Verge | LIebesu_Clash |
-|------|------------------|---------------|
+| 项目       | 原版 Clash Verge                            | LIebesu_Clash                     |
+| ---------- | ------------------------------------------- | --------------------------------- |
 | 应用标识符 | `io.github.clash-verge-rev.clash-verge-rev` | `io.github.liebesu.liebesu-clash` |
-| 配置目录 | `clash-verge-rev` | `liebesu-clash` |
-| 深度链接 | `clash-verge://` | `liebesu-clash://` |
-| IPC 管道 | `verge-mihomo` | `liebesu-mihomo` |
-| 自启动名称 | `Clash Verge.lnk` | `LIebesu_Clash.lnk` |
-| 备份目录 | `clash-verge-rev-backup` | `liebesu-clash-backup` |
+| 配置目录   | `clash-verge-rev`                           | `liebesu-clash`                   |
+| 深度链接   | `clash-verge://`                            | `liebesu-clash://`                |
+| IPC 管道   | `verge-mihomo`                              | `liebesu-mihomo`                  |
+| 自启动名称 | `Clash Verge.lnk`                           | `LIebesu_Clash.lnk`               |
+| 备份目录   | `clash-verge-rev-backup`                    | `liebesu-clash-backup`            |
 
 ## 📦 安装说明
 
@@ -81,6 +88,7 @@ LIebesu_Clash 使用以下独立目录存储配置和数据：
 ## 🐛 问题报告
 
 如遇到问题，请提供以下信息：
+
 - 操作系统版本
 - LIebesu_Clash 版本
 - 错误日志（位于配置目录的 `logs` 文件夹）

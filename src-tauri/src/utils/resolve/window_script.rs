@@ -27,7 +27,7 @@ pub const WINDOW_INITIAL_SCRIPT: &str = r#"
                         animation: spin 1s linear infinite;
                     "></div>
                 </div>
-                <div style="font-size: 14px; opacity: 0.7;">Loading Clash Verge...</div>
+                <div style="font-size: 14px; opacity: 0.7;">Loading Liebesu_Clash...</div>
             </div>
             <style>
                 @keyframes spin {

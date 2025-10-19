@@ -1,10 +1,10 @@
 [Desktop Entry]
-Categories={{{categories}}}
-Comment={{{comment}}}
-Exec={{{exec}}} %u
-StartupWMClass={{{exec}}}
-Icon={{{icon}}}
-Name={{{name}}}
-Terminal=false
+Version=1.0
 Type=Application
-MimeType=x-scheme-handler/clash;
+Name=Liebesu_Clash
+Comment=Liebesu_Clash Desktop Client
+Exec=/usr/bin/liebseu-clash
+Icon=liebseu-clash
+Terminal=false
+Categories=Network;
+StartupWMClass=Liebesu_Clash

@@ -88,11 +88,11 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  
+
   // 状态管理
   const [currentTab, setCurrentTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // 数据状态
   const [tasks, setTasks] = useState<TaskConfig[]>([]);
   const [overview, setOverview] = useState<TaskSystemOverview | null>(null);
@@ -232,7 +232,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       <Typography variant="h6" gutterBottom>
         系统概览
       </Typography>
-      
+
       {overview && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid size={{ xs: 6, sm: 3 }}>
@@ -241,9 +241,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
                 <Typography color="text.secondary" gutterBottom>
                   总任务数
                 </Typography>
-                <Typography variant="h4">
-                  {overview.total_tasks}
-                </Typography>
+                <Typography variant="h4">{overview.total_tasks}</Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -315,10 +313,13 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
   // 渲染任务列表
   const renderTaskList = () => (
     <Box>
-      <Box display="flex" justifyContent="between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h6">
-          任务列表 ({tasks.length})
-        </Typography>
+      <Box
+        display="flex"
+        justifyContent="between"
+        alignItems="center"
+        sx={{ mb: 2 }}
+      >
+        <Typography variant="h6">任务列表 ({tasks.length})</Typography>
         <Button
           variant="contained"
           startIcon={<Add />}
@@ -337,21 +338,19 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
               <Box display="flex" alignItems="center" gap={2} sx={{ flex: 1 }}>
                 {getStatusIcon(task.status)}
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="subtitle1">
-                    {task.name}
-                  </Typography>
+                  <Typography variant="subtitle1">{task.name}</Typography>
                   <Typography variant="body2" color="text.secondary">
-                    类型: {getTaskTypeText(task.task_type)} | 
-                    间隔: {formatInterval(task.interval_minutes)} |
-                    最后执行: {formatTimestamp(task.last_run)}
+                    类型: {getTaskTypeText(task.task_type)} | 间隔:{" "}
+                    {formatInterval(task.interval_minutes)} | 最后执行:{" "}
+                    {formatTimestamp(task.last_run)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {task.description}
                   </Typography>
                 </Box>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Chip 
-                    label={task.status} 
+                  <Chip
+                    label={task.status}
                     color={getStatusColor(task.status) as any}
                     size="small"
                   />
@@ -359,7 +358,9 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
                     control={
                       <Switch
                         checked={task.enabled}
-                        onChange={(e) => handleToggleTask(task.id, e.target.checked)}
+                        onChange={(e) =>
+                          handleToggleTask(task.id, e.target.checked)
+                        }
                       />
                     }
                     label="启用"
@@ -413,7 +414,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       <Typography variant="h6" gutterBottom>
         最近执行历史
       </Typography>
-      
+
       {overview?.recent_executions && overview.recent_executions.length > 0 ? (
         <List>
           {overview.recent_executions.map((execution) => (
@@ -423,9 +424,9 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
                 secondary={
                   <Box>
                     <Typography variant="body2" color="text.secondary">
-                      状态: {execution.status} | 
-                      开始时间: {formatTimestamp(execution.start_time)} |
-                      耗时: {execution.duration_ms}ms
+                      状态: {execution.status} | 开始时间:{" "}
+                      {formatTimestamp(execution.start_time)} | 耗时:{" "}
+                      {execution.duration_ms}ms
                     </Typography>
                     {execution.message && (
                       <Typography variant="body2" color="text.secondary">
@@ -445,9 +446,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
         </List>
       ) : (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="text.secondary">
-            暂无执行历史
-          </Typography>
+          <Typography color="text.secondary">暂无执行历史</Typography>
         </Paper>
       )}
     </Box>
@@ -468,9 +467,9 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       </DialogTitle>
 
       <DialogContent>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs 
-            value={currentTab} 
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+          <Tabs
+            value={currentTab}
             onChange={(_, newValue) => setCurrentTab(newValue)}
             aria-label="任务管理标签"
           >
@@ -494,9 +493,7 @@ const TaskManagerDialog: React.FC<TaskManagerDialogProps> = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>
-          关闭
-        </Button>
+        <Button onClick={onClose}>关闭</Button>
       </DialogActions>
     </Dialog>
   );

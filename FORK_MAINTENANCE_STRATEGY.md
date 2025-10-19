@@ -10,12 +10,12 @@
 
 ### **📊 分支结构表**
 
-| 分支类型 | 分支名 | 用途 | 更新频率 | 稳定性 |
-|----------|--------|------|----------|--------|
-| 🌟 **主分支** | `main` | 稳定版本，合并官方+自定义功能 | 每月 | 🟢 高 |
-| 🚀 **开发分支** | `dev` | 开发版本，新功能测试 | 每日 | 🟡 中 |
-| 🔄 **同步分支** | `upstream-sync` | 从官方同步的纯净版本 | 每周 | 🟢 高 |
-| ⚡ **功能分支** | `feature/*` | 单一功能开发 | 按需 | 🔴 低 |
+| 分支类型        | 分支名          | 用途                          | 更新频率 | 稳定性 |
+| --------------- | --------------- | ----------------------------- | -------- | ------ |
+| 🌟 **主分支**   | `main`          | 稳定版本，合并官方+自定义功能 | 每月     | 🟢 高  |
+| 🚀 **开发分支** | `dev`           | 开发版本，新功能测试          | 每日     | 🟡 中  |
+| 🔄 **同步分支** | `upstream-sync` | 从官方同步的纯净版本          | 每周     | 🟢 高  |
+| ⚡ **功能分支** | `feature/*`     | 单一功能开发                  | 按需     | 🔴 低  |
 
 ### **🔗 分支关系图**
 
@@ -59,7 +59,7 @@ git checkout dev
 git merge sync-$(date +%Y%m%d)
 
 # 6. 测试通过后合并到主分支
-git checkout main  
+git checkout main
 git merge sync-$(date +%Y%m%d)
 ```
 
@@ -90,7 +90,7 @@ git checkout -b feature/subscription-export-v2
 git add .
 git commit -m "feat: 添加订阅导出v2功能"
 
-# 3. 合并到dev进行集成测试  
+# 3. 合并到dev进行集成测试
 git checkout dev
 git merge feature/subscription-export-v2
 
@@ -110,7 +110,7 @@ git checkout -b bugfix/export-encoding-issue
 git commit -m "fix: 修复导出文件编码问题"
 
 # 3. 直接合并到main (小修复)
-git checkout main  
+git checkout main
 git merge bugfix/export-encoding-issue
 ```
 
@@ -129,11 +129,11 @@ git merge bugfix/export-encoding-issue
 
 #### **发布类型表**
 
-| 发布类型 | 触发条件 | 分支 | 版本号 | 频率 |
-|----------|----------|------|--------|------|
-| 🌟 **Stable** | 手动触发 | `main` | v2.x.x | 每月 |
-| 🚀 **Beta** | 推送到dev | `dev` | v2.x.x-beta.x | 每周 |  
-| ⚡ **Nightly** | 定时触发 | `dev` | v2.x.x-nightly | 每日 |
+| 发布类型       | 触发条件  | 分支   | 版本号         | 频率 |
+| -------------- | --------- | ------ | -------------- | ---- |
+| 🌟 **Stable**  | 手动触发  | `main` | v2.x.x         | 每月 |
+| 🚀 **Beta**    | 推送到dev | `dev`  | v2.x.x-beta.x  | 每周 |
+| ⚡ **Nightly** | 定时触发  | `dev`  | v2.x.x-nightly | 每日 |
 
 #### **GitHub Actions配置**
 
@@ -145,14 +145,14 @@ on:
   workflow_dispatch:
     inputs:
       release_type:
-        description: 'Release type'
+        description: "Release type"
         required: true
-        default: 'beta'
+        default: "beta"
         type: choice
         options:
-        - stable
-        - beta
-        - nightly
+          - stable
+          - beta
+          - nightly
 
 jobs:
   build:
@@ -163,7 +163,7 @@ jobs:
             target: aarch64-apple-darwin
             bundle: dmg
           - os: windows-latest
-            target: x86_64-pc-windows-msvc  
+            target: x86_64-pc-windows-msvc
             bundle: nsis
 ```
 
@@ -173,12 +173,12 @@ jobs:
 
 ### **📋 冲突类型和处理方案**
 
-| 冲突类型 | 处理策略 | 优先级 | 备注 |
-|----------|----------|--------|------|
-| **配置文件** | 保留自定义 + 合并新配置 | 🔴 高 | 手动合并 |
-| **UI组件** | 保留增强功能 | 🟡 中 | 测试兼容性 |
-| **核心逻辑** | 优先官方 + 适配自定义 | 🔴 高 | 仔细测试 |
-| **依赖版本** | 跟随官方 | 🟢 低 | 自动处理 |
+| 冲突类型     | 处理策略                | 优先级 | 备注       |
+| ------------ | ----------------------- | ------ | ---------- |
+| **配置文件** | 保留自定义 + 合并新配置 | 🔴 高  | 手动合并   |
+| **UI组件**   | 保留增强功能            | 🟡 中  | 测试兼容性 |
+| **核心逻辑** | 优先官方 + 适配自定义   | 🔴 高  | 仔细测试   |
+| **依赖版本** | 跟随官方                | 🟢 低  | 自动处理   |
 
 ### **🛠️ 冲突解决工具脚本**
 
@@ -189,7 +189,7 @@ jobs:
 # 1. 自动标记冲突文件
 git status --porcelain | grep "^UU" > conflicts.txt
 
-# 2. 分类冲突文件  
+# 2. 分类冲突文件
 grep "src/components" conflicts.txt > ui-conflicts.txt
 grep "src-tauri" conflicts.txt > backend-conflicts.txt
 grep "package.json\|Cargo.toml" conflicts.txt > deps-conflicts.txt
@@ -206,14 +206,14 @@ echo "依赖冲突: 跟随官方版本"
 
 ### **🎨 自定义功能清单**
 
-| 功能模块 | 状态 | 维护难度 | 同步风险 |
-|----------|------|----------|----------|
-| **订阅批量管理** | ✅ 完成 | 🟡 中 | 🟢 低 |
-| **导入导出系统** | ✅ 完成 | 🟡 中 | 🟡 中 |  
-| **订阅测试工具** | ✅ 完成 | 🟡 中 | 🟢 低 |
-| **任务管理中心** | ✅ 完成 | 🔴 高 | 🟡 中 |
-| **流量统计面板** | ✅ 完成 | 🟡 中 | 🟡 中 |
-| **高级搜索** | ✅ 完成 | 🟢 低 | 🟢 低 |
+| 功能模块         | 状态    | 维护难度 | 同步风险 |
+| ---------------- | ------- | -------- | -------- |
+| **订阅批量管理** | ✅ 完成 | 🟡 中    | 🟢 低    |
+| **导入导出系统** | ✅ 完成 | 🟡 中    | 🟡 中    |
+| **订阅测试工具** | ✅ 完成 | 🟡 中    | 🟢 低    |
+| **任务管理中心** | ✅ 完成 | 🔴 高    | 🟡 中    |
+| **流量统计面板** | ✅ 完成 | 🟡 中    | 🟡 中    |
+| **高级搜索**     | ✅ 完成 | 🟢 低    | 🟢 低    |
 
 ### **🔧 功能隔离设计**
 
@@ -221,7 +221,7 @@ echo "依赖冲突: 跟随官方版本"
 // 自定义功能模块化
 // src/features/enhanced/
 ├── subscription-manager/     // 订阅管理
-├── batch-operations/        // 批量操作  
+├── batch-operations/        // 批量操作
 ├── testing-tools/          // 测试工具
 ├── analytics/              // 统计分析
 └── import-export/          // 导入导出
@@ -241,7 +241,7 @@ import { EnhancedSubscriptionManager } from '@/features/enhanced';
    - 官方API接口变更影响自定义功能
    - **应对**: API适配层，版本兼容检查
 
-2. **UI重构风险** 🟡  
+2. **UI重构风险** 🟡
    - 官方UI大幅重构导致集成点失效
    - **应对**: 独立组件设计，最小化依赖
 
@@ -271,12 +271,12 @@ git tag backup-before-sync-$(date +%Y%m%d)
 
 ### **🎯 短期目标 (3个月)**
 
-- ✅ 建立稳定的双分支维护流程  
+- ✅ 建立稳定的双分支维护流程
 - ✅ 自动化构建和发布系统
 - ✅ 完善冲突解决工具链
 - ✅ 用户反馈收集系统
 
-### **🚀 中期目标 (6个月)**  
+### **🚀 中期目标 (6个月)**
 
 - 🔄 建立官方功能预测和适配机制
 - 📊 使用数据分析指导功能开发
@@ -286,7 +286,7 @@ git tag backup-before-sync-$(date +%Y%m%d)
 ### **🌟 长期目标 (1年+)**
 
 - 🎨 可能的功能上游贡献 (向官方提PR)
-- 🏢 企业级功能和定制化支持  
+- 🏢 企业级功能和定制化支持
 - 🔌 插件化架构，支持第三方扩展
 - 📱 跨平台支持扩展
 
@@ -297,9 +297,10 @@ git tag backup-before-sync-$(date +%Y%m%d)
 ### **✅ DO - 推荐做法**
 
 1. **📋 保持清晰的提交信息**
+
    ```
    feat: 添加订阅批量导出功能
-   fix: 修复Windows构建配置错误  
+   fix: 修复Windows构建配置错误
    sync: 同步官方v2.4.4更新
    ```
 
@@ -313,7 +314,7 @@ git tag backup-before-sync-$(date +%Y%m%d)
 ### **❌ DON'T - 避免做法**
 
 1. **直接修改核心文件** - 增加同步难度
-2. **忽略官方更新** - 积累技术债务  
+2. **忽略官方更新** - 积累技术债务
 3. **缺乏测试** - 影响用户体验
 4. **版本依赖混乱** - 导致构建失败
 
@@ -324,7 +325,7 @@ git tag backup-before-sync-$(date +%Y%m%d)
 这个双分支维护策略为您提供了：
 
 - 🔄 **持续同步**: 及时获得官方更新和安全修复
-- ⚡ **功能增强**: 保持自定义功能的独特价值  
+- ⚡ **功能增强**: 保持自定义功能的独特价值
 - 🛡️ **风险控制**: 最小化冲突和维护成本
 - 🚀 **可持续发展**: 支持长期项目发展
 

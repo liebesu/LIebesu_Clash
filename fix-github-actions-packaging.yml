@@ -26,7 +26,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -47,7 +47,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Starting prebuild for x86_64-pc-windows-msvc..." -ForegroundColor Green
-          
+
           try {
             pnpm run prebuild x86_64-pc-windows-msvc
             Write-Host "Prebuild completed successfully" -ForegroundColor Green
@@ -55,14 +55,14 @@ jobs:
             Write-Host "Prebuild failed: $($_.Exception.Message)" -ForegroundColor Red
             throw
           }
-          
+
           # 验证关键文件存在
           Write-Host "Verifying critical sidecar files..." -ForegroundColor Yellow
           $criticalFiles = @(
             "src-tauri/sidecar/verge-mihomo-x86_64-pc-windows-msvc.exe",
             "src-tauri/sidecar/verge-mihomo-alpha-x86_64-pc-windows-msvc.exe"
           )
-          
+
           foreach ($file in $criticalFiles) {
             if (Test-Path $file) {
               $size = (Get-ItemProperty $file).Length / 1MB
@@ -72,14 +72,14 @@ jobs:
               throw "Critical sidecar binary missing: $file"
             }
           }
-          
+
           # 验证资源文件
           $resourceFiles = @(
             "src-tauri/resources/Country.mmdb",
             "src-tauri/resources/geosite.dat",
             "src-tauri/resources/geoip.dat"
           )
-          
+
           foreach ($file in $resourceFiles) {
             if (Test-Path $file) {
               Write-Host "[OK] Resource file: $file" -ForegroundColor Green
@@ -137,13 +137,13 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Verifying build artifacts..." -ForegroundColor Yellow
-          
+
           $targetDir = "src-tauri/target/x86_64-pc-windows-msvc/release/bundle"
-          
+
           if (!(Test-Path $targetDir)) {
             throw "Target directory not found: $targetDir"
           }
-          
+
           # 检查 NSIS 安装包
           $nsisDir = "$targetDir/nsis"
           if (Test-Path $nsisDir) {
@@ -165,7 +165,7 @@ jobs:
           } else {
             throw "NSIS directory not found: $nsisDir"
           }
-          
+
           # 检查 MSI 文件（如果存在）
           $msiDir = "$targetDir/msi"
           if (Test-Path $msiDir) {
@@ -175,7 +175,7 @@ jobs:
               Write-Host "  - $($file.Name)" -ForegroundColor Green
             }
           }
-          
+
           # 详细列出所有构建产物
           Write-Host "`nAll build artifacts:" -ForegroundColor Cyan
           Get-ChildItem -Path $targetDir -Recurse -File | ForEach-Object {
@@ -192,7 +192,7 @@ jobs:
           path: |
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
             src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-          if-no-files-found: error  # 🔧 改为 error，确保有文件才成功
+          if-no-files-found: error # 🔧 改为 error，确保有文件才成功
           retention-days: 7
 
       # 🔧 新增：构建摘要报告
@@ -201,16 +201,16 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "`n=== Build Summary ===" -ForegroundColor Green
-          
+
           # 检查构建状态
           $buildStatus = if (Test-Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe") { "SUCCESS" } else { "FAILED" }
           Write-Host "Build Status: $buildStatus" -ForegroundColor $(if ($buildStatus -eq "SUCCESS") { "Green" } else { "Red" })
-          
+
           # 输出关键信息
           Write-Host "Commit SHA: $env:GITHUB_SHA"
           Write-Host "Run Number: $env:GITHUB_RUN_NUMBER"
           Write-Host "Workflow: $env:GITHUB_WORKFLOW"
-          
+
           if ($buildStatus -eq "FAILED") {
             Write-Host "`nTroubleshooting tips:" -ForegroundColor Yellow
             Write-Host "1. Check prebuild step for download failures"

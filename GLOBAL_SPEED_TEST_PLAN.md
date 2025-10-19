@@ -3,6 +3,7 @@
 ## 🎯 目标需求
 
 ### 核心需求
+
 1. **多订阅支持**: 测试所有订阅的节点，不仅仅是单个订阅
 2. **直连测试**: 不通过代理连接，使用本地网络直接测试节点服务器
 3. **全面信息**: 显示节点所属订阅、剩余流量、延迟、可用性等
@@ -14,12 +15,14 @@
 ### 1. 后端核心功能 (Rust)
 
 #### 1.1 多订阅节点解析 🔧
+
 - [ ] **遍历所有订阅配置**
   - 读取 `profiles.yaml` 中的所有订阅项目
   - 支持 `remote`、`local`、`merge` 等类型
   - 跳过系统配置项 (Script, Merge等)
 
 - [ ] **增强节点信息提取**
+
   ```rust
   struct EnhancedNodeInfo {
       node_name: String,           // 节点名称
@@ -32,7 +35,7 @@
       subscription_url: Option<String>, // 订阅链接
       traffic_info: Option<TrafficInfo>, // 流量信息
   }
-  
+
   struct TrafficInfo {
       total: Option<u64>,          // 总流量 (字节)
       used: Option<u64>,           // 已用流量 (字节)
@@ -42,6 +45,7 @@
   ```
 
 #### 1.2 直连网络测试 🌐
+
 - [ ] **TCP连接延迟测试**
   - 直接连接节点服务器IP:端口
   - 多次测试取平均值 (3-5次)
@@ -59,6 +63,7 @@
   - 异步并发执行
 
 #### 1.3 流量信息获取 📊
+
 - [ ] **订阅流量解析**
   - 解析订阅响应头中的流量信息
   - 支持多种流量格式 (GB, MB, 百分比等)
@@ -70,13 +75,15 @@
   - 到期时间倒计时
 
 #### 1.4 结果分析和排序 📈
+
 - [ ] **综合评分算法**
+
   ```rust
   fn calculate_node_score(node: &TestResult) -> f64 {
       let latency_score = calculate_latency_score(node.latency_ms);
       let availability_score = if node.is_available { 1.0 } else { 0.0 };
       let stability_score = calculate_stability_score(&node.test_results);
-      
+
       latency_score * 0.4 + availability_score * 0.3 + stability_score * 0.3
   }
   ```
@@ -90,6 +97,7 @@
 ### 2. 前端界面功能 (React/TypeScript)
 
 #### 2.1 测试控制面板 🎮
+
 - [ ] **测试配置选项**
   - 并发数设置 (1-10个)
   - 超时时间设置 (5-30秒)
@@ -103,6 +111,7 @@
   - 重新测试
 
 #### 2.2 进度和状态显示 📊
+
 - [ ] **实时进度条**
   - 总体进度 (所有节点)
   - 当前批次进度
@@ -115,11 +124,11 @@
   - 成功/失败/超时统计
 
 #### 2.3 结果展示界面 📋
+
 - [ ] **节点列表表格**
-  | 排名 | 节点名称 | 订阅名称 | 延迟 | 状态 | 剩余流量 | 操作 |
-  |------|----------|----------|------|------|----------|------|
-  | 1    | 🇭🇰香港01 | 机场A   | 23ms | ✅   | 85%     | 使用 |
-  
+      | 排名 | 节点名称 | 订阅名称 | 延迟 | 状态 | 剩余流量 | 操作 |
+      |------|----------|----------|------|------|----------|------|
+      | 1 | 🇭🇰香港01 | 机场A | 23ms | ✅ | 85% | 使用 |
 - [ ] **颜色编码系统**
   - 🟢 优秀 (<50ms)
   - 🟡 良好 (50-150ms)
@@ -134,6 +143,7 @@
   - 全部显示
 
 #### 2.4 筛选和搜索 🔍
+
 - [ ] **筛选器**
   - 按订阅筛选
   - 按地区筛选
@@ -148,7 +158,7 @@
 ### 3. 数据流程设计 🔄
 
 ```
-1. 用户点击"全局测速" 
+1. 用户点击"全局测速"
    ↓
 2. 后端遍历所有订阅配置
    ↓
@@ -170,16 +180,18 @@
 ### 4. 技术实现要点 ⚙️
 
 #### 4.1 后端 (Rust)
+
 - [ ] **异步并发处理**
+
   ```rust
   use tokio::time::{timeout, Duration};
   use futures::future::join_all;
-  
+
   async fn test_nodes_batch(nodes: Vec<NodeInfo>) -> Vec<TestResult> {
       let futures: Vec<_> = nodes.into_iter()
           .map(|node| timeout(Duration::from_secs(10), test_single_node(node)))
           .collect();
-      
+
       join_all(futures).await
           .into_iter()
           .map(|result| result.unwrap_or_else(|_| TestResult::timeout()))
@@ -188,40 +200,50 @@
   ```
 
 - [ ] **事件发射机制**
+
   ```rust
   // 进度更新
   app_handle.emit("global-speed-test-progress", progress)?;
-  
+
   // 单个节点完成
   app_handle.emit("global-speed-test-node-complete", result)?;
-  
+
   // 测试完成
   app_handle.emit("global-speed-test-complete", summary)?;
   ```
 
 #### 4.2 前端 (React)
+
 - [ ] **状态管理**
+
   ```typescript
   interface GlobalSpeedTestState {
-      isRunning: boolean;
-      progress: TestProgress;
-      results: TestResult[];
-      summary: TestSummary | null;
-      filters: FilterOptions;
-      sortBy: SortOption;
+    isRunning: boolean;
+    progress: TestProgress;
+    results: TestResult[];
+    summary: TestSummary | null;
+    filters: FilterOptions;
+    sortBy: SortOption;
   }
   ```
 
 - [ ] **事件监听**
+
   ```typescript
   useEffect(() => {
-      const unlistenProgress = listen('global-speed-test-progress', handleProgress);
-      const unlistenComplete = listen('global-speed-test-complete', handleComplete);
-      
-      return () => {
-          unlistenProgress();
-          unlistenComplete();
-      };
+    const unlistenProgress = listen(
+      "global-speed-test-progress",
+      handleProgress,
+    );
+    const unlistenComplete = listen(
+      "global-speed-test-complete",
+      handleComplete,
+    );
+
+    return () => {
+      unlistenProgress();
+      unlistenComplete();
+    };
   }, []);
   ```
 
@@ -254,16 +276,19 @@
 ## 🎯 实施优先级
 
 ### 第一阶段 (核心功能)
+
 1. 多订阅节点解析
 2. 直连网络测试
 3. 基本结果显示
 
-### 第二阶段 (增强功能)  
+### 第二阶段 (增强功能)
+
 1. 流量信息集成
 2. 综合评分算法
 3. 高级筛选排序
 
 ### 第三阶段 (用户体验)
+
 1. 详细进度反馈
 2. 测试配置选项
 3. 界面优化美化

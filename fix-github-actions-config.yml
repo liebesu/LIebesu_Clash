@@ -8,13 +8,13 @@ on:
   push:
     branches: [dev]
     paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - '.github/workflows/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'vite.config.mts'
-      - 'tsconfig.json'
+      - "src/**"
+      - "src-tauri/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.mts"
+      - "tsconfig.json"
 
 permissions: write-all
 
@@ -43,7 +43,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -115,7 +115,7 @@ jobs:
         run: |
           Write-Host "Listing all built artifacts:"
           Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe", "*.msi" | Select-Object FullName, Length, LastWriteTime
-          
+
           Write-Host "`nChecking executable details:"
           $exeFiles = Get-ChildItem -Path "src-tauri/target/" -Recurse -Include "*.exe" | Where-Object { $_.Name -like "*setup*" -or $_.Name -eq "Liebesu_Clash.exe" }
           foreach ($exe in $exeFiles) {

@@ -47,7 +47,7 @@ export const ProxyRender = (props: RenderProps) => {
     onCheckAll,
     onHeadState,
     onChangeProxy,
-    isChainMode = false,
+    isChainMode: _isChainMode = false,
   } = props;
   const { type, group, headState, proxy, proxyCol } = item;
   const { verge } = useVerge();
