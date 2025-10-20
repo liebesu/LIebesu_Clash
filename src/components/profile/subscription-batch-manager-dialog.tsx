@@ -68,7 +68,7 @@ import {
 interface SubscriptionBatchManagerDialogProps {
   open: boolean;
   onClose: () => void;
-  onProfilesChanged?: () => void | Promise<void>;
+  onProfilesChanged?: () => void | Promise<any>;
 }
 
 export const SubscriptionBatchManagerDialog: React.FC<
