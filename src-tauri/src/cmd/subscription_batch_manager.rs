@@ -195,19 +195,19 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     for (uid, name) in remote_profiles {
         let semaphore = semaphore.clone();
         let name_clone = name.clone();
-        
+
         let handle = tokio::spawn(async move {
             let _permit = match semaphore.acquire().await {
                 Ok(permit) => permit,
                 Err(e) => return Err((name_clone, format!("获取信号量失败: {}", e))),
             };
-            
+
             match schedule_subscription_sync(uid, SyncPhase::Background).await {
                 Ok(_) => Ok(name_clone),
                 Err(e) => Err((name_clone, e.to_string())),
             }
         });
-        
+
         handles.push(handle);
     }
 
@@ -315,7 +315,7 @@ pub async fn get_over_quota_cleanup_preview(
     options: SubscriptionCleanupOptions,
 ) -> Result<CleanupPreview, String> {
     let profiles_config = Config::profiles().await;
-    
+
     // 提取数据以避免跨await使用不可Send的类型
     let items = {
         let profiles = profiles_config.latest_ref();
@@ -403,7 +403,7 @@ pub async fn get_over_quota_cleanup_preview(
 fn check_subscription_over_quota(profile: &crate::config::PrfItem) -> bool {
     // TODO: 实际实现超额检查逻辑
     // 这里应该检查订阅的流量使用情况，判断是否超出额度
-    
+
     // 简化实现：随机返回一些订阅为超额状态（用于测试）
     use rand::Rng;
     rand::thread_rng().r#gen::<f32>() < 0.1 // 10% 的概率为超额
@@ -533,17 +533,20 @@ async fn update_single_subscription(_uid: &str) -> Result<()> {
 // 辅助函数：删除订阅
 async fn delete_subscription(uid: &str) -> Result<()> {
     use crate::config::profiles::profiles_delete_item_safe;
-    
+    use crate::handle::Handle;
+
     log::info!("删除订阅: {}", uid);
-    
+
     // 调用现有的删除订阅API
     let should_update = profiles_delete_item_safe(uid.to_string()).await?;
-    
+
     if should_update {
         // 更新配置并刷新Clash
         match crate::core::CoreManager::global().update_config().await {
             Ok(_) => {
-                crate::handle::Handle::refresh_clash();
+                Handle::refresh_clash();
+                // 通知前端配置已更改
+                Handle::notify_profile_changed("deleted".to_string());
                 log::info!("订阅 {} 删除成功，配置已更新", uid);
             }
             Err(e) => {
@@ -551,7 +554,11 @@ async fn delete_subscription(uid: &str) -> Result<()> {
                 return Err(anyhow::anyhow!("更新配置失败: {}", e));
             }
         }
+    } else {
+        // 即使不需要更新核心配置，也要通知前端刷新列表
+        Handle::notify_profile_changed("deleted".to_string());
+        log::info!("订阅 {} 删除成功", uid);
     }
-    
+
     Ok(())
 }

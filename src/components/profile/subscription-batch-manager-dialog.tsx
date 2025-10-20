@@ -68,11 +68,12 @@ import {
 interface SubscriptionBatchManagerDialogProps {
   open: boolean;
   onClose: () => void;
+  onProfilesChanged?: () => void | Promise<void>;
 }
 
 export const SubscriptionBatchManagerDialog: React.FC<
   SubscriptionBatchManagerDialogProps
-> = ({ open, onClose }) => {
+> = ({ open, onClose, onProfilesChanged }) => {
   const { t } = useTranslation();
 
   // State for different tabs/sections
@@ -164,9 +165,10 @@ export const SubscriptionBatchManagerDialog: React.FC<
 
   const handlePreviewCleanup = async () => {
     try {
-      const preview = cleanupTabValue === 0 
-        ? await getOverQuotaCleanupPreview(cleanupOptions)
-        : await getSubscriptionCleanupPreview(cleanupOptions);
+      const preview =
+        cleanupTabValue === 0
+          ? await getOverQuotaCleanupPreview(cleanupOptions)
+          : await getSubscriptionCleanupPreview(cleanupOptions);
       setCleanupPreview(preview);
     } catch (error) {
       console.error("生成清理预览失败:", error);
@@ -181,9 +183,10 @@ export const SubscriptionBatchManagerDialog: React.FC<
 
     try {
       const executeOptions = { ...cleanupOptions, preview_only: false };
-      const result = cleanupTabValue === 0 
-        ? await cleanupOverQuotaSubscriptions(executeOptions)
-        : await cleanupExpiredSubscriptions(executeOptions);
+      const result =
+        cleanupTabValue === 0
+          ? await cleanupOverQuotaSubscriptions(executeOptions)
+          : await cleanupExpiredSubscriptions(executeOptions);
       setCleanupResult(result);
       setCleanupPreview(null);
       const cleanupType = cleanupTabValue === 0 ? "超额" : "过期";
@@ -191,7 +194,14 @@ export const SubscriptionBatchManagerDialog: React.FC<
         "success",
         `清理完成: 删除了 ${result.deleted_count} 个${cleanupType}订阅`,
       );
-      loadStats(); // 重新加载统计信息
+
+      // 重新加载统计信息
+      await loadStats();
+
+      // 通知父组件刷新订阅列表
+      if (onProfilesChanged) {
+        await onProfilesChanged();
+      }
     } catch (error) {
       console.error("执行清理失败:", error);
       showNotice("error", "执行清理失败: " + error);
@@ -392,7 +402,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
       <Typography variant="subtitle1" gutterBottom>
         清理超额订阅
       </Typography>
-      
+
       <Alert severity="warning" sx={{ mb: 2 }}>
         <AlertTitle>注意</AlertTitle>
         将清理已超出流量额度的订阅，删除操作不可恢复，请谨慎操作。
@@ -406,38 +416,40 @@ export const SubscriptionBatchManagerDialog: React.FC<
           <Typography variant="body2" color="text.secondary">
             总订阅数: {cleanupPreview?.total_subscriptions || 0}
           </Typography>
-          {cleanupPreview?.expired_subscriptions && cleanupPreview.expired_subscriptions.length > 0 && (
-            <Typography variant="body2" color="error">
-              超额订阅数: {cleanupPreview.expired_subscriptions.length}
-            </Typography>
-          )}
+          {cleanupPreview?.expired_subscriptions &&
+            cleanupPreview.expired_subscriptions.length > 0 && (
+              <Typography variant="body2" color="error">
+                超额订阅数: {cleanupPreview.expired_subscriptions.length}
+              </Typography>
+            )}
         </CardContent>
       </Card>
 
-      {cleanupPreview?.expired_subscriptions && cleanupPreview.expired_subscriptions.length > 0 && (
-        <Card>
-          <CardContent>
-            <Typography variant="subtitle2" gutterBottom>
-              将删除的超额订阅
-            </Typography>
-            <List dense>
-              {cleanupPreview.expired_subscriptions.map((sub, index) => (
-                <ListItem key={index}>
-                  <ListItemIcon>
-                    <WarningIcon color="error" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={sub.name}
-                    secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : '未知'}`}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </CardContent>
-        </Card>
-      )}
+      {cleanupPreview?.expired_subscriptions &&
+        cleanupPreview.expired_subscriptions.length > 0 && (
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" gutterBottom>
+                将删除的超额订阅
+              </Typography>
+              <List dense>
+                {cleanupPreview.expired_subscriptions.map((sub, index) => (
+                  <ListItem key={index}>
+                    <ListItemIcon>
+                      <WarningIcon color="error" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={sub.name}
+                      secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : "未知"}`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card>
+        )}
 
-      <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+      <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
@@ -451,7 +463,9 @@ export const SubscriptionBatchManagerDialog: React.FC<
           color="error"
           startIcon={<DeleteIcon />}
           onClick={handleExecuteCleanup}
-          disabled={cleanupInProgress || !cleanupPreview?.expired_subscriptions?.length}
+          disabled={
+            cleanupInProgress || !cleanupPreview?.expired_subscriptions?.length
+          }
         >
           执行清理
         </Button>
@@ -603,7 +617,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
                         </ListItemIcon>
                         <ListItemText
                           primary={sub.name}
-                          secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : '未知'}`}
+                          secondary={`UID: ${sub.uid} | 最后更新: ${sub.last_updated ? new Date(sub.last_updated).toLocaleString() : "未知"}`}
                         />
                       </ListItem>
                     ))}

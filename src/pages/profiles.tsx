@@ -860,6 +860,9 @@ const ProfilePage = () => {
         await onDelete(uid);
       }
 
+      // 强制刷新订阅列表
+      await mutateProfiles();
+
       showNotice(
         "success",
         t("Selected subscriptions deleted", { count: selectedProfiles.length }),
@@ -1369,6 +1372,7 @@ const ProfilePage = () => {
       <SubscriptionBatchManagerDialog
         open={subscriptionBatchManagerDialogOpen}
         onClose={() => setSubscriptionBatchManagerDialogOpen(false)}
+        onProfilesChanged={mutateProfiles}
       />
 
       <GlobalSpeedTestDialog
