@@ -17,6 +17,14 @@ export const useClash = () => {
   const { data: versionData, mutate: mutateVersion } = useSWR(
     "getVersion",
     getVersion,
+    {
+      errorRetryCount: 2, // 减少重试次数
+      errorRetryInterval: 5000, // 5秒重试间隔
+      onError: (error) => {
+        console.warn("[useClash] 获取版本信息失败:", error);
+        // 不显示错误通知，避免用户困扰
+      },
+    }
   );
 
   const patchClash = useLockFn(async (patch: Partial<IConfigData>) => {
@@ -24,7 +32,7 @@ export const useClash = () => {
     mutateClash();
   });
 
-  const version = versionData?.premium
+  const displayVersion = versionData?.premium
     ? `${versionData.version} Premium`
     : versionData?.meta
       ? `${versionData.version} Mihomo`
@@ -32,7 +40,7 @@ export const useClash = () => {
 
   return {
     clash,
-    version,
+    version: displayVersion,
     mutateClash,
     mutateVersion,
     patchClash,

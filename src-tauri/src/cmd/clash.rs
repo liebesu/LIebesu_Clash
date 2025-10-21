@@ -336,7 +336,110 @@ pub async fn validate_dns_config() -> CmdResult<(bool, String)> {
 /// 获取Clash版本信息
 #[tauri::command]
 pub async fn get_clash_version() -> CmdResult<serde_json::Value> {
-    wrap_err!(IpcManager::global().get_version().await)
+    // 先检查核心是否运行
+    let core_manager = crate::core::CoreManager::global();
+    let running_mode = core_manager.get_running_mode();
+    
+    if running_mode == crate::core::RunningMode::NotRunning {
+        log::warn!(target: "app", "Clash核心未运行，无法获取版本信息");
+        return Ok(serde_json::json!({
+            "version": "unknown",
+            "premium": false,
+            "meta": false,
+            "error": "Core not running"
+        }));
+    }
+    
+    // 尝试获取版本信息，带重试机制
+    let mut retries = 3;
+    let mut last_error = None;
+    
+    while retries > 0 {
+        match IpcManager::global().get_version().await {
+            Ok(version) => {
+                log::info!(target: "app", "成功获取Clash版本信息");
+                return Ok(version);
+            }
+            Err(e) => {
+                last_error = Some(e);
+                retries -= 1;
+                log::warn!(target: "app", "获取版本信息失败，剩余重试次数: {}, 错误: {}", retries, last_error.as_ref().unwrap());
+                
+                if retries > 0 {
+                    // 等待一段时间后重试
+                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                }
+            }
+        }
+    }
+    
+    // 所有重试都失败了
+    let error_msg = last_error.map(|e| e.to_string()).unwrap_or_else(|| "Unknown error".to_string());
+    log::error!(target: "app", "获取Clash版本信息最终失败: {}", error_msg);
+    
+    // 返回错误信息而不是抛出异常，避免前端崩溃
+    Ok(serde_json::json!({
+        "version": "unknown",
+        "premium": false,
+        "meta": false,
+        "error": error_msg
+    }))
+}
+
+/// 获取IP信息（通过后端代理，避免CORS问题）
+#[tauri::command]
+pub async fn get_ip_info() -> CmdResult<serde_json::Value> {
+    use reqwest::Client;
+    use std::time::Duration;
+    
+    let client = Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent("LIebesu_Clash/2.4.3")
+        .build()
+        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+    
+    // 尝试多个IP查询服务
+    let services = vec![
+        "https://ipapi.co/json/",
+        "https://ipwho.is/",
+        "https://ipinfo.io/json",
+    ];
+    
+    for service_url in services {
+        match client.get(service_url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.json::<serde_json::Value>().await {
+                        Ok(data) => {
+                            log::info!(target: "app", "成功从 {} 获取IP信息", service_url);
+                            return Ok(data);
+                        }
+                        Err(e) => {
+                            log::warn!(target: "app", "解析 {} 响应失败: {}", service_url, e);
+                            continue;
+                        }
+                    }
+                } else {
+                    log::warn!(target: "app", "服务 {} 返回错误状态: {}", service_url, response.status());
+                    continue;
+                }
+            }
+            Err(e) => {
+                log::warn!(target: "app", "请求 {} 失败: {}", service_url, e);
+                continue;
+            }
+        }
+    }
+    
+    // 所有服务都失败了，返回默认值
+    log::error!(target: "app", "所有IP查询服务都失败了");
+    Ok(serde_json::json!({
+        "ip": "unknown",
+        "country": "unknown",
+        "region": "unknown",
+        "city": "unknown",
+        "error": "All IP services failed"
+    }))
 }
 
 /// 获取Clash配置

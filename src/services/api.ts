@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { getClashInfo } from "./cmds";
+import { getClashInfo, getIpInfo as getIpInfoFromBackend } from "./cmds";
 
 let instancePromise: Promise<AxiosInstance> = null!;
 
@@ -127,6 +127,41 @@ const IP_CHECK_SERVICES: ServiceConfig[] = [
     }),
   },
 ];
+
+// 使用后端API获取IP信息，避免CORS问题
+export async function getCurrentIpInfo() {
+  try {
+    const data = await getIpInfoFromBackend();
+    return {
+      ip: data.ip || "unknown",
+      country_code: data.country_code || "",
+      country: data.country || "",
+      region: data.region || "",
+      city: data.city || "",
+      organization: "",
+      asn: 0,
+      asn_organization: "",
+      longitude: 0,
+      latitude: 0,
+      timezone: "",
+    };
+  } catch (error) {
+    console.warn("[getCurrentIpInfo] 获取IP信息失败:", error);
+    return {
+      ip: "unknown",
+      country_code: "",
+      country: "",
+      region: "",
+      city: "",
+      organization: "",
+      asn: 0,
+      asn_organization: "",
+      longitude: 0,
+      latitude: 0,
+      timezone: "",
+    };
+  }
+}
 
 // 随机性服务列表洗牌函数
 function shuffleServices() {

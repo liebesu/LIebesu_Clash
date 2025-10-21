@@ -290,6 +290,7 @@ mod app_init {
             cmd::get_clash_version,
             cmd::get_clash_config,
             cmd::force_refresh_clash_config,
+            cmd::get_ip_info,
             cmd::update_geo_data,
             cmd::upgrade_clash_core,
             cmd::get_clash_rules,

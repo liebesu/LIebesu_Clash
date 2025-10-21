@@ -113,6 +113,17 @@ export async function getVersion() {
   }>("get_clash_version");
 }
 
+export async function getIpInfo() {
+  return invoke<{
+    ip: string;
+    country: string;
+    region: string;
+    city: string;
+    country_code?: string;
+    error?: string;
+  }>("get_ip_info");
+}
+
 export async function getClashConfig() {
   return invoke<IConfigData>("get_clash_config");
 }
