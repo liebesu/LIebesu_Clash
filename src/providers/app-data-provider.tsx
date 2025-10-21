@@ -22,6 +22,7 @@ import {
   getRunningMode,
   getAppUptime,
   forceRefreshProxies,
+  forceRefreshClashConfig,
 } from "@/services/cmds";
 import { useClashInfo } from "@/hooks/use-clash";
 import { useVisibility } from "@/hooks/use-visibility";
@@ -193,10 +194,26 @@ export const AppDataProvider = ({
 
             setTimeout(async () => {
               try {
-                console.log("[AppDataProvider] Clash刷新 - 强制刷新代理缓存");
+                console.log("[AppDataProvider] Clash刷新 - 强制刷新运行时配置");
 
-                // 添加超时保护
-                const refreshPromise = Promise.race([
+                // 先强制刷新运行时配置（带超时保护）
+                await Promise.race([
+                  forceRefreshClashConfig(),
+                  new Promise((_, reject) =>
+                    setTimeout(
+                      () =>
+                        reject(new Error("forceRefreshClashConfig timeout")),
+                      8000,
+                    ),
+                  ),
+                ]);
+
+                // 刷新前端clash配置缓存
+                await refreshClashConfig();
+
+                console.log("[AppDataProvider] Clash刷新 - 强制刷新代理缓存");
+                // 再强制刷新代理缓存（带超时保护），最后刷新前端代理数据
+                await Promise.race([
                   forceRefreshProxies(),
                   new Promise((_, reject) =>
                     setTimeout(
@@ -205,17 +222,26 @@ export const AppDataProvider = ({
                     ),
                   ),
                 ]);
-
-                await refreshPromise;
                 await refreshProxy();
               } catch (error) {
                 console.error(
-                  "[AppDataProvider] Clash刷新时强制刷新代理缓存失败:",
+                  "[AppDataProvider] Clash刷新时刷新配置或代理缓存失败:",
                   error,
                 );
-                refreshProxy().catch((e) =>
-                  console.warn("[AppDataProvider] Clash刷新普通刷新也失败:", e),
-                );
+                // 尝试仅刷新前端缓存，尽量恢复界面显示
+                try {
+                  await refreshClashConfig();
+                } catch (e) {
+                  console.warn("[AppDataProvider] 刷新前端clash配置失败:", e);
+                }
+                try {
+                  await refreshProxy();
+                } catch (e) {
+                  console.warn(
+                    "[AppDataProvider] Clash刷新普通代理刷新也失败:",
+                    e,
+                  );
+                }
               }
             }, 0);
           }

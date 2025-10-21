@@ -9,7 +9,7 @@ import {
   MultipleStopRounded,
   DirectionsRounded,
 } from "@mui/icons-material";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useAppData } from "@/providers/app-data-provider";
 
 export const ClashModeCard = () => {
@@ -23,19 +23,34 @@ export const ClashModeCard = () => {
   // 直接使用API返回的模式，不维护本地状态
   const currentMode = clashConfig?.mode?.toLowerCase();
 
+  // 如果配置存在但缺少mode字段，主动触发一次刷新，避免短暂的空值导致错误提示
+  useEffect(() => {
+    if (
+      clashConfig &&
+      (clashConfig.mode == null || typeof clashConfig.mode !== "string")
+    ) {
+      // 异步刷新，避免阻塞渲染
+      setTimeout(() => {
+        refreshClashConfig().catch(() => void 0);
+      }, 0);
+    }
+  }, [clashConfig, refreshClashConfig]);
+
   const modeDescription = useMemo(() => {
     // 如果配置对象为空，表示核心未启动
     if (!clashConfig) {
       return t("Clash core is not running");
     }
-    // 如果模式有效，显示模式描述
-    if (typeof currentMode === "string" && currentMode.length > 0) {
-      return t(
-        `${currentMode[0].toLocaleUpperCase()}${currentMode.slice(1)} Mode Description`,
-      );
-    }
-    // 配置存在但mode字段缺失，可能是IPC通信问题
-    return t("Core communication error");
+    // 兜底: 如果mode缺失或无效，默认按 rule 模式描述处理，避免显示“内核通信错误”
+    const safeMode = (
+      typeof currentMode === "string" && currentMode.length > 0
+        ? currentMode
+        : "rule"
+    ) as "rule" | "global" | "direct";
+
+    return t(
+      `${safeMode[0].toLocaleUpperCase()}${safeMode.slice(1)} Mode Description`,
+    );
   }, [currentMode, clashConfig]);
 
   // 模式图标映射
