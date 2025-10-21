@@ -171,10 +171,11 @@ mod app_init {
             builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
         }
 
-        #[cfg(all(debug_assertions, not(feature = "tokio-trace")))]
-        {
-            builder = builder.plugin(tauri_plugin_devtools::init());
-        }
+        // ⚠️ tauri_plugin_devtools 会尝试重复初始化日志系统，导致 SetLoggerError
+        // #[cfg(all(debug_assertions, not(feature = "tokio-trace")))]
+        // {
+        //     builder = builder.plugin(tauri_plugin_devtools::init());
+        // }
         builder
     }
 
