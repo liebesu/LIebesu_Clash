@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useLockFn } from "ahooks";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { providerHealthCheck, getGroupProxyDelays } from "@/services/cmds";
@@ -10,8 +10,10 @@ import { ProxyRender } from "./proxy-render";
 import delayManager from "@/services/delay";
 import { useTranslation } from "react-i18next";
 import { ScrollTopButton } from "../layout/scroll-top-button";
-import { Box, Snackbar, Alert, Typography } from "@mui/material";
+import { Box, Snackbar, Alert, Typography, Button } from "@mui/material";
 import { ProxyChain } from "./proxy-chain";
+import { PlayArrowRounded } from "@mui/icons-material";
+import { restartCore } from "@/services/cmds";
 
 interface Props {
   mode: string;
@@ -255,14 +257,43 @@ export const ProxyGroups = (props: Props) => {
 
   // 添加：当代理列表为空时，提供更友好的提示
   if (!renderList || renderList.length === 0) {
+    const [startingCore, setStartingCore] = React.useState(false);
+    
+    const handleStartCore = async () => {
+      setStartingCore(true);
+      try {
+        await restartCore();
+        // 等待核心启动后刷新代理
+        setTimeout(() => {
+          onProxies();
+          setStartingCore(false);
+        }, 2000);
+      } catch (error) {
+        console.error("启动核心失败:", error);
+        setStartingCore(false);
+      }
+    };
+
     return (
       <BaseEmpty
         text={t("No Proxies")}
         extra={
           <Box sx={{ mt: 2, textAlign: "center" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {t("Please update your subscription in the Profiles page")}
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              或者 Clash 核心可能未运行
+            </Typography>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={startingCore}
+              startIcon={<PlayArrowRounded />}
+              onClick={handleStartCore}
+            >
+              {startingCore ? "正在启动..." : "启动 Clash 核心"}
+            </Button>
           </Box>
         }
       />

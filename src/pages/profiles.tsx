@@ -604,7 +604,10 @@ const ProfilePage = () => {
 
       // 完成切换
       await mutateLogs();
-      closeAllConnections();
+      closeAllConnections().catch((err) => {
+        // 忽略核心未运行时的连接关闭错误
+        console.warn("[Profile] 关闭连接失败（可能核心未运行）:", err);
+      });
 
       if (notifySuccess && success) {
         showNotice("success", t("Profile Switched"), 1000);

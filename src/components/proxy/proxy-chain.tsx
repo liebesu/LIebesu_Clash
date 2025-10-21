@@ -296,8 +296,10 @@ export const ProxyChain = ({
         // 切换到 DIRECT 模式断开代理连接
         // await updateProxyAndSync("GLOBAL", "DIRECT");
 
-        // 关闭所有连接
-        await closeAllConnections();
+        // 关闭所有连接（忽略核心未运行的错误）
+        await closeAllConnections().catch((err) => {
+          console.warn("[ProxyChain] 关闭连接失败:", err);
+        });
 
         // 刷新代理信息以更新连接状态
         mutateProxies();
