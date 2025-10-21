@@ -203,9 +203,10 @@ export const CurrentProxyCard = () => {
     if (!proxies) return;
 
     setState((prev) => {
-      // 只保留 Selector 类型的组用于选择
-      const filteredGroups = proxies.groups
-        .filter((g: { name: string; type?: string }) => g.type === "Selector")
+      // 保留可选择类型的组用于选择（兼容多种类型）
+      const allowedTypes = new Set(["Selector", "URLTest", "Fallback", "LoadBalance"]);
+      const filteredGroups = (proxies.groups || [])
+        .filter((g: { name: string; type?: string }) => allowedTypes.has(g.type || ""))
         .map(
           (g: { name: string; now: string; all: Array<{ name: string }> }) => ({
             name: g.name,
@@ -232,7 +233,7 @@ export const CurrentProxyCard = () => {
           (g: { name: string }) => g.name === prev.selection.group,
         );
 
-        // 如果当前组不存在或为空，自动选择第一个 selector 类型的组
+        // 如果当前组不存在或为空，自动选择第一个可选择类型的组
         if (!currentGroup && filteredGroups.length > 0) {
           const selectorGroup = filteredGroups[0];
           if (selectorGroup) {

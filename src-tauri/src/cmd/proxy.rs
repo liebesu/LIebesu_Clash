@@ -22,11 +22,17 @@ pub async fn get_proxies() -> CmdResult<serde_json::Value> {
             let manager = IpcManager::global();
             manager.get_proxies().await.unwrap_or_else(|e| {
                 logging!(error, Type::Cmd, "Failed to fetch proxies: {e}");
-                serde_json::Value::Object(serde_json::Map::new())
+                // 始终返回与前端约定的结构，避免解析失败
+                serde_json::json!({ "proxies": {} })
             })
         })
         .await;
-    Ok((*value).clone())
+    // 规范化返回值，确保一定包含 { "proxies": { ... } }
+    let normalized = match value.as_object() {
+        Some(map) if map.contains_key("proxies") => (*value).clone(),
+        _ => serde_json::json!({ "proxies": {} }),
+    };
+    Ok(normalized)
 }
 
 /// 强制刷新代理缓存用于profile切换
@@ -47,11 +53,17 @@ pub async fn get_providers_proxies() -> CmdResult<serde_json::Value> {
             let manager = IpcManager::global();
             manager.get_providers_proxies().await.unwrap_or_else(|e| {
                 logging!(error, Type::Cmd, "Failed to fetch provider proxies: {e}");
-                serde_json::Value::Object(serde_json::Map::new())
+                // 始终返回与前端约定的结构
+                serde_json::json!({ "providers": {} })
             })
         })
         .await;
-    Ok((*value).clone())
+    // 规范化返回值，确保一定包含 { "providers": { ... } }
+    let normalized = match value.as_object() {
+        Some(map) if map.contains_key("providers") => (*value).clone(),
+        _ => serde_json::json!({ "providers": {} }),
+    };
+    Ok(normalized)
 }
 
 /// 同步托盘和GUI的代理选择状态

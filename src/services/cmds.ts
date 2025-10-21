@@ -180,21 +180,26 @@ export async function getProxies(): Promise<{
   proxies: IProxyItem[];
 }> {
   const [proxyResponse, providerResponse] = await Promise.all([
-    invoke<{ proxies: Record<string, IProxyItem> }>("get_proxies"),
-    invoke<{ providers: Record<string, IProxyProviderItem> }>(
-      "get_providers_proxies",
+    invoke<{ proxies?: Record<string, IProxyItem> }>("get_proxies").catch(
+      () => ({ proxies: {} }),
     ),
+    invoke<{ providers?: Record<string, IProxyProviderItem> }>(
+      "get_providers_proxies",
+    ).catch(() => ({ providers: {} })),
   ]);
 
-  const proxyRecord = proxyResponse.proxies;
-  const providerRecord = providerResponse.providers || {};
+  const proxyRecord: Record<string, IProxyItem> = proxyResponse?.proxies || {};
+  const providerRecord: Record<string, IProxyProviderItem> =
+    providerResponse?.providers || {};
 
   // provider name map
-  const providerMap = Object.fromEntries(
-    Object.entries(providerRecord).flatMap(([provider, item]) =>
-      item.proxies.map((p) => [p.name, { ...p, provider }]),
-    ),
-  );
+  const providerMap: Record<string, IProxyItem & { provider: string }> =
+    Object.fromEntries(
+      Object.entries(providerRecord).flatMap(
+        ([provider, item]: [string, IProxyProviderItem]) =>
+          (item.proxies || []).map((p) => [p.name, { ...p, provider }]),
+      ),
+    );
 
   // compatible with proxy-providers
   const generateItem = (name: string) => {
@@ -212,15 +217,15 @@ export async function getProxies(): Promise<{
     };
   };
 
-  const { GLOBAL: global, DIRECT: direct, REJECT: reject } = proxyRecord;
+  const { GLOBAL: global, DIRECT: direct, REJECT: reject } = proxyRecord as any;
 
-  let groups: IProxyGroupItem[] = Object.values(proxyRecord).reduce<
+  let groups: IProxyGroupItem[] = (Object.values(proxyRecord) as any[]).reduce<
     IProxyGroupItem[]
-  >((acc, each) => {
-    if (each.name !== "GLOBAL" && each.all) {
+  >((acc: IProxyGroupItem[], each: any) => {
+    if (each?.name !== "GLOBAL" && Array.isArray(each?.all)) {
       acc.push({
-        ...each,
-        all: each.all!.map((item) => generateItem(item)),
+        ...(each as IProxyGroupItem),
+        all: (each.all as string[]).map((item) => generateItem(item)),
       });
     }
 
@@ -228,13 +233,14 @@ export async function getProxies(): Promise<{
   }, []);
 
   if (global?.all) {
-    const globalGroups: IProxyGroupItem[] = global.all.reduce<
+    const globalGroups: IProxyGroupItem[] = (global.all as string[]).reduce<
       IProxyGroupItem[]
-    >((acc, name) => {
-      if (proxyRecord[name]?.all) {
+    >((acc: IProxyGroupItem[], name: string) => {
+      const group = proxyRecord[name] as any;
+      if (group?.all) {
         acc.push({
-          ...proxyRecord[name],
-          all: proxyRecord[name].all!.map((item) => generateItem(item)),
+          ...(group as IProxyGroupItem),
+          all: (group.all as string[]).map((item) => generateItem(item)),
         });
       }
       return acc;
@@ -248,16 +254,18 @@ export async function getProxies(): Promise<{
       .concat(globalGroups);
   }
 
-  const proxies = [direct, reject].concat(
-    Object.values(proxyRecord).filter(
-      (p) => !p.all?.length && p.name !== "DIRECT" && p.name !== "REJECT",
-    ),
-  );
+  const proxies = [direct, reject]
+    .filter(Boolean)
+    .concat(
+      Object.values(proxyRecord).filter(
+        (p: any) => !p?.all?.length && p?.name !== "DIRECT" && p?.name !== "REJECT",
+      ) as any,
+    );
 
   const _global: IProxyGroupItem = {
-    ...global,
-    all: global?.all?.map((item) => generateItem(item)) || [],
-  };
+    ...(global || { name: "GLOBAL", type: "Selector", now: "", all: [] } as any),
+    all: (global?.all || []).map((item: any) => generateItem(item)),
+  } as any;
 
   return { global: _global, direct, groups, records: proxyRecord, proxies };
 }
