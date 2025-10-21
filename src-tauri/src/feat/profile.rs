@@ -152,6 +152,8 @@ pub async fn update_profile(
                         err
                     );
                 }
+                // 通知前端订阅已更新，需要刷新数据
+                handle::Handle::notify_profile_changed("updated".to_string());
             }
             Err(err) => {
                 logging!(error, Type::Config, true, "[订阅更新] 更新失败: {}", err);
@@ -159,6 +161,9 @@ pub async fn update_profile(
                 log::error!(target: "app", "{err}");
             }
         }
+    } else {
+        // 即使不需要更新核心配置，也要通知前端刷新订阅列表
+        handle::Handle::notify_profile_changed("updated".to_string());
     }
 
     Ok(())

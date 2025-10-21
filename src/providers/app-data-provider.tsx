@@ -155,7 +155,7 @@ export const AppDataProvider = ({
           const newProfileId = event.payload;
           const now = Date.now();
 
-          console.log(`[AppDataProvider] Profile切换事件: ${newProfileId}`);
+          console.log(`[AppDataProvider] Profile事件: ${newProfileId}`);
 
           if (
             lastProfileId === newProfileId &&
@@ -168,19 +168,50 @@ export const AppDataProvider = ({
           lastProfileId = newProfileId;
           lastUpdateTime = now;
 
-          setTimeout(() => {
-            // 先执行 forceRefreshProxies，完成后稍延迟再刷新前端数据，避免页面一直 loading
-            forceRefreshProxies()
-              .catch((e) =>
-                console.warn("[AppDataProvider] forceRefreshProxies 失败:", e),
-              )
-              .finally(() => {
+          setTimeout(async () => {
+            try {
+              console.log(`[AppDataProvider] 处理Profile事件: ${newProfileId}`);
+              
+              // 如果是订阅更新事件，需要刷新clashConfig和proxies
+              if (newProfileId === "updated") {
+                console.log("[AppDataProvider] 检测到订阅更新事件，刷新所有数据");
+                
+                // 先强制刷新运行时配置
+                await forceRefreshClashConfig();
+                
+                // 刷新前端clash配置缓存
+                await refreshClashConfig();
+                
+                // 强制刷新代理缓存
+                await forceRefreshProxies();
+                
+                // 刷新前端代理数据
+                await refreshProxy();
+                
+                console.log("[AppDataProvider] 订阅更新后数据刷新完成");
+              } else {
+                // 普通的profile切换事件
+                console.log("[AppDataProvider] 处理profile切换事件");
+                
+                // 先执行 forceRefreshProxies，完成后稍延迟再刷新前端数据
+                await forceRefreshProxies();
+                
                 setTimeout(() => {
                   refreshProxy().catch((e) =>
                     console.warn("[AppDataProvider] 普通刷新也失败:", e),
                   );
                 }, 200); // 200ms 延迟，保证后端缓存已清理
-              });
+              }
+            } catch (error) {
+              console.error("[AppDataProvider] Profile事件处理失败:", error);
+              
+              // 降级处理：至少尝试刷新代理数据
+              try {
+                await refreshProxy();
+              } catch (e) {
+                console.warn("[AppDataProvider] 降级刷新也失败:", e);
+              }
+            }
           }, 0);
         });
 
