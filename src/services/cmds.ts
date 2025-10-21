@@ -2266,6 +2266,8 @@ export interface BatchUpdateResult {
   updated_subscriptions: string[];
   failed_subscriptions: string[];
   error_messages: Record<string, string>;
+  concurrency_used: number;  // 实际使用的并发数
+  estimated_time_remaining?: number;  // 预估剩余时间（秒）
 }
 
 export interface CleanupResult {

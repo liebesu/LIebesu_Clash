@@ -31,12 +31,12 @@ pub struct SubscriptionSyncPreferences {
 impl Default for SubscriptionSyncPreferences {
     fn default() -> Self {
         Self {
-            startup_limit: 5,
-            batch_interval: Duration::from_secs(30),
-            max_concurrency: 3,
-            max_retry: 3,
-            backoff_base: Duration::from_secs(2),
-            backoff_max: Duration::from_secs(16),
+            startup_limit: 10,  // 提升启动限制
+            batch_interval: Duration::from_secs(15),  // 减少批次间隔
+            max_concurrency: 15,  // 大幅提升并发数
+            max_retry: 2,  // 减少重试次数
+            backoff_base: Duration::from_secs(1),  // 减少基础延迟
+            backoff_max: Duration::from_secs(8),   // 减少最大延迟
         }
     }
 }

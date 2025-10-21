@@ -53,6 +53,8 @@ pub struct BatchUpdateResult {
     pub updated_subscriptions: Vec<String>,
     pub failed_subscriptions: Vec<String>,
     pub error_messages: HashMap<String, String>,
+    pub concurrency_used: usize,  // 实际使用的并发数
+    pub estimated_time_remaining: Option<u64>,  // 预估剩余时间（秒）
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,10 +185,17 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
     let mut failed_subscriptions = Vec::new();
     let mut error_messages = HashMap::new();
 
-    // 使用并发控制进行批量更新
+    // 使用动态并发控制进行批量更新
     let concurrency_limit = {
         let store = SUBSCRIPTION_SYNC_STORE.inner.read();
-        store.preferences().max_concurrency.max(1)
+        let base_concurrency = store.preferences().max_concurrency.max(1);
+        // 根据订阅数量动态调整并发数
+        match total_count {
+            0..=10 => base_concurrency.min(5),      // 少量订阅：最多5个并发
+            11..=50 => base_concurrency.min(10),   // 中等订阅：最多10个并发
+            51..=100 => base_concurrency.min(15),   // 大量订阅：最多15个并发
+            _ => base_concurrency.min(20),          // 超大量订阅：最多20个并发
+        }
     };
 
     let semaphore = Arc::new(tokio::sync::Semaphore::new(concurrency_limit));
@@ -236,6 +245,8 @@ pub async fn update_all_subscriptions() -> Result<BatchUpdateResult, String> {
         updated_subscriptions,
         failed_subscriptions,
         error_messages,
+        concurrency_used: concurrency_limit,
+        estimated_time_remaining: None,  // 完成后不需要预估时间
     };
 
     Ok(result)

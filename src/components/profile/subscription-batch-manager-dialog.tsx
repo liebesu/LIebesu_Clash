@@ -86,6 +86,13 @@ export const SubscriptionBatchManagerDialog: React.FC<
   const [updateResult, setUpdateResult] = useState<BatchUpdateResult | null>(
     null,
   );
+  const [updateProgress, setUpdateProgress] = useState({
+    completed: 0,
+    total: 0,
+    current: "",
+    concurrency: 0,
+  });
+  const [updateCancelled, setUpdateCancelled] = useState(false);
 
   // Cleanup states
   const [cleanupOptions, setCleanupOptions] =
@@ -146,21 +153,33 @@ export const SubscriptionBatchManagerDialog: React.FC<
   const handleUpdateAll = async () => {
     setUpdateInProgress(true);
     setUpdateResult(null);
+    setUpdateCancelled(false);
+    setUpdateProgress({ completed: 0, total: 0, current: "", concurrency: 0 });
 
     try {
       const result = await updateAllSubscriptions();
-      setUpdateResult(result);
-      showNotice(
-        "success",
-        `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败`,
-      );
-      loadStats(); // 重新加载统计信息
+      if (!updateCancelled) {
+        setUpdateResult(result);
+        showNotice(
+          "success",
+          `更新完成: ${result.successful_updates}个成功, ${result.failed_updates}个失败 (并发数: ${result.concurrency_used})`,
+        );
+        loadStats(); // 重新加载统计信息
+      }
     } catch (error) {
-      console.error("批量更新失败:", error);
-      showNotice("error", "批量更新失败: " + error);
+      if (!updateCancelled) {
+        console.error("批量更新失败:", error);
+        showNotice("error", "批量更新失败: " + error);
+      }
     } finally {
       setUpdateInProgress(false);
     }
+  };
+
+  const handleCancelUpdate = () => {
+    setUpdateCancelled(true);
+    setUpdateInProgress(false);
+    showNotice("info", "更新已取消");
   };
 
   const handlePreviewCleanup = async () => {
@@ -287,6 +306,17 @@ export const SubscriptionBatchManagerDialog: React.FC<
           {updateInProgress ? "更新中..." : "开始批量更新"}
         </Button>
 
+        {updateInProgress && (
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={handleCancelUpdate}
+            size="large"
+          >
+            取消更新
+          </Button>
+        )}
+
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
@@ -301,7 +331,13 @@ export const SubscriptionBatchManagerDialog: React.FC<
         <Box mb={2}>
           <LinearProgress />
           <Typography variant="body2" color="text.secondary" mt={1}>
-            正在更新订阅，请稍候...
+            正在更新订阅，请稍候... 
+            {updateProgress.total > 0 && (
+              <>
+                ({updateProgress.completed}/{updateProgress.total}) 
+                {updateProgress.concurrency > 0 && ` - 并发数: ${updateProgress.concurrency}`}
+              </>
+            )}
           </Typography>
         </Box>
       )}
@@ -314,7 +350,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
             </Typography>
 
             <Grid container spacing={2} mb={2}>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="success.main">
                     {updateResult.successful_updates}
@@ -322,7 +358,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
                   <Typography variant="body2">成功</Typography>
                 </Box>
               </Grid>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="error.main">
                     {updateResult.failed_updates}
@@ -330,12 +366,20 @@ export const SubscriptionBatchManagerDialog: React.FC<
                   <Typography variant="body2">失败</Typography>
                 </Box>
               </Grid>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 3 }}>
                 <Box textAlign="center">
                   <Typography variant="h5" color="primary">
                     {updateResult.total_subscriptions}
                   </Typography>
                   <Typography variant="body2">总数</Typography>
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 3 }}>
+                <Box textAlign="center">
+                  <Typography variant="h5" color="info.main">
+                    {updateResult.concurrency_used}
+                  </Typography>
+                  <Typography variant="body2">并发数</Typography>
                 </Box>
               </Grid>
             </Grid>
