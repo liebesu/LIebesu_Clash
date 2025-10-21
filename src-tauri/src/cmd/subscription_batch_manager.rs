@@ -543,14 +543,25 @@ async fn delete_subscription(uid: &str) -> Result<()> {
     if should_update {
         // 更新配置并刷新Clash
         match crate::core::CoreManager::global().update_config().await {
-            Ok(_) => {
+            Ok((true, _)) => {
+                // 配置验证通过并更新成功
                 Handle::refresh_clash();
                 // 通知前端配置已更改
                 Handle::notify_profile_changed("deleted".to_string());
                 log::info!("订阅 {} 删除成功，配置已更新", uid);
             }
+            Ok((false, error_msg)) => {
+                // 配置验证失败
+                log::error!("配置验证失败: {}", error_msg);
+                // 仍然通知前端刷新，但显示警告
+                Handle::notify_profile_changed("deleted".to_string());
+                return Err(anyhow::anyhow!("配置验证失败: {}", error_msg));
+            }
             Err(e) => {
                 log::error!("更新配置失败: {}", e);
+                // 尝试刷新以恢复状态
+                Handle::refresh_clash();
+                Handle::notify_profile_changed("deleted".to_string());
                 return Err(anyhow::anyhow!("更新配置失败: {}", e));
             }
         }

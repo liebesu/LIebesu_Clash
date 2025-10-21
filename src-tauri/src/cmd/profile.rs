@@ -235,18 +235,34 @@ pub async fn update_profile(index: String, option: Option<PrfOption>) -> CmdResu
 #[tauri::command]
 pub async fn delete_profile(index: String) -> CmdResult {
     // 使用Send-safe helper函数
-    let should_update = wrap_err!(profiles_delete_item_safe(index).await)?;
+    let should_update = wrap_err!(profiles_delete_item_safe(index.clone()).await)?;
 
     if should_update {
         match CoreManager::global().update_config().await {
-            Ok(_) => {
+            Ok((true, _)) => {
+                // 配置验证通过并更新成功
                 handle::Handle::refresh_clash();
+                handle::Handle::notify_profile_changed("deleted".to_string());
+                log::info!(target: "app", "订阅 {} 删除成功，配置已更新", index);
+            }
+            Ok((false, error_msg)) => {
+                // 配置验证失败，但订阅已删除
+                log::error!(target: "app", "删除订阅后配置验证失败: {}", error_msg);
+                handle::Handle::refresh_clash();
+                handle::Handle::notify_profile_changed("deleted".to_string());
+                return Err(format!("订阅已删除，但配置验证失败: {}", error_msg));
             }
             Err(e) => {
-                log::error!(target: "app", "{}", e);
-                return Err(e.to_string());
+                log::error!(target: "app", "删除订阅后更新配置失败: {}", e);
+                handle::Handle::refresh_clash();
+                handle::Handle::notify_profile_changed("deleted".to_string());
+                return Err(format!("订阅已删除，但更新配置失败: {}", e));
             }
         }
+    } else {
+        // 删除的不是当前订阅，无需更新核心配置
+        handle::Handle::notify_profile_changed("deleted".to_string());
+        log::info!(target: "app", "订阅 {} 删除成功", index);
     }
     Ok(())
 }
