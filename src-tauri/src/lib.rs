@@ -334,6 +334,10 @@ mod app_init {
             cmd::get_node_quality_ranking,
             cmd::get_optimization_suggestions,
             cmd::schedule_periodic_test,
+            // Subscription fetch commands
+            cmd::get_remote_subscription_config,
+            cmd::save_remote_subscription_config,
+            cmd::fetch_subscription_preview,
             // Global speed test commands
             cmd::start_global_speed_test,
             cmd::cancel_global_speed_test,
