@@ -10,7 +10,7 @@ import { ProxyRender } from "./proxy-render";
 import delayManager from "@/services/delay";
 import { useTranslation } from "react-i18next";
 import { ScrollTopButton } from "../layout/scroll-top-button";
-import { Box, Snackbar, Alert } from "@mui/material";
+import { Box, Snackbar, Alert, Typography } from "@mui/material";
 import { ProxyChain } from "./proxy-chain";
 
 interface Props {
@@ -251,6 +251,22 @@ export const ProxyGroups = (props: Props) => {
 
   if (mode === "direct") {
     return <BaseEmpty text={t("clash_mode_direct")} />;
+  }
+
+  // 添加：当代理列表为空时，提供更友好的提示
+  if (!renderList || renderList.length === 0) {
+    return (
+      <BaseEmpty
+        text={t("No Proxies")}
+        extra={
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              {t("Please update your subscription in the Profiles page")}
+            </Typography>
+          </Box>
+        }
+      />
+    );
   }
 
   if (isChainMode) {
