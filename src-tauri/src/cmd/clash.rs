@@ -412,7 +412,7 @@ pub async fn get_ip_info() -> CmdResult<serde_json::Value> {
                     match response.json::<serde_json::Value>().await {
                         Ok(data) => {
                             log::info!(target: "app", "成功从 {} 获取IP信息", service_url);
-                            return Ok(data);
+                            return Ok(normalize_ip_info_response(data, service_url));
                         }
                         Err(e) => {
                             log::warn!(target: "app", "解析 {} 响应失败: {}", service_url, e);
@@ -440,6 +440,151 @@ pub async fn get_ip_info() -> CmdResult<serde_json::Value> {
         "city": "unknown",
         "error": "All IP services failed"
     }))
+}
+
+fn normalize_ip_info_response(data: serde_json::Value, source: &str) -> serde_json::Value {
+    use serde_json::{json, Map, Value};
+
+    fn get_string(map: &Map<String, Value>, key: &str) -> Option<String> {
+        map.get(key).and_then(|value| match value {
+            Value::String(s) => Some(s.clone()),
+            Value::Number(n) => Some(n.to_string()),
+            Value::Bool(b) => Some(b.to_string()),
+            _ => None,
+        })
+    }
+
+    fn get_nested_string(map: &Map<String, Value>, parent: &str, key: &str) -> Option<String> {
+        map.get(parent)
+            .and_then(|value| value.as_object())
+            .and_then(|obj| get_string(obj, key))
+    }
+
+    fn get_number(map: &Map<String, Value>, key: &str) -> Option<f64> {
+        map.get(key).and_then(|value| match value {
+            Value::Number(n) => n.as_f64(),
+            Value::String(s) => s.parse::<f64>().ok(),
+            _ => None,
+        })
+    }
+
+    fn get_nested_number(map: &Map<String, Value>, parent: &str, key: &str) -> Option<f64> {
+        map.get(parent)
+            .and_then(|value| value.as_object())
+            .and_then(|obj| get_number(obj, key))
+    }
+
+    match data {
+        Value::Object(mut map) => {
+            if map.contains_key("ip") && map.contains_key("country") {
+                map.insert(
+                    "source".to_string(),
+                    Value::String(source.to_string()),
+                );
+                return Value::Object(map);
+            }
+
+            let ip = get_string(&map, "ip")
+                .or_else(|| get_string(&map, "query"))
+                .unwrap_or_else(|| "unknown".into());
+
+            let country = get_string(&map, "country")
+                .or_else(|| get_string(&map, "country_name"))
+                .or_else(|| get_string(&map, "countryRegion"))
+                .or_else(|| get_nested_string(&map, "location", "country"))
+                .or_else(|| {
+                    map.get("country")
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| get_string(obj, "name"))
+                })
+                .unwrap_or_else(|| "".into());
+
+            let country_code = get_string(&map, "country_code")
+                .or_else(|| get_string(&map, "countryCode"))
+                .or_else(|| get_string(&map, "country_code2"))
+                .or_else(|| get_string(&map, "country_code_iso3"))
+                .or_else(|| get_nested_string(&map, "location", "country_code"))
+                .or_else(|| {
+                    map.get("country")
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| get_string(obj, "code"))
+                })
+                .unwrap_or_else(|| "".into());
+
+            let region = get_string(&map, "region")
+                .or_else(|| get_string(&map, "regionName"))
+                .or_else(|| get_string(&map, "state_prov"))
+                .or_else(|| get_nested_string(&map, "location", "region"))
+                .or_else(|| get_nested_string(&map, "location", "state"))
+                .unwrap_or_else(|| "".into());
+
+            let city = get_string(&map, "city")
+                .or_else(|| get_string(&map, "district"))
+                .or_else(|| get_string(&map, "city_name"))
+                .or_else(|| get_nested_string(&map, "location", "city"))
+                .unwrap_or_else(|| "".into());
+
+            let timezone = get_string(&map, "timezone")
+                .or_else(|| get_string(&map, "time_zone"))
+                .or_else(|| {
+                    get_nested_string(&map, "timezone", "id")
+                        .or_else(|| get_nested_string(&map, "location", "time_zone"))
+                })
+                .unwrap_or_else(|| "".into());
+
+            let longitude = get_number(&map, "longitude")
+                .or_else(|| get_number(&map, "lon"))
+                .or_else(|| get_nested_number(&map, "location", "longitude"))
+                .unwrap_or(0.0);
+
+            let latitude = get_number(&map, "latitude")
+                .or_else(|| get_number(&map, "lat"))
+                .or_else(|| get_nested_number(&map, "location", "latitude"))
+                .unwrap_or(0.0);
+
+            let organization = get_string(&map, "organization")
+                .or_else(|| get_string(&map, "org"))
+                .or_else(|| get_string(&map, "asn_organization"))
+                .or_else(|| get_string(&map, "asn_org"))
+                .or_else(|| get_nested_string(&map, "connection", "org"))
+                .or_else(|| get_nested_string(&map, "connection", "isp"))
+                .unwrap_or_else(|| "".into());
+
+            let isp = get_string(&map, "isp")
+                .or_else(|| get_nested_string(&map, "connection", "isp"))
+                .or_else(|| get_nested_string(&map, "connection", "org"))
+                .unwrap_or_else(|| organization.clone());
+
+            let asn = get_number(&map, "asn")
+                .or_else(|| get_number(&map, "as_number"))
+                .or_else(|| get_nested_number(&map, "connection", "asn"))
+                .unwrap_or(0.0);
+
+            json!({
+                "source": source,
+                "ip": ip,
+                "country": country,
+                "country_code": country_code,
+                "region": region,
+                "city": city,
+                "timezone": timezone,
+                "longitude": longitude,
+                "latitude": latitude,
+                "organization": organization,
+                "isp": isp,
+                "asn": asn,
+                "asn_organization": organization
+            })
+        }
+        _ => serde_json::json!({
+            "source": source,
+            "ip": "unknown",
+            "country": "unknown",
+            "region": "unknown",
+            "city": "unknown",
+            "error": "Invalid response format"
+        }),
+    }
 }
 
 /// 获取Clash配置
