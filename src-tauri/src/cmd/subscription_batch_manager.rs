@@ -276,6 +276,14 @@ pub async fn cleanup_expired_subscriptions(
         }
     }
 
+    if !deleted_subscriptions.is_empty() {
+        if let Err(e) = crate::config::profiles::profiles_save_file_safe().await {
+            log::error!("批量清理后保存profiles失败: {}", e);
+        } else {
+            log::info!("批量清理后已保存profiles文件");
+        }
+    }
+
     let result = CleanupResult {
         deleted_count: deleted_subscriptions.len(),
         deleted_subscriptions,

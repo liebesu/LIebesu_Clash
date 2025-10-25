@@ -18,7 +18,7 @@ pub async fn get_proxies() -> CmdResult<serde_json::Value> {
     let cache = ProxyRequestCache::global();
     let key = ProxyRequestCache::make_key("proxies", "default");
     let value = cache
-        .get_or_fetch(key, PROXIES_REFRESH_INTERVAL, || async {
+        .get_or_fetch(key.clone(), PROXIES_REFRESH_INTERVAL, || async {
             let manager = IpcManager::global();
             manager.get_proxies().await.unwrap_or_else(|e| {
                 logging!(error, Type::Cmd, "Failed to fetch proxies: {e}");
@@ -32,6 +32,17 @@ pub async fn get_proxies() -> CmdResult<serde_json::Value> {
         Some(map) if map.contains_key("proxies") => (*value).clone(),
         _ => serde_json::json!({ "proxies": {} }),
     };
+
+    // 如果内容为空，移除缓存，避免长时间缓存空数据
+    if normalized
+        .get("proxies")
+        .and_then(|p| p.as_object())
+        .map(|m| m.is_empty())
+        .unwrap_or(true)
+    {
+        cache.map.remove(&key);
+    }
+
     Ok(normalized)
 }
 
@@ -49,7 +60,7 @@ pub async fn get_providers_proxies() -> CmdResult<serde_json::Value> {
     let cache = ProxyRequestCache::global();
     let key = ProxyRequestCache::make_key("providers", "default");
     let value = cache
-        .get_or_fetch(key, PROVIDERS_REFRESH_INTERVAL, || async {
+        .get_or_fetch(key.clone(), PROVIDERS_REFRESH_INTERVAL, || async {
             let manager = IpcManager::global();
             manager.get_providers_proxies().await.unwrap_or_else(|e| {
                 logging!(error, Type::Cmd, "Failed to fetch provider proxies: {e}");
@@ -63,6 +74,17 @@ pub async fn get_providers_proxies() -> CmdResult<serde_json::Value> {
         Some(map) if map.contains_key("providers") => (*value).clone(),
         _ => serde_json::json!({ "providers": {} }),
     };
+
+    // 如果内容为空，移除缓存，避免长时间缓存空数据
+    if normalized
+        .get("providers")
+        .and_then(|p| p.as_object())
+        .map(|m| m.is_empty())
+        .unwrap_or(true)
+    {
+        cache.map.remove(&key);
+    }
+
     Ok(normalized)
 }
 
