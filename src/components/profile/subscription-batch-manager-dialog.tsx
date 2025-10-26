@@ -178,9 +178,10 @@ export const SubscriptionBatchManagerDialog: React.FC<
   };
 
   const handleRetryFailedUpdates = async () => {
-    if (!updateResult || updateResult.failed_subscriptions.length === 0) return;
+    const failedCount = updateResult?.failed_subscriptions?.length ?? 0;
+    if (!updateResult || failedCount === 0) return;
     try {
-      const failed = updateResult.failed_subscriptions;
+      const failed = updateResult.failed_subscriptions || [];
       const result = await retryUpdateSubscriptions(failed, 2);
       setUpdateResult(result);
       showNotice(
@@ -254,7 +255,7 @@ export const SubscriptionBatchManagerDialog: React.FC<
         await loadStats();
         if (onProfilesChanged) await onProfilesChanged();
       } else {
-        showNotice("warning", "没有可撤销的清理");
+        showNotice("info", "没有可撤销的清理");
       }
     } catch (e) {
       showNotice("error", `撤销清理失败: ${e}`);
@@ -338,10 +339,10 @@ export const SubscriptionBatchManagerDialog: React.FC<
           {updateInProgress ? "更新中..." : "开始批量更新"}
         </Button>
 
-        {updateResult?.failed_subscriptions?.length > 0 && (
+        {(updateResult?.failed_subscriptions?.length ?? 0) > 0 && (
           <Button
             variant="outlined"
-            color="warning"
+            color="inherit"
             onClick={handleRetryFailedUpdates}
             size="large"
           >
@@ -427,16 +428,16 @@ export const SubscriptionBatchManagerDialog: React.FC<
               </Grid>
             </Grid>
 
-            {updateResult.failed_subscriptions.length > 0 && (
+            {(updateResult.failed_subscriptions?.length ?? 0) > 0 && (
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography>
-                    查看失败详情 ({updateResult.failed_subscriptions.length})
+                    查看失败详情 ({updateResult.failed_subscriptions?.length || 0})
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <List>
-                    {updateResult.failed_subscriptions.map((name, index) => (
+                    {(updateResult.failed_subscriptions || []).map((name, index) => (
                       <ListItem key={index}>
                         <ListItemIcon>
                           <ErrorIcon color="error" />
