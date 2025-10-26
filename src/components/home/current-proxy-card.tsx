@@ -192,7 +192,7 @@ export const CurrentProxyCard = () => {
         ...prev,
         selection: {
           ...prev.selection,
-          group: savedGroup || primaryGroupName || "",
+          group: savedGroup || primaryGroupName || (proxies.groups?.[0]?.name || ""),
         },
       }));
     }
@@ -217,7 +217,7 @@ export const CurrentProxyCard = () => {
 
       let newProxy = "";
       let newDisplayProxy = null;
-      let newGroup = prev.selection.group;
+      let newGroup = prev.selection.group || (filteredGroups[0]?.name || "");
 
       // 根据模式确定新代理
       if (isDirectMode) {

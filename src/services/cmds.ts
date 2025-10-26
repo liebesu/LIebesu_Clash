@@ -201,6 +201,12 @@ export async function getProxies(): Promise<{
       ),
     );
 
+  // 合并 records，确保通过 provider 返回的节点也能在 records 中被查到
+  const combinedRecords: Record<string, IProxyItem> = {
+    ...proxyRecord,
+    ...providerMap,
+  } as Record<string, IProxyItem>;
+
   // compatible with proxy-providers
   const generateItem = (name: string) => {
     if (proxyRecord[name]) return proxyRecord[name];
@@ -232,6 +238,18 @@ export async function getProxies(): Promise<{
     return acc;
   }, []);
 
+  // 如果 groups 为空，尝试从 provider 构建一个最小可用组，避免前端空白
+  if ((!groups || groups.length === 0) && Object.keys(providerMap).length > 0) {
+    const providerProxies = Object.values(providerMap);
+    const fallbackGroup: IProxyGroupItem = {
+      name: "PROVIDER",
+      type: "Selector" as any,
+      now: providerProxies[0]?.name || "",
+      all: providerProxies,
+    } as any;
+    groups = [fallbackGroup];
+  }
+
   if (global?.all) {
     const globalGroups: IProxyGroupItem[] = (global.all as string[]).reduce<
       IProxyGroupItem[]
@@ -257,17 +275,17 @@ export async function getProxies(): Promise<{
   const proxies = [direct, reject]
     .filter(Boolean)
     .concat(
-      Object.values(proxyRecord).filter(
+      Object.values(combinedRecords).filter(
         (p: any) => !p?.all?.length && p?.name !== "DIRECT" && p?.name !== "REJECT",
       ) as any,
     );
 
   const _global: IProxyGroupItem = {
-    ...(global || { name: "GLOBAL", type: "Selector", now: "", all: [] } as any),
+    ...(global || ({ name: "GLOBAL", type: "Selector", now: "", all: [] } as any)),
     all: (global?.all || []).map((item: any) => generateItem(item)),
   } as any;
 
-  return { global: _global, direct, groups, records: proxyRecord, proxies };
+  return { global: _global, direct, groups, records: combinedRecords, proxies };
 }
 
 export async function getProxyProviders() {

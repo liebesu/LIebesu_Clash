@@ -138,6 +138,17 @@ export const AppDataProvider = ({
       revalidateOnFocus: true,
       suspense: false,
       errorRetryCount: 3,
+      // 避免初始渲染出现空数组导致“无数据”误判，提供安全的兜底结构
+      fallbackData: {
+        global: { name: "GLOBAL", type: "Selector", now: "", all: [] },
+        direct: { name: "DIRECT", type: "Direct", history: [] },
+        groups: [],
+        records: {},
+        proxies: [],
+      },
+      onError: (error) => {
+        console.warn("[AppDataProvider] 加载代理数据失败: ", error);
+      },
     },
   );
 
