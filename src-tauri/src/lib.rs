@@ -410,6 +410,8 @@ mod app_init {
             cmd::get_subscription_management_stats,
             cmd::set_auto_cleanup_rules,
             cmd::get_auto_cleanup_rules,
+            cmd::retry_update_subscriptions,
+            cmd::restore_last_cleanup,
             cmd::get_clash_connections,
             cmd::delete_clash_connection,
             cmd::close_all_clash_connections,

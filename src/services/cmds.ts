@@ -2314,6 +2314,13 @@ export async function updateAllSubscriptions() {
   return invoke<BatchUpdateResult>("update_all_subscriptions");
 }
 
+export async function retryUpdateSubscriptions(uids: string[], retry?: number) {
+  return invoke<BatchUpdateResult>("retry_update_subscriptions", {
+    uids,
+    retry,
+  });
+}
+
 /**
  * 清理过期订阅
  */
@@ -2330,6 +2337,10 @@ export async function cleanupOverQuotaSubscriptions(
   options: SubscriptionCleanupOptions,
 ) {
   return invoke<CleanupResult>("cleanup_over_quota_subscriptions", { options });
+}
+
+export async function restoreLastCleanup() {
+  return invoke<boolean>("restore_last_cleanup");
 }
 
 /**

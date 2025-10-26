@@ -61,6 +61,7 @@ export const ProxyGroups = (props: Props) => {
   const scrollPositionRef = useRef<Record<string, number>>({});
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollerRef = useRef<Element | null>(null);
+  const visibleCheckLockRef = useRef(false);
 
   // 从 localStorage 恢复滚动位置
   useEffect(() => {
@@ -126,6 +127,61 @@ export const ProxyGroups = (props: Props) => {
       };
     }
   }, [handleScroll]);
+
+  // 可见区延迟测试（节流）
+  const handleRangeChanged = useCallback(
+    throttle((range: { startIndex: number; endIndex: number }) => {
+      if (!renderList || renderList.length === 0) return;
+
+      const start = Math.max(0, range.startIndex);
+      const end = Math.min(renderList.length - 1, range.endIndex);
+      if (end < start) return;
+
+      // 分组汇总可见区内需要测速的节点
+      const groupToNames = new Map<string, Set<string>>();
+
+      for (let i = start; i <= end; i++) {
+        const item = renderList[i];
+        if (!item) continue;
+        const groupName = item.group?.name;
+        if (!groupName) continue;
+
+        if (item.type === 2 && item.proxy) {
+          if (!groupToNames.has(groupName)) groupToNames.set(groupName, new Set());
+          groupToNames.get(groupName)!.add(item.proxy.name);
+        } else if (item.type === 4 && item.proxyCol && item.proxyCol.length) {
+          if (!groupToNames.has(groupName)) groupToNames.set(groupName, new Set());
+          item.proxyCol.forEach((p) => groupToNames.get(groupName)!.add(p.name));
+        }
+      }
+
+      // 触发每个组的可见区测速（使用较小并发）
+      for (const [groupName, nameSet] of groupToNames) {
+        const names = Array.from(nameSet);
+        if (!names.length) continue;
+        // 若组有自定义测试URL，则设置
+        try {
+          const groupItem = renderList.find((e) => e.group?.name === groupName)?.group as any;
+          if (groupItem?.testUrl) {
+            delayManager.setUrl(groupName, groupItem.testUrl);
+          }
+        } catch {}
+
+        // 避免与“测全部”竞争，限制并发与批量
+        const batch = names.slice(0, 100);
+        const concurrent = Math.min(8, Math.max(3, Math.floor(batch.length / 10) || 3));
+
+        delayManager
+          .checkListDelay(batch, groupName, timeout, concurrent)
+          .then(() => {
+            // 刷新当前代理延迟显示
+            onProxies();
+          })
+          .catch(() => void 0);
+      }
+    }, 800),
+    [renderList, timeout, onProxies],
+  );
 
   // 滚动到顶部
   const scrollToTop = useCallback(() => {
@@ -315,6 +371,7 @@ export const ProxyGroups = (props: Props) => {
               scrollerRef={(ref) => {
                 scrollerRef.current = ref as Element;
               }}
+        rangeChanged={handleRangeChanged}
               components={{
                 Footer: () => <div style={{ height: "8px" }} />,
               }}
@@ -377,6 +434,7 @@ export const ProxyGroups = (props: Props) => {
         scrollerRef={(ref) => {
           scrollerRef.current = ref as Element;
         }}
+        rangeChanged={handleRangeChanged}
         components={{
           Footer: () => <div style={{ height: "8px" }} />,
         }}

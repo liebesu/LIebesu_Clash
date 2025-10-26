@@ -63,7 +63,8 @@ import {
   type BatchUpdateResult,
   type CleanupResult,
   type SubscriptionInfo,
-} from "../../services/cmds";
+  } from "../../services/cmds";
+  import { retryUpdateSubscriptions, restoreLastCleanup } from "../../services/cmds";
 
 interface SubscriptionBatchManagerDialogProps {
   open: boolean;
@@ -176,6 +177,22 @@ export const SubscriptionBatchManagerDialog: React.FC<
     }
   };
 
+  const handleRetryFailedUpdates = async () => {
+    if (!updateResult || updateResult.failed_subscriptions.length === 0) return;
+    try {
+      const failed = updateResult.failed_subscriptions;
+      const result = await retryUpdateSubscriptions(failed, 2);
+      setUpdateResult(result);
+      showNotice(
+        "success",
+        `重试完成: ${result.successful_updates} 成功, ${result.failed_updates} 失败`,
+      );
+      loadStats();
+    } catch (e) {
+      showNotice("error", `重试失败: ${e}`);
+    }
+  };
+
   const handleCancelUpdate = () => {
     setUpdateCancelled(true);
     setUpdateInProgress(false);
@@ -226,6 +243,21 @@ export const SubscriptionBatchManagerDialog: React.FC<
       showNotice("error", "执行清理失败: " + error);
     } finally {
       setCleanupInProgress(false);
+    }
+  };
+
+  const handleRestoreLastCleanup = async () => {
+    try {
+      const ok = await restoreLastCleanup();
+      if (ok) {
+        showNotice("success", "已撤销最近一次清理并刷新配置");
+        await loadStats();
+        if (onProfilesChanged) await onProfilesChanged();
+      } else {
+        showNotice("warning", "没有可撤销的清理");
+      }
+    } catch (e) {
+      showNotice("error", `撤销清理失败: ${e}`);
     }
   };
 
@@ -305,6 +337,17 @@ export const SubscriptionBatchManagerDialog: React.FC<
         >
           {updateInProgress ? "更新中..." : "开始批量更新"}
         </Button>
+
+        {updateResult?.failed_subscriptions?.length > 0 && (
+          <Button
+            variant="outlined"
+            color="warning"
+            onClick={handleRetryFailedUpdates}
+            size="large"
+          >
+            重试失败项
+          </Button>
+        )}
 
         {updateInProgress && (
           <Button
@@ -672,6 +715,12 @@ export const SubscriptionBatchManagerDialog: React.FC<
           </CardContent>
         </Card>
       )}
+
+      <Box sx={{ mt: 1 }}>
+        <Button variant="text" color="secondary" onClick={handleRestoreLastCleanup}>
+          撤销上次清理
+        </Button>
+      </Box>
 
       {cleanupResult && (
         <Alert severity="success">

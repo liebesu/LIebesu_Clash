@@ -14,6 +14,7 @@ use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionCleanupOptions {
@@ -64,6 +65,16 @@ pub struct CleanupResult {
     pub cleanup_options: SubscriptionCleanupOptions,
     pub cleanup_time: String,
 }
+
+// 最近一次清理快照（内存持久：单进程内有效）
+#[derive(Debug, Default, Clone)]
+struct CleanupSnapshot {
+    profiles_yaml: Option<String>,
+    deleted_uids: Vec<String>,
+}
+
+static CLEANUP_SNAPSHOT: once_cell::sync::Lazy<RwLock<CleanupSnapshot>> =
+    once_cell::sync::Lazy::new(|| RwLock::new(CleanupSnapshot::default()));
 
 // 获取订阅清理预览
 #[tauri::command]
@@ -264,6 +275,20 @@ pub async fn cleanup_expired_subscriptions(
     let preview = get_subscription_cleanup_preview(options.clone()).await?;
     let mut deleted_subscriptions = Vec::new();
 
+    // 生成快照
+    {
+        let profiles_yaml = crate::config::dirs::profiles_path()
+            .ok()
+            .and_then(|p| std::fs::read_to_string(p).ok());
+        let mut snapshot = CLEANUP_SNAPSHOT.write().await;
+        snapshot.profiles_yaml = profiles_yaml;
+        snapshot.deleted_uids = preview
+            .expired_subscriptions
+            .iter()
+            .map(|s| s.uid.clone())
+            .collect();
+    }
+
     // 执行删除操作
     for subscription in &preview.expired_subscriptions {
         match delete_subscription(&subscription.uid).await {
@@ -306,6 +331,20 @@ pub async fn cleanup_over_quota_subscriptions(
     let preview = get_over_quota_cleanup_preview(options.clone()).await?;
     let mut deleted_subscriptions = Vec::new();
 
+    // 生成快照
+    {
+        let profiles_yaml = crate::config::dirs::profiles_path()
+            .ok()
+            .and_then(|p| std::fs::read_to_string(p).ok());
+        let mut snapshot = CLEANUP_SNAPSHOT.write().await;
+        snapshot.profiles_yaml = profiles_yaml;
+        snapshot.deleted_uids = preview
+            .expired_subscriptions
+            .iter()
+            .map(|s| s.uid.clone())
+            .collect();
+    }
+
     // 执行删除操作
     for subscription in &preview.expired_subscriptions {
         match delete_subscription(&subscription.uid).await {
@@ -326,6 +365,71 @@ pub async fn cleanup_over_quota_subscriptions(
     };
 
     Ok(result)
+}
+
+/// 按UID重试更新订阅，可指定最大重试次数
+#[tauri::command]
+pub async fn retry_update_subscriptions(
+    uids: Vec<String>,
+    retry: Option<u8>,
+) -> Result<BatchUpdateResult, String> {
+    use crate::feat::sync::schedule_subscription_sync;
+
+    let max_retry = retry.unwrap_or(2) as usize;
+
+    let mut updated = Vec::new();
+    let mut failed = Vec::new();
+    let mut error_messages = HashMap::new();
+
+    for uid in uids {
+        let mut last_err: Option<String> = None;
+        let mut ok = false;
+        for _ in 0..max_retry {
+            match schedule_subscription_sync(uid.clone(), crate::state::subscription_sync::SyncPhase::Background).await {
+                Ok(_) => { ok = true; break; }
+                Err(e) => { last_err = Some(e.to_string()); }
+            }
+        }
+        if ok {
+            updated.push(uid.clone());
+        } else {
+            failed.push(uid.clone());
+            error_messages.insert(uid.clone(), last_err.unwrap_or_else(|| "unknown error".into()));
+        }
+    }
+
+    Ok(BatchUpdateResult {
+        total_subscriptions: updated.len() + failed.len(),
+        successful_updates: updated.len(),
+        failed_updates: failed.len(),
+        updated_subscriptions: updated,
+        failed_subscriptions: failed,
+        error_messages,
+        concurrency_used: 1,
+        estimated_time_remaining: None,
+    })
+}
+
+/// 撤销最近一次清理：从内存快照恢复 profiles.yaml
+#[tauri::command]
+pub async fn restore_last_cleanup() -> Result<bool, String> {
+    let snapshot = CLEANUP_SNAPSHOT.read().await.clone();
+    let Some(profiles_yaml) = snapshot.profiles_yaml else {
+        return Err("没有可恢复的清理快照".into());
+    };
+
+    let path = crate::config::dirs::profiles_path().map_err(|e| e.to_string())?;
+    tokio::fs::write(&path, profiles_yaml)
+        .await
+        .map_err(|e| format!("写入profiles失败: {}", e))?;
+
+    // 重新加载并刷新核心
+    if let Err(e) = crate::core::CoreManager::global().update_config().await {
+        log::warn!("恢复后更新核心失败: {}", e);
+    }
+    crate::core::handle::Handle::refresh_clash();
+    crate::core::handle::Handle::notify_profile_changed("updated".to_string());
+    Ok(true)
 }
 
 // 获取超额订阅清理预览
