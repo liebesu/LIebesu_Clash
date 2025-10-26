@@ -9,6 +9,7 @@
 )]
 // TODO: 后续处理订阅批量管理模块 lint，当前先豁免。
 use crate::config::Config;
+use crate::utils::dirs;
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
@@ -277,7 +278,7 @@ pub async fn cleanup_expired_subscriptions(
 
     // 生成快照
     {
-        let profiles_yaml = crate::config::dirs::profiles_path()
+        let profiles_yaml = dirs::profiles_path()
             .ok()
             .and_then(|p| std::fs::read_to_string(p).ok());
         let mut snapshot = CLEANUP_SNAPSHOT.write().await;
@@ -333,7 +334,7 @@ pub async fn cleanup_over_quota_subscriptions(
 
     // 生成快照
     {
-        let profiles_yaml = crate::config::dirs::profiles_path()
+        let profiles_yaml = dirs::profiles_path()
             .ok()
             .and_then(|p| std::fs::read_to_string(p).ok());
         let mut snapshot = CLEANUP_SNAPSHOT.write().await;
@@ -418,7 +419,7 @@ pub async fn restore_last_cleanup() -> Result<bool, String> {
         return Err("没有可恢复的清理快照".into());
     };
 
-    let path = crate::config::dirs::profiles_path().map_err(|e| e.to_string())?;
+    let path = dirs::profiles_path().map_err(|e| e.to_string())?;
     tokio::fs::write(&path, profiles_yaml)
         .await
         .map_err(|e| format!("写入profiles失败: {}", e))?;
