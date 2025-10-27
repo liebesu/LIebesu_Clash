@@ -99,12 +99,22 @@ function normalizeBackendIpInfo(data: any): IpInfo {
     data?.loc?.split?.(",")?.[1] ||
     0;
 
-  const timezone =
-    data.timezone ||
-    data.time_zone ||
-    data?.timezone?.id ||
-    data?.location?.time_zone ||
-    "";
+  // 统一将时区字段规范为字符串，避免 React 渲染到对象导致崩溃（Minified React error #31）
+  const timezone = (() => {
+    const tz = (data as any)?.timezone;
+    if (typeof tz === "string") return tz;
+    if (tz && typeof tz === "object") {
+      return (
+        tz.id || tz.name || tz.abbr || tz.abbreviation || tz.label || ""
+      );
+    }
+    return (
+      (data as any)?.time_zone ||
+      (data as any)?.timezone?.id ||
+      (data as any)?.location?.time_zone ||
+      ""
+    );
+  })();
 
   return {
     ip: data.ip || data.query || "unknown",
