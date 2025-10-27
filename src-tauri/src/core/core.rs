@@ -762,6 +762,20 @@ impl CoreManager {
         let clash_core = Config::verge().await.latest_ref().get_valid_clash_core();
         let config_dir = dirs::app_home_dir()?;
 
+        // --- Preflight: ensure IPC path directory exists and stale socket cleaned ---
+        #[cfg(unix)]
+        {
+            if let Ok(ipc) = dirs::ipc_path() {
+                if let Some(parent) = ipc.parent() {
+                    let _ = create_dir_all(parent);
+                }
+                // 如果存在旧的 socket 文件，先删除，避免 bind EADDRINUSE / 权限问题
+                if ipc.exists() {
+                    let _ = std::fs::remove_file(&ipc);
+                }
+            }
+        }
+
         let service_log_dir = dirs::app_home_dir()?.join("logs").join("service");
         create_dir_all(&service_log_dir)?;
 
@@ -940,6 +954,11 @@ impl CoreManager {
                         "服务模式启动失败: {}, 回退到Sidecar模式",
                         e
                     );
+                    // 出现失败时，清理可能残留的 unix socket，避免后续 Sidecar bind 失败
+                    #[cfg(unix)]
+                    if let Ok(ipc) = dirs::ipc_path() {
+                        let _ = std::fs::remove_file(&ipc);
+                    }
                 }
             }
         }

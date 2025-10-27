@@ -19,6 +19,11 @@ pub async fn patch_clash(patch: Mapping) -> Result<()> {
         // 激活订阅
         if patch.get("secret").is_some() || patch.get("external-controller").is_some() {
             Config::generate().await?;
+            // 变更控制端/密钥后，预清理可能残留的 unix socket
+            #[cfg(unix)]
+            if let Ok(ipc) = crate::utils::dirs::ipc_path() {
+                let _ = std::fs::remove_file(&ipc);
+            }
             CoreManager::global().restart_core().await?;
         } else {
             if patch.get("mode").is_some() {

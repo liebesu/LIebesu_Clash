@@ -311,14 +311,40 @@ pub fn ensure_mihomo_safe_dir() -> Option<PathBuf> {
 
 #[cfg(unix)]
 pub fn ipc_path() -> Result<PathBuf> {
-    ensure_mihomo_safe_dir()
-        .map(|base_dir| base_dir.join("liebesu").join("liebesu-mihomo.sock"))
-        .or_else(|| {
-            app_home_dir()
-                .ok()
-                .map(|dir| dir.join("liebesu").join("liebesu-mihomo.sock"))
-        })
-        .ok_or_else(|| anyhow::anyhow!("Failed to determine ipc path"))
+    use std::fs;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
+    // Preferred bases in order
+    let bases: Vec<PathBuf> = vec![PathBuf::from("/var/tmp"), PathBuf::from("/tmp")];
+
+    // Try preferred bases first
+    for base in bases {
+        if !base.exists() {
+            continue;
+        }
+        let dir = base.join("liebesu");
+        // Try create dir if not exists
+        let _ = fs::create_dir_all(&dir);
+        // Try relax permission if possible (best-effort)
+        #[cfg(unix)]
+        if let Ok(meta) = fs::metadata(&dir) {
+            if meta.permissions().mode() & 0o200 == 0 {
+                let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o777));
+            }
+        }
+        // Quick write test to ensure we truly can create files in it
+        let test_path = dir.join(".ipc_write_test");
+        let can_write = fs::write(&test_path, b"ok").and_then(|_| fs::remove_file(&test_path)).is_ok();
+        if can_write {
+            return Ok(dir.join("liebesu-mihomo.sock"));
+        }
+    }
+
+    // Fallback to app home dir
+    let fallback_dir = app_home_dir()?.join("liebesu");
+    let _ = fs::create_dir_all(&fallback_dir);
+    Ok(fallback_dir.join("liebesu-mihomo.sock"))
 }
 
 #[cfg(target_os = "windows")]

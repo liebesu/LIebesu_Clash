@@ -215,7 +215,6 @@ impl IClashTemp {
 
     pub fn guard_mixed_port(config: &Mapping) -> u16 {
         let raw_value = config.get("mixed-port");
-
         let mut port = raw_value
             .and_then(|value| match value {
                 Value::String(val_str) => val_str.parse().ok(),
@@ -223,11 +222,22 @@ impl IClashTemp {
                 _ => None,
             })
             .unwrap_or(7897);
-
         if port == 0 {
             port = 7897;
         }
-
+        // 尝试避免端口占用：若不可用，向上探测可用端口（最多 +20）
+        let is_available = |p: u16| -> bool {
+            std::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, p)).is_ok()
+        };
+        if !is_available(port) {
+            for delta in 1..=20 {
+                let candidate = port.saturating_add(delta);
+                if is_available(candidate) {
+                    port = candidate;
+                    break;
+                }
+            }
+        }
         port
     }
 
