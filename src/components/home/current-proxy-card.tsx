@@ -216,7 +216,7 @@ export const CurrentProxyCard = () => {
         );
 
       let newProxy = "";
-      let newDisplayProxy = null;
+      let newDisplayProxy: any = null;
       let newGroup = prev.selection.group || (filteredGroups[0]?.name || "");
 
       // 根据模式确定新代理
@@ -254,7 +254,6 @@ export const CurrentProxyCard = () => {
         }
       }
 
-      // 返回新状态
       return {
         proxyData: {
           groups: filteredGroups,
@@ -268,6 +267,25 @@ export const CurrentProxyCard = () => {
       };
     });
   }, [proxies, isGlobalMode, isDirectMode]);
+
+  // 启动器：若挂载后一段时间 groups 仍为空，强制刷新后端与前端缓存
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      try {
+        if (!proxies?.groups?.length) {
+          await Promise.all([
+            // 避免循环依赖，动态导入
+            import("@/services/cmds").then(m => m.forceRefreshClashConfig()),
+            import("@/services/cmds").then(m => m.forceRefreshProxies()),
+          ]);
+          await refreshProxy();
+        }
+      } catch (e) {
+        console.warn("[CurrentProxyCard] 强制刷新失败:", e);
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [proxies?.groups?.length, refreshProxy]);
 
   // 使用防抖包装状态更新
   const debouncedSetState = useCallback(
