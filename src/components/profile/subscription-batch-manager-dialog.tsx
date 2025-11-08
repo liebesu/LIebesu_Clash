@@ -961,3 +961,53 @@ export const SubscriptionBatchManagerDialog: React.FC<
     </Dialog>
   );
 };
+      <DialogTitle>订阅批量管理</DialogTitle>
+
+      <DialogContent>
+        <Box display="flex" borderBottom={1} borderColor="divider" mb={2}>
+          <Button
+            onClick={() => setCurrentTab("update")}
+            variant={currentTab === "update" ? "contained" : "text"}
+            startIcon={<UpdateIcon />}
+            sx={{ mr: 1 }}
+          >
+            批量更新
+          </Button>
+          <Button
+            onClick={() => setCurrentTab("cleanup")}
+            variant={currentTab === "cleanup" ? "contained" : "text"}
+            startIcon={<DeleteIcon />}
+            sx={{ mr: 1 }}
+          >
+            清理订阅
+          </Button>
+          <Button
+            onClick={() => setCurrentTab("stats")}
+            variant={currentTab === "stats" ? "contained" : "text"}
+            startIcon={<AnalyticsIcon />}
+            sx={{ mr: 1 }}
+          >
+            统计信息
+          </Button>
+          <Button
+            onClick={() => setCurrentTab("settings")}
+            variant={currentTab === "settings" ? "contained" : "text"}
+            startIcon={<ScheduleIcon />}
+          >
+            自动管理
+          </Button>
+        </Box>
+
+        {currentTab === "update" && renderUpdateTab()}
+        {currentTab === "cleanup" && renderCleanupTab()}
+        {currentTab === "stats" && renderStatsTab()}
+        {currentTab === "settings" && renderSettingsTab()}
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose}>关闭</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+

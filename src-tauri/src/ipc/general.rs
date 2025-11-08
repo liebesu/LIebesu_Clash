@@ -372,3 +372,4 @@ impl IpcManager {
 
     // 日志相关功能已迁移到 logs.rs 模块，使用流式处理
 }
+

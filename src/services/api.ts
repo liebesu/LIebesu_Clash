@@ -173,3 +173,13 @@ export const getIpInfo = async (): Promise<IpInfo> => {
     return getUnknownIpInfo();
   }
 };
+// 获取当前IP和地理位置信息
+export const getIpInfo = async (): Promise<IpInfo> => {
+  try {
+    return await getCurrentIpInfo();
+  } catch (error: any) {
+    console.log("[getIpInfo] 后端IP信息获取失败，返回默认值", error?.message);
+    return getUnknownIpInfo();
+  }
+};
+

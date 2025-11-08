@@ -155,3 +155,25 @@ pub async fn update_proxy_and_sync(group: String, proxy: String) -> CmdResult<()
         }
     }
 }
+                Type::Cmd,
+                "Proxy and sync completed successfully: {} -> {}",
+                group,
+                proxy
+            );
+            Ok(())
+        }
+        Err(e) => {
+            println!("1111111111111111");
+            logging!(
+                error,
+                Type::Cmd,
+                "Failed to update proxy: {} -> {}, error: {}",
+                group,
+                proxy,
+                e
+            );
+            Err(e.to_string())
+        }
+    }
+}
+

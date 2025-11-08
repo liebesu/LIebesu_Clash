@@ -486,3 +486,61 @@ function throttle<T extends (...args: any[]) => any>(
     }
   };
 }
+
+        overscan={150}
+        defaultItemHeight={56}
+        scrollerRef={(ref) => {
+          scrollerRef.current = ref as Element;
+        }}
+        rangeChanged={handleRangeChanged}
+        components={{
+          Footer: () => <div style={{ height: "8px" }} />,
+        }}
+        // 添加平滑滚动设置
+        initialScrollTop={scrollPositionRef.current[mode]}
+        computeItemKey={(index) => renderList[index].key}
+        itemContent={(index) => (
+          <ProxyRender
+            key={renderList[index].key}
+            item={renderList[index]}
+            indent={mode === "rule" || mode === "script"}
+            onLocation={handleLocation}
+            onCheckAll={handleCheckAll}
+            onHeadState={onHeadState}
+            onChangeProxy={handleChangeProxy}
+          />
+        )}
+      />
+      <ScrollTopButton show={showScrollTop} onClick={scrollToTop} />
+    </div>
+  );
+};
+
+// 替换简单防抖函数为更优的节流函数
+function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number,
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let previous = 0;
+
+  return function (...args: Parameters<T>) {
+    const now = Date.now();
+    const remaining = wait - (now - previous);
+
+    if (remaining <= 0 || remaining > wait) {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      previous = now;
+      func(...args);
+    } else if (!timer) {
+      timer = setTimeout(() => {
+        previous = Date.now();
+        timer = null;
+        func(...args);
+      }, remaining);
+    }
+  };
+}

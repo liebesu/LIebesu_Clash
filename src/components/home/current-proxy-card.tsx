@@ -725,3 +725,21 @@ export const CurrentProxyCard = () => {
     </EnhancedCard>
   );
 };
+                        />
+                      </MenuItem>
+                    );
+                  })}
+            </Select>
+          </FormControl>
+        </Box>
+      ) : (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography variant="body1" color="text.secondary">
+            {t("No active proxy node")}
+          </Typography>
+        </Box>
+      )}
+    </EnhancedCard>
+  );
+};
+

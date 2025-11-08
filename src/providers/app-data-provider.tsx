@@ -705,3 +705,34 @@ export const useAppData = () => {
 
   return context;
 };
+    uptimeData,
+    connectionsData,
+    trafficData,
+    memoryData,
+    proxyProviders,
+    ruleProviders,
+    verge,
+    refreshProxy,
+    refreshClashConfig,
+    refreshRules,
+    refreshSysproxy,
+    refreshProxyProviders,
+    refreshRuleProviders,
+  ]);
+
+  return (
+    <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>
+  );
+};
+
+// 自定义Hook访问全局数据
+export const useAppData = () => {
+  const context = useContext(AppDataContext);
+
+  if (!context) {
+    throw new Error("useAppData必须在AppDataProvider内使用");
+  }
+
+  return context;
+};
+

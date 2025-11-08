@@ -697,3 +697,108 @@ async fn delete_subscription(uid: &str) -> Result<()> {
 
     Ok(())
 }
+    });
+
+    Ok(stats)
+}
+
+// 设置自动清理规则
+#[tauri::command]
+pub async fn set_auto_cleanup_rules(
+    enabled: bool,
+    cleanup_options: SubscriptionCleanupOptions,
+) -> Result<(), String> {
+    // TODO: 保存自动清理规则到配置文件
+    // 这里应该与任务管理系统集成，创建定时清理任务
+
+    if enabled {
+        // 创建定时清理任务
+        log::info!("已启用自动清理规则: {:?}", cleanup_options);
+    } else {
+        // 禁用定时清理任务
+        log::info!("已禁用自动清理规则");
+    }
+
+    Ok(())
+}
+
+// 获取自动清理规则
+#[tauri::command]
+pub async fn get_auto_cleanup_rules() -> Result<serde_json::Value, String> {
+    // TODO: 从配置文件读取自动清理规则
+    let rules = serde_json::json!({
+        "enabled": false,
+        "cleanup_options": {
+            "days_threshold": 7,
+            "preview_only": false,
+            "exclude_favorites": true,
+            "exclude_groups": []
+        },
+        "last_cleanup": null,
+        "next_cleanup": null
+    });
+
+    Ok(rules)
+}
+
+// 辅助函数：更新单个订阅
+async fn update_single_subscription(_uid: &str) -> Result<()> {
+    // TODO: 实际实现订阅更新逻辑
+    // 这里应该调用现有的订阅更新API
+
+    // 模拟更新过程
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    // 50% 的成功率（用于测试）
+    use rand::Rng;
+    if rand::thread_rng().r#gen::<f32>() > 0.5 {
+        Ok(())
+    } else {
+        Err(anyhow!("网络连接失败"))
+    }
+}
+
+// 辅助函数：删除订阅
+async fn delete_subscription(uid: &str) -> Result<()> {
+    use crate::config::profiles::profiles_delete_item_safe;
+    use crate::handle::Handle;
+
+    log::info!("删除订阅: {}", uid);
+
+    // 调用现有的删除订阅API
+    let should_update = profiles_delete_item_safe(uid.to_string()).await?;
+
+    if should_update {
+        // 更新配置并刷新Clash
+        match crate::core::CoreManager::global().update_config().await {
+            Ok((true, _)) => {
+                // 配置验证通过并更新成功
+                Handle::refresh_clash();
+                // 通知前端配置已更改
+                Handle::notify_profile_changed("deleted".to_string());
+                log::info!("订阅 {} 删除成功，配置已更新", uid);
+            }
+            Ok((false, error_msg)) => {
+                // 配置验证失败
+                log::error!("配置验证失败: {}", error_msg);
+                // 仍然通知前端刷新，但显示警告
+                Handle::notify_profile_changed("deleted".to_string());
+                return Err(anyhow::anyhow!("配置验证失败: {}", error_msg));
+            }
+            Err(e) => {
+                log::error!("更新配置失败: {}", e);
+                // 尝试刷新以恢复状态
+                Handle::refresh_clash();
+                Handle::notify_profile_changed("deleted".to_string());
+                return Err(anyhow::anyhow!("更新配置失败: {}", e));
+            }
+        }
+    } else {
+        // 即使不需要更新核心配置，也要通知前端刷新列表
+        Handle::notify_profile_changed("deleted".to_string());
+        log::info!("订阅 {} 删除成功", uid);
+    }
+
+    Ok(())
+}
+

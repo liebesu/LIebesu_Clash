@@ -2444,3 +2444,32 @@ export async function switchToNode(
     node_name: nodeName,
   });
 }
+        }
+      : undefined,
+  });
+}
+
+/**
+ * 切换到最佳节点
+ */
+export async function applyBestNode(): Promise<string> {
+  return invoke<string>("apply_best_node");
+}
+
+export async function cancelGlobalSpeedTest(): Promise<string> {
+  return invoke<string>("cancel_global_speed_test");
+}
+
+/**
+ * 切换到指定节点
+ */
+export async function switchToNode(
+  profileUid: string,
+  nodeName: string,
+): Promise<string> {
+  return invoke<string>("switch_to_node", {
+    profile_uid: profileUid,
+    node_name: nodeName,
+  });
+}
+
